@@ -13,9 +13,10 @@ import { MessageSquare, Wrench, Dices, ScrollText, HelpCircle, X, User, ChevronL
 import { generateUUID } from './utils';
 import { DEFAULT_COLLECTIONS } from './constants';
 import { SoundProvider } from './contexts/SoundContext';
-import { useGameSound } from '../hooks/useGameSound';
+import { useGameSound } from './hooks/useGameSound';
 
 const AppContent: React.FC = () => {
+  const { play } = useGameSound();
   // Global State
   const [adventures, setAdventures] = useState<Adventure[]>([]);
   const [currentAdventureId, setCurrentAdventureId] = useState<string | null>(null);
@@ -413,7 +414,7 @@ const AppContent: React.FC = () => {
           <ScrollText className="text-amber-500" /> Minhas Aventuras
         </h2>
         <button 
-          onClick={handleCreateAdventure}
+          onClick={() => { play('CLICK'); handleCreateAdventure(); }}
           className="bg-amber-600 hover:bg-amber-500 text-white p-2 rounded-full shadow-lg active:scale-95 transition-all"
           title="Nova Aventura"
         >
@@ -432,7 +433,7 @@ const AppContent: React.FC = () => {
           adventures.map(adv => (
             <div 
               key={adv.id}
-              onClick={() => handleSelectAdventure(adv.id)}
+              onClick={() => { play('CLICK'); handleSelectAdventure(adv.id); }}
               className="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg hover:border-amber-500/50 transition-all active:scale-[0.98] group cursor-pointer relative overflow-hidden"
             >
               <div className="flex justify-between items-start mb-2">
@@ -457,13 +458,13 @@ const AppContent: React.FC = () => {
                  
                  <div className="flex gap-2">
                     <button 
-                      onClick={(e) => handleEditAdventure(adv, e)}
+                      onClick={(e) => { play('CLICK'); handleEditAdventure(adv, e); }}
                       className="p-2 text-slate-500 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
                     >
                       <Edit2 size={16} />
                     </button>
                     <button 
-                      onClick={(e) => handleDeleteAdventure(adv.id, e)}
+                      onClick={(e) => { play('CLICK'); handleDeleteAdventure(adv.id, e); }}
                       className="p-2 text-slate-500 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
                     >
                       <Trash2 size={16} />
@@ -483,7 +484,7 @@ const AppContent: React.FC = () => {
                <h3 className="text-lg font-bold text-white">
                  {advFormData.id ? 'Editar Aventura' : 'Nova Aventura'}
                </h3>
-               <button onClick={() => setIsEditingAdv(false)}><X className="text-slate-500" /></button>
+               <button onClick={() => { play('CLICK'); setIsEditingAdv(false); }}><X className="text-slate-500" /></button>
              </div>
              
              <div className="space-y-4">
@@ -508,7 +509,7 @@ const AppContent: React.FC = () => {
                    />
                </div>
                <button 
-                 onClick={handleSaveAdventure}
+                 onClick={() => { play('CLICK'); handleSaveAdventure(); }}
                  disabled={!advFormData.name.trim()}
                  className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"
                >
@@ -531,13 +532,13 @@ const AppContent: React.FC = () => {
              </p>
              <div className="flex gap-3">
                <button 
-                 onClick={() => setAdvToDelete(null)}
+                 onClick={() => { play('CLICK'); setAdvToDelete(null); }}
                  className="flex-1 py-2 bg-slate-700 text-slate-200 rounded font-bold"
                >
                  Cancelar
                </button>
                <button 
-                 onClick={confirmDeleteAdventure}
+                 onClick={() => { play('CLICK'); confirmDeleteAdventure(); }}
                  className="flex-1 py-2 bg-red-600 text-white rounded font-bold"
                >
                  Excluir
@@ -557,8 +558,8 @@ const AppContent: React.FC = () => {
           {showSettings ? (
              <div className="flex items-center gap-2 animate-in slide-in-from-left duration-200">
                 <button 
-                  onClick={() => setShowSettings(false)}
-                  className="p-1 -ml-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
+                  onClick={() => { play('CLICK'); setShowSettings(false); }}
+                  className="p-1 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
                 >
                   <ChevronLeft size={24} />
                 </button>
@@ -568,8 +569,8 @@ const AppContent: React.FC = () => {
             <div className="flex items-center gap-3 overflow-hidden animate-in fade-in duration-300">
               {currentAdventureId && (
                 <button 
-                  onClick={() => setCurrentAdventureId(null)}
-                  className="p-1 -ml-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
+                  onClick={() => { play('CLICK'); setCurrentAdventureId(null); }}
+                  className="p-1 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
                 >
                   <ChevronLeft size={24} />
                 </button>
@@ -591,14 +592,14 @@ const AppContent: React.FC = () => {
           {!showSettings && (
             <>
               <button 
-                onClick={() => setShowHelp(true)}
+                onClick={() => { play('CLICK'); setShowHelp(true); }}
                 className="p-2 text-slate-500 hover:text-amber-500 active:text-amber-400 transition-colors rounded-full hover:bg-slate-900"
                 aria-label="Ajuda Contextual"
               >
                 <HelpCircle size={20} />
               </button>
               <button 
-                onClick={() => setShowSettings(true)}
+                onClick={() => { play('CLICK'); setShowSettings(true); }}
                 className="p-2 text-slate-500 hover:text-amber-500 active:text-amber-400 transition-colors rounded-full hover:bg-slate-900"
                 aria-label="Configurações"
               >
@@ -719,7 +720,7 @@ const AppContent: React.FC = () => {
 
       {/* GLOBAL DRAGGABLE FAB for Notes */}
       {currentAdventureId && !showSettings && (
-        <DraggableFab onClick={() => setShowNoteModal(true)} />
+        <DraggableFab onClick={() => { play('CLICK'); setShowNoteModal(true); }} />
       )}
 
       {/* Note Modal */}
@@ -734,13 +735,13 @@ const AppContent: React.FC = () => {
       {showHelp && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
-          onClick={() => setShowHelp(false)}
+          onClick={() => { play('CLICK'); setShowHelp(false); }}
         >
            <div 
              className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 flex flex-col items-center text-center"
              onClick={e => e.stopPropagation()}
            >
-              <button onClick={() => setShowHelp(false)} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={20} /></button>
+              <button onClick={() => { play('CLICK'); setShowHelp(false); }} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={20} /></button>
               
               <div className="p-4 bg-slate-900 rounded-full mb-4 text-amber-500 border border-slate-700 shadow-inner">
                  {helpContent.icon}
@@ -772,7 +773,7 @@ const AppContent: React.FC = () => {
               </p>
 
               <button 
-                onClick={() => setShowHelp(false)}
+                onClick={() => { play('CLICK'); setShowHelp(false); }}
                 className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg transition-colors shadow-lg shadow-amber-900/20"
               >
                 Entendi
@@ -862,13 +863,13 @@ const AppContent: React.FC = () => {
             
             <div className="flex gap-3">
               <button
-                onClick={cancelImport}
+                onClick={() => { play('CLICK'); cancelImport(); }}
                 className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold text-sm transition-colors"
               >
                 Cancelar
               </button>
               <button
-                onClick={confirmImport}
+                onClick={() => { play('CLICK'); confirmImport(); }}
                 className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold text-sm transition-colors shadow-lg shadow-amber-900/20"
               >
                 Sim, Restaurar
@@ -889,9 +890,12 @@ const NavButton: React.FC<{
   label: string;
   badge?: number;
   vertical?: boolean;
-}> = ({ active, onClick, icon, label, badge, vertical }) => (
+}> = ({ active, onClick, icon, label, badge, vertical }) => {
+  const { play } = useGameSound();
+  
+  return (
   <button
-    onClick={onClick}
+    onClick={() => { play('CLICK'); onClick(); }}
     title={label}
     className={`relative flex items-center justify-center transition-colors ${
       vertical 
@@ -910,7 +914,8 @@ const NavButton: React.FC<{
       </span>
     )}
   </button>
-);
+  );
+};
 
 const App: React.FC = () => {
   return (

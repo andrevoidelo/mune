@@ -193,7 +193,7 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog, threads, npcs, updateTh
                  
                  {/* Toggle Switch */}
                  <button 
-                   onClick={() => setInterventionsEnabled(!interventionsEnabled)}
+                   onClick={() => { play('CLICK'); setInterventionsEnabled(!interventionsEnabled); }}
                    className={`w-10 h-5 rounded-full relative transition-colors duration-200 ease-in-out border border-slate-600 ${interventionsEnabled ? 'bg-amber-600 border-amber-500' : 'bg-slate-900'}`}
                    title={interventionsEnabled ? "Intervenções Ativadas" : "Intervenções Desativadas"}
                  >
@@ -254,7 +254,7 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog, threads, npcs, updateTh
          {/* List Toggle */}
          <div className="w-full flex justify-end mb-2 landscape:mb-auto landscape:justify-start">
              <button 
-               onClick={() => setShowLists(true)}
+               onClick={() => { play('CLICK'); setShowLists(true); }}
                className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 landscape:w-full landscape:justify-center landscape:py-4"
              >
                <List size={14} /> Tramas & NPCs
@@ -295,18 +295,18 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog, threads, npcs, updateTh
            <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-md h-[70vh] flex flex-col shadow-2xl animate-in zoom-in-95">
               <div className="flex items-center justify-between p-4 border-b border-slate-800">
                  <h3 className="font-bold text-white">Listas da Campanha</h3>
-                 <button onClick={() => setShowLists(false)}><X className="text-slate-500" /></button>
+                 <button onClick={() => { play('CLICK'); setShowLists(false); }}><X className="text-slate-500" /></button>
               </div>
 
               <div className="flex p-2 gap-2 bg-slate-800/50">
                  <button 
-                   onClick={() => setActiveListTab('THREADS')}
+                   onClick={() => { play('CLICK'); setActiveListTab('THREADS'); }}
                    className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${activeListTab === 'THREADS' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}
                  >
                    Tramas ({threads.length})
                  </button>
                  <button 
-                   onClick={() => setActiveListTab('NPCS')}
+                   onClick={() => { play('CLICK'); setActiveListTab('NPCS'); }}
                    className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${activeListTab === 'NPCS' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}
                  >
                    NPCs ({npcs.length})

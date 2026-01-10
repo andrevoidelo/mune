@@ -232,7 +232,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
                </button>
                
               <button 
-                onClick={() => setExpression(prev => prev.slice(0, -1))}
+                onClick={() => { play('CLICK'); setExpression(prev => prev.slice(0, -1)); }}
                 className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg py-2 flex items-center justify-center text-slate-400 hover:text-white active:scale-95 transition-colors"
               >
                 <Delete size={18} />

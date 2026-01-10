@@ -417,7 +417,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     return (
       <div 
         className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        onClick={() => setPendingRoll(null)}
+        onClick={() => { play('CLICK'); setPendingRoll(null); }}
       >
         <div 
           className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200"
@@ -425,7 +425,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         >
           <button 
             type="button"
-            onClick={() => setPendingRoll(null)}
+            onClick={() => { play('CLICK'); setPendingRoll(null); }}
             className="absolute top-4 right-4 text-slate-500 hover:text-white"
           >
             <X size={20} />
@@ -449,7 +449,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             {/* Advantage/Disadvantage */}
             <div className="grid grid-cols-3 gap-2">
                <button
-                 onClick={() => setRollConfig(prev => ({ ...prev, mode: 'DISADVANTAGE' }))}
+                 onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, mode: 'DISADVANTAGE' })); }}
                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
                    rollConfig.mode === 'DISADVANTAGE' 
                    ? 'bg-red-900/30 border-red-500 text-red-100' 
@@ -461,7 +461,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                </button>
 
                <button
-                 onClick={() => setRollConfig(prev => ({ ...prev, mode: 'NORMAL' }))}
+                 onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, mode: 'NORMAL' })); }}
                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
                    rollConfig.mode === 'NORMAL' 
                    ? 'bg-slate-700 border-slate-500 text-white' 
@@ -473,7 +473,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                </button>
 
                <button
-                 onClick={() => setRollConfig(prev => ({ ...prev, mode: 'ADVANTAGE' }))}
+                 onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, mode: 'ADVANTAGE' })); }}
                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
                    rollConfig.mode === 'ADVANTAGE' 
                    ? 'bg-green-900/30 border-green-500 text-green-100' 
@@ -499,7 +499,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                    
                    <div className="flex items-center gap-3">
                      <button 
-                       onClick={() => setRollConfig(prev => ({ ...prev, modifier: prev.modifier - 1 }))}
+                       onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, modifier: prev.modifier - 1 })); }}
                        className="w-12 h-12 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-600 active:scale-95 transition-all"
                      >
                        <Minus size={20} />
@@ -510,7 +510,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                      </div>
 
                      <button 
-                       onClick={() => setRollConfig(prev => ({ ...prev, modifier: prev.modifier + 1 }))}
+                       onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, modifier: prev.modifier + 1 })); }}
                        className="w-12 h-12 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-600 active:scale-95 transition-all"
                      >
                        <Plus size={20} />
@@ -553,7 +553,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     return (
       <div 
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-        onClick={() => !isRevealing && setRollResult(null)}
+        onClick={() => { if (!isRevealing) { play('CLICK'); setRollResult(null); } }}
       >
         <div 
           className={`${containerBase} ${containerState}`}
@@ -562,7 +562,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           {!isRevealing && (
              <button 
                type="button"
-               onClick={() => setRollResult(null)}
+               onClick={() => { play('CLICK'); setRollResult(null); }}
                className="absolute top-3 right-3 text-slate-500 hover:text-white bg-slate-800 rounded-full p-1 animate-in fade-in"
              >
                <X size={16} />
@@ -646,7 +646,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     return (
       <div 
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-        onClick={() => !isItemRevealing && setItemRollResult(null)}
+        onClick={() => { if (!isItemRevealing) { play('CLICK'); setItemRollResult(null); } }}
       >
         <div 
           className={`${containerBase} ${containerState}`}
@@ -655,7 +655,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           {!isItemRevealing && (
             <button 
               type="button"
-              onClick={() => setItemRollResult(null)}
+              onClick={() => { play('CLICK'); setItemRollResult(null); }}
               className="absolute top-3 right-3 text-slate-500 hover:text-white bg-slate-800 rounded-full p-1 animate-in fade-in"
             >
               <X size={16} />
@@ -706,7 +706,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     return (
       <div 
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        onClick={() => setItemToUse(null)}
+        onClick={() => { play('CLICK'); setItemToUse(null); }}
       >
         <div 
           className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
@@ -714,7 +714,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         >
           <button 
             type="button"
-            onClick={() => setItemToUse(null)}
+            onClick={() => { play('CLICK'); setItemToUse(null); }}
             className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
           >
             <X size={20} />
@@ -733,7 +733,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           
           <div className="flex gap-3">
             <button
-              onClick={() => setItemToUse(null)}
+              onClick={() => { play('CLICK'); setItemToUse(null); }}
               className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold text-sm transition-colors"
             >
               Cancelar
@@ -755,7 +755,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     return (
       <div 
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        onClick={() => setCharToDelete(null)}
+        onClick={() => { play('CLICK'); setCharToDelete(null); }}
       >
         <div 
           className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
@@ -763,7 +763,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         >
           <button 
             type="button"
-            onClick={() => setCharToDelete(null)}
+            onClick={() => { play('CLICK'); setCharToDelete(null); }}
             className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
           >
             <X size={20} />
@@ -782,13 +782,13 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           
           <div className="flex gap-3">
             <button
-              onClick={() => setCharToDelete(null)}
+              onClick={() => { play('CLICK'); setCharToDelete(null); }}
               className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold text-sm transition-colors"
             >
               Cancelar
             </button>
             <button
-              onClick={confirmDelete}
+              onClick={() => { play('CLICK'); confirmDelete(); }}
               className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors shadow-lg shadow-red-900/20"
             >
               Sim, excluir
@@ -805,7 +805,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         {characters.map(char => (
           <div 
             key={char.id}
-            onClick={() => { setSelectedCharId(char.id); setMode('DETAIL'); }}
+            onClick={() => { play('CLICK'); setSelectedCharId(char.id); setMode('DETAIL'); }}
             className="aspect-[3/4] rounded-xl bg-slate-800 border border-slate-700 overflow-hidden relative shadow-lg hover:shadow-amber-900/10 hover:border-amber-500/50 transition-all active:scale-95 cursor-pointer flex flex-col"
           >
             <div className="flex-1 bg-slate-900 relative min-h-0">
@@ -827,7 +827,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
         <button 
           type="button"
-          onClick={handleCreateNew}
+          onClick={() => { play('CLICK'); handleCreateNew(); }}
           className="aspect-[3/4] rounded-xl border-2 border-dashed border-slate-700 hover:border-amber-500 bg-slate-800/50 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-amber-500 transition-all active:scale-95 group"
         >
           <div className="bg-slate-800 p-3 rounded-full group-hover:bg-amber-500/10 transition-colors">
@@ -1242,7 +1242,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
       <div className="flex flex-col h-full bg-slate-900 overflow-y-auto pb-24 w-full">
         <div className="max-w-3xl mx-auto w-full min-h-full">
           {/* Header / Image Upload */}
-          <div className="relative h-48 w-full flex-none bg-slate-950 group cursor-pointer" onClick={triggerFileUpload}>
+          <div className="relative h-48 w-full flex-none bg-slate-950 group cursor-pointer" onClick={() => { play('CLICK'); triggerFileUpload(); }}>
             {formData.imageUrl ? (
               <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover object-top opacity-60 group-hover:opacity-40 transition-opacity" />
             ) : (
@@ -1265,7 +1265,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             
             <button 
               type="button"
-              onClick={(e) => { e.stopPropagation(); setMode('LIST'); }}
+              onClick={(e) => { play('CLICK'); e.stopPropagation(); setMode('LIST'); }}
               className="absolute top-4 left-4 p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-black/60 z-10"
             >
               <X size={24} />
@@ -1273,7 +1273,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             
             <button 
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSave(); }}
+              onClick={(e) => { play('CLICK'); e.preventDefault(); e.stopPropagation(); handleSave(); }}
               className="absolute top-4 right-4 px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded-full shadow-lg z-10 flex items-center gap-2"
             >
               <CheckSquare size={18} /> Salvar
@@ -1329,7 +1329,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                 </h3>
                 <button 
                   type="button" 
-                  onClick={addResource}
+                  onClick={() => { play('CLICK'); addResource(); }}
                   className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 bg-slate-800 px-2 py-1 rounded"
                 >
                   <Plus size={12} /> Adicionar
@@ -1347,7 +1347,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                             className="flex-1 bg-transparent border-b border-slate-700 text-white font-bold outline-none focus:border-amber-500 pb-1"
                             placeholder="Nome do Recurso"
                           />
-                          <button onClick={() => removeResource(res.id)} className="text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
+                          <button onClick={() => { play('CLICK'); removeResource(res.id); }} className="text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
                         </div>
                         
                         <div className="grid grid-cols-2 gap-2">
@@ -1403,7 +1403,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                 </h3>
                 <button 
                   type="button" 
-                  onClick={addAttribute}
+                  onClick={() => { play('CLICK'); addAttribute(); }}
                   className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 bg-slate-800 px-2 py-1 rounded"
                 >
                   <Plus size={12} /> Adicionar
@@ -1423,7 +1423,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                             className="flex-1 bg-transparent border-b border-slate-700 text-white font-bold outline-none focus:border-amber-500 pb-1"
                             placeholder="Nome do Atributo"
                           />
-                          <button onClick={() => removeAttribute(attr.id)} className="text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
+                          <button onClick={() => { play('CLICK'); removeAttribute(attr.id); }} className="text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
                         </div>
                         
                         <div className="grid grid-cols-3 gap-2">
@@ -1540,7 +1540,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                         </div>
                         <button 
                           type="button"
-                          onClick={() => removeItem(isString ? name : item.id)} // For string items we might have issues removing exact one if duplicates exist, but minimal impact for now
+                          onClick={() => { play('CLICK'); removeItem(isString ? name : item.id); }} // For string items we might have issues removing exact one if duplicates exist, but minimal impact for now
                           className="text-slate-600 hover:text-red-500 p-1"
                         >
                           <Trash2 size={14} />

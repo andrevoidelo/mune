@@ -264,7 +264,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
     return (
       <div 
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        onClick={() => setCollectionToDelete(null)}
+        onClick={() => { play('CLICK'); setCollectionToDelete(null); }}
       >
         <div 
           className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
@@ -272,7 +272,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
         >
           <button 
             type="button"
-            onClick={() => setCollectionToDelete(null)}
+            onClick={() => { play('CLICK'); setCollectionToDelete(null); }}
             className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
           >
             <X size={20} />
@@ -291,13 +291,13 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
           
           <div className="flex gap-3">
             <button
-              onClick={() => setCollectionToDelete(null)}
+              onClick={() => { play('CLICK'); setCollectionToDelete(null); }}
               className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold text-sm transition-colors"
             >
               Cancelar
             </button>
             <button
-              onClick={confirmDeleteCollection}
+              onClick={() => { play('CLICK'); confirmDeleteCollection(); }}
               className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors shadow-lg shadow-red-900/20"
             >
               Sim, excluir
@@ -316,7 +316,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
              <h2 className="text-xl font-bold text-white">
                {formData.id && collections.some(c => c.id === formData.id) ? 'Editar Coleção' : 'Nova Coleção'}
              </h2>
-             <button onClick={() => setIsEditing(false)}><X className="text-slate-400" /></button>
+             <button onClick={() => { play('CLICK'); setIsEditing(false); }}><X className="text-slate-400" /></button>
            </div>
            
            <input 
@@ -335,13 +335,13 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
            
            <div className="flex gap-2 p-1 bg-slate-800 rounded border border-slate-700">
               <button 
-                onClick={() => setFormData({...formData, type: 'TABLE'})}
+                onClick={() => { play('CLICK'); setFormData({...formData, type: 'TABLE'}); }}
                 className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'TABLE' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'}`}
               >
                 Tabela
               </button>
               <button 
-                onClick={() => setFormData({...formData, type: 'DECK'})}
+                onClick={() => { play('CLICK'); setFormData({...formData, type: 'DECK'}); }}
                 className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'DECK' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'}`}
               >
                 Baralho
@@ -359,7 +359,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
            </div>
 
            <button 
-             onClick={handleSaveCollection}
+             onClick={() => { play('CLICK'); handleSaveCollection(); }}
              className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"
            >
              <Save size={18} /> Salvar Coleção
@@ -390,14 +390,14 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
            {!activeCollection.isBuiltIn && (
               <div className="flex gap-2">
                  <button 
-                    onClick={() => handleEditCollection(activeCollection)}
+                    onClick={() => { play('CLICK'); handleEditCollection(activeCollection); }}
                     className="p-2 bg-slate-800 rounded-full text-amber-500 hover:text-white hover:bg-amber-600 transition-colors"
                     title="Editar"
                  >
                     <Edit2 size={20} />
                  </button>
                  <button 
-                    onClick={() => setCollectionToDelete(activeCollection)}
+                    onClick={() => { play('CLICK'); setCollectionToDelete(activeCollection); }}
                     className="p-2 bg-slate-800 rounded-full text-red-500 hover:text-white hover:bg-red-600 transition-colors"
                     title="Excluir"
                  >
@@ -490,7 +490,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                      <Layers size={24} /> Sacar Carta
                    </button>
                    <button 
-                     onClick={handleShuffle}
+                     onClick={() => { play('CLICK'); handleShuffle(); }}
                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 landscape:py-4 rounded-xl border border-slate-700 flex items-center justify-center gap-2"
                    >
                      <RefreshCw size={18} /> Embaralhar ({deckState?.discarded.length})
@@ -543,7 +543,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
 
          {/* Add New Button */}
          <button 
-           onClick={handleCreateCollection}
+           onClick={() => { play('CLICK'); handleCreateCollection(); }}
            className="w-full aspect-[4/3] border-2 border-dashed border-slate-700 rounded-xl flex flex-col items-center justify-center text-slate-500 hover:text-amber-500 hover:border-amber-500/50 hover:bg-slate-800/50 transition-all group"
          >
            <Plus size={24} className="mb-1 group-hover:scale-110 transition-transform" />

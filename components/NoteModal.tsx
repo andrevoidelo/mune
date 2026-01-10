@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { X, Image as ImageIcon, Save, Trash2, PenTool } from 'lucide-react';
+import { useGameSound } from '../hooks/useGameSound';
 
 interface NoteModalProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
   const [text, setText] = useState('');
   const [image, setImage] = useState<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { play } = useGameSound();
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,7 +34,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
   return (
     <div 
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-      onClick={onClose}
+      onClick={() => { play('CLICK'); onClose(); }}
     >
       <div 
         className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4 shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] sm:max-h-[85vh]"
@@ -44,7 +46,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
              Adicionar Nota
            </h3>
            <button 
-             onClick={onClose}
+             onClick={() => { play('CLICK'); onClose(); }}
              className="text-slate-500 hover:text-white p-1 rounded-full hover:bg-slate-800"
            >
              <X size={24} />
@@ -64,7 +66,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
             <div className="mt-4 relative group rounded-xl overflow-hidden border border-slate-700">
               <img src={image} alt="Preview" className="w-full h-auto object-cover max-h-60" />
               <button 
-                onClick={() => setImage(undefined)}
+                onClick={() => { play('CLICK'); setImage(undefined); }}
                 className="absolute top-2 right-2 bg-red-900/80 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Trash2 size={16} />
@@ -75,7 +77,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
 
         <div className="flex gap-3 mt-4 pt-2 border-t border-slate-800 flex-none">
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => { play('CLICK'); fileInputRef.current?.click(); }}
             className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-colors"
             title="Adicionar Imagem"
           >
@@ -90,7 +92,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
           />
 
           <button
-            onClick={handleSave}
+            onClick={() => { play('CLICK'); handleSave(); }}
             disabled={!text.trim() && !image}
             className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:bg-slate-800 text-white font-bold rounded-xl py-3 flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20 active:translate-y-1 transition-all"
           >

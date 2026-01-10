@@ -2,6 +2,7 @@
 import React from 'react';
 import { Database, Download, Upload, Check, CloudCog, Sun, Moon, Volume2, VolumeX } from 'lucide-react';
 import { useSoundSettings } from '../contexts/SoundContext';
+import { useGameSound } from '../hooks/useGameSound';
 
 interface SettingsViewProps {
   onBackup: () => void;
@@ -23,6 +24,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   setIsPaperMode
 }) => {
   const { isSoundEnabled, toggleSound } = useSoundSettings();
+  const { play } = useGameSound();
 
   return (
     <div className="flex flex-col h-full bg-slate-900 p-4 overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
@@ -49,7 +51,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
                 
                 <button 
-                  onClick={toggleSound}
+                  onClick={() => { play('CLICK'); toggleSound(); }}
                   className={`w-12 h-7 rounded-full relative transition-colors duration-300 ease-in-out border border-slate-600 ${isSoundEnabled ? 'bg-amber-600 border-amber-500' : 'bg-slate-900'}`}
                 >
                   <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 flex items-center justify-center ${isSoundEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -69,7 +71,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
                 
                 <button 
-                  onClick={() => setIsPaperMode(!isPaperMode)}
+                  onClick={() => { play('CLICK'); setIsPaperMode(!isPaperMode); }}
                   className={`w-12 h-7 rounded-full relative transition-colors duration-300 ease-in-out border border-slate-600 ${isPaperMode ? 'bg-indigo-100 border-indigo-300' : 'bg-slate-900'}`}
                 >
                   <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow-sm transition-transform duration-300 flex items-center justify-center ${isPaperMode ? 'translate-x-5 bg-indigo-500 text-white' : 'translate-x-0 bg-slate-500 text-slate-200'}`}>
@@ -103,7 +105,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
 
             <div className="grid grid-cols-2 divide-x divide-slate-700/50">
               <button 
-                onClick={onBackup}
+                onClick={() => { play('CLICK'); onBackup(); }}
                 className="p-4 hover:bg-slate-700/50 transition-colors flex flex-col items-center justify-center gap-2 group active:bg-slate-700"
               >
                 <div className="p-2 bg-slate-900 rounded-full group-hover:scale-110 transition-transform shadow-inner">
@@ -116,7 +118,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               </button>
 
               <button 
-                onClick={onRestoreTrigger}
+                onClick={() => { play('CLICK'); onRestoreTrigger(); }}
                 className="p-4 hover:bg-slate-700/50 transition-colors flex flex-col items-center justify-center gap-2 group active:bg-slate-700 relative overflow-hidden"
               >
                 {importStatus ? (

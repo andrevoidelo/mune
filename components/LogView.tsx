@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { LogEntry } from '../types';
 import { Trash2, Clock, X, StickyNote, Printer, Calendar, FileDown } from 'lucide-react';
 import { exportLogsToMarkdown } from '../utils';
+import { useGameSound } from '../hooks/useGameSound';
 
 interface LogViewProps {
   logs: LogEntry[];
@@ -26,6 +27,7 @@ const TYPE_LABELS: Record<string, string> = {
 const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, removeLog, isActive }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { play } = useGameSound();
 
   useEffect(() => {
     // Only scroll if the tab is active
@@ -125,7 +127,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
     return (
       <div 
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        onClick={() => setShowDeleteModal(false)}
+        onClick={() => { play('CLICK'); setShowDeleteModal(false); }}
       >
         <div 
           className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
@@ -133,7 +135,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
         >
           <button 
             type="button"
-            onClick={() => setShowDeleteModal(false)}
+            onClick={() => { play('CLICK'); setShowDeleteModal(false); }}
             className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
           >
             <X size={20} />
@@ -152,13 +154,13 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
           
           <div className="flex gap-3">
             <button
-              onClick={() => setShowDeleteModal(false)}
+              onClick={() => { play('CLICK'); setShowDeleteModal(false); }}
               className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold text-sm transition-colors"
             >
               Cancelar
             </button>
             <button
-              onClick={confirmClearLogs}
+              onClick={() => { play('CLICK'); confirmClearLogs(); }}
               className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors shadow-lg shadow-red-900/20"
             >
               Sim, limpar
@@ -176,14 +178,14 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
         {logs.length > 0 && (
           <div className="flex items-center gap-2">
             <button 
-                onClick={handleMarkdownExport}
+                onClick={() => { play('CLICK'); handleMarkdownExport(); }}
                 className="text-slate-400 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors active:scale-95 flex items-center justify-center font-mono text-[10px] border border-slate-700 w-8 h-8"
                 title="Exportar Markdown (.md)"
               >
                 .md
             </button>
             <button 
-                onClick={handlePrint}
+                onClick={() => { play('CLICK'); handlePrint(); }}
                 className="text-slate-400 hover:text-amber-400 p-2 rounded-full hover:bg-slate-800 transition-colors active:scale-95"
                 title="Exportar PDF (Imprimir)"
               >
@@ -192,7 +194,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
             <div className="w-px h-6 bg-slate-700 mx-1"></div>
             
             <button 
-              onClick={() => setShowDeleteModal(true)}
+              onClick={() => { play('CLICK'); setShowDeleteModal(true); }}
               className="text-slate-400 hover:text-red-400 p-2 rounded-full hover:bg-slate-800 transition-colors active:scale-95"
               title="Limpar histórico"
             >
@@ -243,7 +245,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
                       {TYPE_LABELS[entry.type] || entry.type}
                     </span>
                     <button 
-                      onClick={() => removeLog(entry.id)}
+                      onClick={() => { play('CLICK'); removeLog(entry.id); }}
                       className="text-slate-600 hover:text-red-500 p-1 -mr-1 transition-colors no-print"
                       title="Excluir entrada"
                     >
