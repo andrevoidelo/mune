@@ -1,129 +1,83 @@
-# 🎲 Mestre Mune
+# 🎲 Mestre Mune - Assistente de RPG Solo
 
-> **Um Emulador de Mestre de Jogo (GM Emulator) completo, focado em dispositivos móveis e baseado no sistema MUNE.**
+**Mestre Mune** é uma aplicação web progressiva (PWA) desenvolvida para facilitar sessões de RPG Solo. Baseada no sistema **M.U.N.E. (Madey Upy Namey Emulator)**, a ferramenta centraliza oráculo, gerenciamento de fichas, rolagens de dados e anotações em uma interface moderna, responsiva e altamente customizável.
 
-O **Mestre Mune** é uma Progressive Web App (PWA) desenvolvida para facilitar sessões de RPG Solo. Ele automatiza as rolagens do sistema MUNE, gerencia fichas de personagens, rolagens de dados e mantém um diário automático de toda a sua aventura.
+![Status do Projeto](https://img.shields.io/badge/Status-Funcional-green)
+![Tech](https://img.shields.io/badge/Tech-React%20%7C%20Vite%20%7C%20TypeScript%20%7C%20Tailwind-blue)
 
----
+## ✨ Funcionalidades Principais
 
-## ✨ Funcionalidades
+### 🔮 O Oráculo Automatizado
+- **Rolagens MUNE:** Sistema completo com opções de "Normal", "Provável" (Vantagem) e "Improvável" (Desvantagem).
+- **Intervenções Automáticas:** O sistema rastreia os pontos de intervenção (gerados ao rolar um 6). Ao atingir 3 pontos, uma Intervenção é disparada automaticamente com feedback visual e sonoro.
+- **Gestão de Tramas & NPCs:** Listas rápidas integradas à tela do oráculo para adicionar/remover elementos da narrativa dinamicamente.
 
-O aplicativo é dividido em 5 módulos principais, acessíveis através da barra de navegação inferior:
+### 👤 Gestão de Personagens (Persona)
+- **Fichas Completas:** Crie personagens ilimitados com imagem, arquétipo e descrição.
+- **Atributos Flexíveis:** Defina atributos customizados (Força, Agilidade, etc.), escolha o dado (d20, d6, etc.) e o tipo de teste (Rolar Abaixo/Acima).
+- **Rolagens Complexas:** Clique nos atributos para rolar com modificadores e Vantagem/Desvantagem.
+- **Recursos Dinâmicos:** Contadores para Vida, Mana, Munição, Sanidade, etc.
+- **Inventário Interativo:** Adicione itens, marque como "Permanentes" ou consumíveis, e defina fórmulas de dado para o item (ex: `1d8+2` de dano).
 
-### 1. 🔮 Oráculo
-O coração do sistema MUNE.
-- **Perguntas Sim/Não:** Faça perguntas ao oráculo e obtenha respostas baseadas em 1d6.
-- **Viés:** Suporte para perguntas "Prováveis" (Vantagem/Keep Highest) e "Improváveis" (Desvantagem/Keep Lowest).
-- **Intervenções Automáticas:** O app rastreia automaticamente os resultados `6` no dado. Ao acumular 3 pontos, ele dispara um alerta de **Intervenção**, sugerindo a natureza da mudança na cena.
+### 🛠️ Coleções & Ferramentas
+- **Tabelas de Rolagem:** Crie suas próprias tabelas aleatórias ou use as padrões (Presságio, etc.).
+- **Baralhos Customizáveis:** Crie baralhos de cartas, saque cartas, embaralhe e gerencie o descarte.
+- **Persistência:** Todas as coleções customizadas são salvas localmente.
 
-### 2. 🛠️ Ferramentas
-Geradores rápidos para destravar a criatividade durante o jogo.
-- **Presságio:** Gera duas palavras (Adjetivo + Substantivo) para inspirar o clima ou detalhes da cena.
-- **Atitude de NPC:** Define a reação inicial de um personagem (Hostil, Neutro, Amigável).
-- **TWENE (Inesperado):** Tabela de elementos inesperados para alterar o rumo da narrativa quando necessário.
+### 📜 Diário de Sessão (Log)
+- **Histórico Automático:** Todas as ações (rolagens do oráculo, testes de atributo, uso de itens) são registradas automaticamente.
+- **Notas Manuais:** Adicione anotações de texto ou imagens ao log a qualquer momento.
+- **Exportação:** 
+  - **PDF:** Imprima sua sessão formatada.
+  - **Markdown (.md):** Exporte para usar no Obsidian, Notion ou outros editores de texto.
 
-### 3. 👤 Personas (Gerenciador de Personagens)
-Fichas de personagens completas e interativas.
-- **Atributos:** Crie atributos personalizados. Clique neles para realizar testes (rolagens) diretamente, com opções de Vantagem, Desvantagem e Modificadores.
-- **Recursos:** Contadores para Vida, Mana, Munição, etc.
-- **Inventário:** Adicione itens, defina se são permanentes ou consumíveis e anexe dados de dano/efeito (ex: `1d8+2`).
-- **Imagem:** Upload de imagem para personalizar a ficha.
-
-### 4. 🎲 Rolador de Dados
-Um rolador de dados avançado e flexível.
-- **Notação Complexa:** Suporta expressões como `2d20+5`, `4d6kh3` (Keep Highest 3), etc.
-- **Histórico:** Visualização clara do resultado total e dos dados individuais rolados.
-- **Atalhos:** Botões rápidos para modificadores (+1/-1) e dados comuns.
-
-### 5. 📜 Log (Diário de Aventura)
-Tudo o que acontece é registrado automaticamente.
-- **Histórico Automático:** Rolagens do oráculo, testes de atributos, uso de itens e resultados de ferramentas são salvos cronologicamente.
-- **Notas de Diário:** Um botão flutuante (que pode ser arrastado pela tela) permite adicionar anotações de texto e imagens a qualquer momento.
-- **Exportação PDF:** Formate sua aventura como um documento e imprima ou salve como PDF diretamente pelo navegador.
-- **Persistência:** Seus dados são salvos automaticamente no navegador.
-
-### ⚙️ Outros Recursos
-- **Gestão de Campanhas:** Crie múltiplas aventuras separadas.
-- **Backup e Restauração:** Exporte seus dados para um arquivo JSON para segurança ou para transferir entre dispositivos.
-- **Modo Offline:** Funciona sem internet após o primeiro acesso.
-- **Responsivo:** Design otimizado para parecer um app nativo em smartphones.
+### 🎨 Customização & Imersão
+- **Temas Visuais:** Alterne entre temas como Padrão (Dark), Claro (Paper/Journal), Fantasia, Sci-Fi, Cyberpunk e Terminal.
+- **Efeitos Sonoros:** Feedback auditivo para rolagens de dados, cartas e interações (pode ser desativado).
+- **Backup & Restore:** Exporte todos os seus dados (Aventuras e Coleções) para um arquivo JSON e restaure em qualquer dispositivo.
 
 ---
 
-## 🚀 Como Rodar o Projeto
+## 🚀 Como Rodar Localmente
 
-Este projeto utiliza **React**, **TypeScript** e **Vite**.
+Este projeto utiliza **Vite** e **React**.
 
-### Pré-requisitos
-- Node.js instalado.
-
-### Instalação
-
-1. Clone o repositório:
+1. **Clone o repositório:**
    ```bash
    git clone https://github.com/seu-usuario/mestre-mune.git
    cd mestre-mune
    ```
 
-2. Instale as dependências:
+2. **Instale as dependências:**
    ```bash
    npm install
    ```
 
-3. Inicie o servidor de desenvolvimento:
+3. **Inicie o servidor de desenvolvimento:**
    ```bash
    npm run dev
    ```
 
 4. Acesse `http://localhost:5173` no seu navegador.
 
-### Gerar Build para Produção
-Para gerar os arquivos estáticos na pasta `dist`:
-
-```bash
-npm run build
-```
-
----
-
-## 📱 Transformando em App Android (APK)
-
-Este projeto está configurado para ser convertido facilmente usando **Capacitor**.
-
-1. Inicialize o Capacitor (caso não tenha feito):
-   ```bash
-   npm install @capacitor/core @capacitor/cli @capacitor/android
-   npx cap init
-   npx cap add android
-   ```
-
-2. Gere o build e sincronize:
-   ```bash
-   npm run build
-   npx cap sync
-   ```
-
-3. Abra no Android Studio para gerar o APK:
-   ```bash
-   npx cap open android
-   ```
-
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
-- [React](https://react.dev/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Vite](https://vitejs.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Lucide React](https://lucide.dev/) (Ícones)
-- [Capacitor](https://capacitorjs.com/) (Mobile Runtime)
+- **Core:** React 19, TypeScript
+- **Build Tool:** Vite
+- **Estilização:** Tailwind CSS v4
+- **Ícones:** Lucide React
+- **Áudio:** Howler.js / use-sound
+- **Armazenamento:** LocalStorage (Offline-first)
 
 ---
 
-## 📄 Créditos e Licença
+## 📄 Créditos
 
-- **Desenvolvido por:** André Ricardo Voidelo
-- **Sistema Base:** Baseado no sistema **MUNE (Madey Upey Namey Emulator)**. O manual original do sistema pode ser encontrado [aqui](https://drive.google.com/file/d/1mJbHcCNscMfs_NPnqMMz2Y8KiD8gWrkZ/view).
+Baseado no sistema de RPG Solo **M.U.N.E.** (Madey Upy Namey Emulator).
+Desenvolvido como um assistente digital para facilitar a fluidez do jogo solo, eliminando a necessidade de múltiplas abas ou papelada excessiva.
 
-Este projeto é de código aberto e livre para uso pessoal.
+---
+
+*Boas rolagens!* 🎲
