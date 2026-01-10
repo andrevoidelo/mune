@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+@theme {
+  --color-slate-50: rgb(var(--c-slate-50));
+  --color-slate-100: rgb(var(--c-slate-100));
+  --color-slate-200: rgb(var(--c-slate-200));
+  --color-slate-300: rgb(var(--c-slate-300));
+  --color-slate-400: rgb(var(--c-slate-400));
+  --color-slate-500: rgb(var(--c-slate-500));
+  --color-slate-600: rgb(var(--c-slate-600));
+  --color-slate-700: rgb(var(--c-slate-700));
+  --color-slate-800: rgb(var(--c-slate-800));
+  --color-slate-900: rgb(var(--c-slate-900));
+  --color-slate-950: rgb(var(--c-slate-950));
+
+  --color-amber-500: rgb(var(--c-amber-500));
+  --color-amber-600: rgb(var(--c-amber-600));
+  --color-amber-700: rgb(var(--c-amber-700));
+  --color-amber-900: rgb(var(--c-amber-900));
+}
+
+:root {
+  /* --- Default (Slate Dark) --- */
+  --c-slate-50: 248 250 252;
+  --c-slate-100: 241 245 249;
+  --c-slate-200: 226 232 240;
+  --c-slate-300: 203 213 225;
+  --c-slate-400: 148 163 184;
+  --c-slate-500: 100 116 139;
+  --c-slate-600: 71 85 105;
+  --c-slate-700: 51 65 85;
+  --c-slate-800: 30 41 59;
+  --c-slate-900: 15 23 42;
+  --c-slate-950: 2 6 23;
+
+  --c-amber-500: 245 158 11;
+  --c-amber-600: 217 119 6;
+  --c-amber-700: 180 83 9;
+  --c-amber-900: 120 53 15;
+}
+
+[data-theme='light'] {
+  /* --- Paper Mode (Claro/Bege) --- */
+  --c-slate-950: 250 250 249; /* stone-50 */
+  --c-slate-900: 255 255 255; /* white */
+  --c-slate-800: 245 245 244; /* stone-100 */
+  --c-slate-700: 231 229 228; /* stone-200 */
+  --c-slate-600: 168 162 158; /* stone-400 */
+  --c-slate-500: 120 113 108; /* stone-500 */
+  
+  /* Text Inversion */
+  --c-slate-400: 87 83 78;   /* stone-600 */
+  --c-slate-300: 68 64 60;   /* stone-700 */
+  --c-slate-200: 41 37 36;   /* stone-800 */
+  --c-slate-100: 28 25 23;   /* stone-900 */
+  --c-slate-50: 12 10 9;     /* stone-950 */
+
+  --c-amber-500: 217 119 6; /* amber-600 */
+  --c-amber-600: 180 83 9;  /* amber-700 */
+  --c-amber-700: 146 64 14; /* amber-800 */
+  --c-amber-900: 120 53 15; /* amber-900 */
+}
+
+[data-theme='fantasy'] {
+  /* --- Fantasia (Earthy/Brown) --- */
+  --c-slate-950: 28 25 23; /* stone-900 */
+  --c-slate-900: 41 37 36; /* stone-800 */
+  --c-slate-800: 68 64 60; /* stone-700 */
+  --c-slate-700: 87 83 78; /* stone-600 */
+  
+  --c-slate-600: 120 113 108;
+  --c-slate-500: 168 162 158;
+
+  --c-slate-400: 214 211 209; /* stone-300 */
+  --c-slate-100: 245 245 244; /* stone-100 */
+  --c-slate-200: 231 229 228; /* stone-200 */
+  
+  --c-amber-500: 234 179 8; /* yellow-500 */
+  --c-amber-600: 202 138 4; /* yellow-600 */
+  --c-amber-700: 161 98 7;  /* yellow-700 */
+  --c-amber-900: 113 63 18; /* yellow-900 */
+}
+
+[data-theme='scifi'] {
+  /* --- Sci-Fi (Blue/Light) --- */
+  --c-slate-950: 240 249 255; /* sky-50 */
+  --c-slate-900: 224 242 254; /* sky-100 */
+  --c-slate-800: 186 230 253; /* sky-200 */
+  --c-slate-700: 125 211 252; /* sky-300 */
+  
+  --c-slate-600: 56 189 248; /* sky-400 */
+  --c-slate-500: 14 165 233; /* sky-500 */
+  
+  --c-slate-400: 2 132 199;  /* sky-600 */
+  --c-slate-300: 3 105 161;  /* sky-700 */
+  --c-slate-200: 7 89 133;   /* sky-800 */
+  --c-slate-100: 12 74 110;  /* sky-900 */
+  --c-slate-50: 8 47 73;     /* sky-950 */
+
+  --c-amber-500: 59 130 246; /* blue-500 (Accent) */
+  --c-amber-600: 37 99 235;  /* blue-600 */
+  --c-amber-700: 29 78 216;  /* blue-700 */
+  --c-amber-900: 30 58 138;  /* blue-900 */
+}
+
+[data-theme='cyberpunk'] {
+  /* --- Cyberpunk (Neon) --- */
+  --c-slate-950: 10 5 20;    /* Deep Purple */
+  --c-slate-900: 20 10 35;   /* Dark Purple */
+  --c-slate-800: 40 15 60;   /* Rich Purple */
+  --c-slate-700: 80 30 110;  /* Violet */
+  
+  --c-slate-600: 139 92 246; /* violet-500 */
+  
+  --c-slate-100: 232 121 249; /* fuchsia-400 */
+  --c-slate-200: 217 70 239;  /* fuchsia-500 */
+  --c-slate-400: 192 38 211;  /* fuchsia-600 */
+  
+  --c-amber-500: 56 189 248;  /* Cyan Neon */
+  --c-amber-600: 14 165 233;  /* Cyan Darker */
+  --c-amber-700: 2 132 199;   /* sky-600 */
+  --c-amber-900: 12 74 110;   /* sky-900 */
+}
+
+[data-theme='terminal'] {
+  /* --- Terminal (Matrix) --- */
+  --c-slate-950: 0 0 0;
+  --c-slate-900: 5 5 5;
+  --c-slate-800: 10 25 10;
+  --c-slate-700: 20 50 20;
+  
+  --c-slate-600: 34 197 94;
+  
+  --c-slate-100: 74 222 128; /* green-400 */
+  --c-slate-200: 34 197 94;  /* green-500 */
+  --c-slate-400: 21 128 61;  /* green-700 */
+  
+  --c-amber-500: 74 222 128;
+  --c-amber-600: 22 101 52;
+  --c-amber-700: 21 128 61;
+  --c-amber-900: 20 83 45;
+}
+
+@layer utilities {
+  .animate-bounce-low {
+    animation: bounce-low 1s infinite;
+  }
+}
+
+@keyframes bounce-low {
+  0%, 100% {
+    transform: translateY(-12%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
