@@ -352,14 +352,16 @@ const AppContent: React.FC = () => {
     updateActiveAdventureData({ npcs });
   };
 
-  const handleAddNote = (text: string, image?: string) => {
+  const handleAddNote = (text: string, image?: string, icon?: string, iconColor?: string) => {
      addLog({
        id: generateUUID(),
        timestamp: Date.now(),
        type: 'NOTE',
        title: 'Nota',
        result: text,
-       imageUrl: image
+       imageUrl: image,
+       icon,
+       iconColor
      });
   };
 
@@ -778,8 +780,11 @@ const AppContent: React.FC = () => {
               </a>
 
               {/* SMALL TEXT */}
-              <p className="text-[10px] text-slate-500 mb-6 max-w-[200px] leading-tight mx-auto">
+              <p className="text-[10px] text-slate-500 mb-2 max-w-[200px] leading-tight mx-auto">
                  Este app foi baseado no sistema M.U.N.E. disponível no botão acima.
+              </p>
+              <p className="text-[10px] text-slate-600 mb-6 max-w-[200px] leading-tight mx-auto">
+                 Ícones por <a href="https://game-icons.net/" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-amber-500 underline">Game-Icons.Net</a> sob licença CC BY 3.0.
               </p>
 
               <button 
