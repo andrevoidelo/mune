@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Collection, CollectionItem, CollectionType, LogEntry } from '../types';
 import { generatePortent, generateUUID, shuffleArray } from '../utils';
-import { Sparkles, User, Plus, Trash2, Edit2, Dices, Layers, X, Save, RefreshCw, ChevronLeft, Zap, HelpCircle } from 'lucide-react';
+import { Sparkles, User, Plus, Trash2, Edit2, Dices, Layers, X, Save, RefreshCw, ChevronLeft, Zap, HelpCircle, Sticker, Eye } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
+import IconPicker, { PRESET_COLORS } from './IconPicker';
 
 interface ToolsViewProps {
   addLog: (entry: LogEntry) => void;
@@ -22,6 +23,15 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
 
   // Table State
   const [tableResult, setTableResult] = useState<CollectionItem | null>(null);
+  const [visualResult, setVisualResult] = useState<{ name: string; url: string; color: string }[] | null>(null);
+  const [allIcons, setAllIcons] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch('/icons.json')
+      .then(res => res.json())
+      .then((data: string[]) => setAllIcons(data))
+      .catch(err => console.error("Failed to load icons manifest", err));
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState<Partial<Collection>>({ title: '', description: '', type: 'TABLE', items: [] });
@@ -29,6 +39,9 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
 
   // Delete Modal State
   const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
+  
+  // Icon Picker State
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   const { play } = useGameSound();
 
@@ -38,6 +51,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
     play('CLICK');
     setActiveCollection(col);
     setTableResult(null);
+    setVisualResult(null);
     setCurrentDraw(null);
 
     if (col.type === 'DECK') {
@@ -62,6 +76,33 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
   const handleRollTable = () => {
     if (!activeCollection) return;
     play('ROLL');
+
+    if (activeCollection.id === 'built-in-visual-portent') {
+       if (allIcons.length === 0) return;
+       
+       const newVisuals = [];
+       for (let i = 0; i < 3; i++) {
+          const randomIcon = allIcons[Math.floor(Math.random() * allIcons.length)];
+          const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+          const name = randomIcon.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          newVisuals.push({
+             name,
+             url: `/icons/${randomIcon}.svg`,
+             color: randomColor
+          });
+       }
+       setVisualResult(newVisuals);
+       
+       addLog({
+          id: generateUUID(),
+          timestamp: Date.now(),
+          type: 'GENERATOR',
+          title: 'Presságio Visual',
+          result: '',
+          visualIcons: newVisuals
+       });
+       return;
+    }
 
     let result: CollectionItem;
 
@@ -150,14 +191,16 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
       title: col.title,
       description: col.description,
       type: col.type,
-      items: col.items
+      items: col.items,
+      icon: col.icon,
+      iconColor: col.iconColor
     });
     setBulkItems(itemsString);
     setIsEditing(true);
   };
 
   const handleCreateCollection = () => {
-    setFormData({ id: generateUUID(), title: '', description: '', type: 'TABLE', items: [] });
+    setFormData({ id: generateUUID(), title: '', description: '', type: 'TABLE', items: [], icon: undefined, iconColor: '#ffffff' });
     setBulkItems('');
     setIsEditing(true);
   };
@@ -174,7 +217,9 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
        description: formData.description || '',
        type: formData.type as CollectionType,
        items: items.length > 0 ? items : (formData.items || []),
-       isBuiltIn: false
+       isBuiltIn: false,
+       icon: formData.icon,
+       iconColor: formData.iconColor
     };
 
     // Update Global State
@@ -220,6 +265,14 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
         iconBg: 'bg-purple-900/30',
         iconColor: 'text-purple-400',
         icon: <Sparkles size={20} />
+      };
+    }
+    if (col.id === 'built-in-visual-portent') {
+      return {
+        container: 'hover:border-teal-500/50',
+        iconBg: 'bg-teal-900/30',
+        iconColor: 'text-teal-400',
+        icon: <Eye size={20} />
       };
     }
     if (col.id === 'built-in-npc') {
@@ -319,12 +372,70 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
              <button onClick={() => { play('CLICK'); setIsEditing(false); }}><X className="text-slate-400" /></button>
            </div>
            
-           <input 
-             className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-slate-100" 
-             placeholder="Título (ex: Encontros na Floresta)"
-             value={formData.title}
-             onChange={e => setFormData({...formData, title: e.target.value})}
-           />
+           <div className="flex gap-2">
+               <button
+                  onClick={() => { play('CLICK'); setShowIconPicker(true); }}
+                  className={`p-3 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-colors flex-none ${formData.icon ? 'bg-slate-800 border-amber-500' : 'bg-slate-800'}`}
+                  title="Selecionar Ícone"
+               >
+                  {formData.icon ? (
+                      <div 
+                          className="w-6 h-6"
+                          style={{
+                              backgroundColor: formData.iconColor || '#ffffff',
+                              maskImage: `url("/icons/${formData.icon}.svg")`,
+                              maskRepeat: 'no-repeat',
+                              maskPosition: 'center',
+                              maskSize: 'contain',
+                              WebkitMaskImage: `url("/icons/${formData.icon}.svg")`,
+                              WebkitMaskRepeat: 'no-repeat',
+                              WebkitMaskPosition: 'center',
+                              WebkitMaskSize: 'contain'
+                          }}
+                      />
+                  ) : (
+                      <Sticker size={24} />
+                  )}
+               </button>
+
+               <input 
+                 className="flex-1 w-full bg-slate-800 border border-slate-700 rounded p-3 text-slate-100" 
+                 placeholder="Título (ex: Encontros na Floresta)"
+                 value={formData.title}
+                 onChange={e => setFormData({...formData, title: e.target.value})}
+               />
+           </div>
+           
+           {showIconPicker && (
+              <div 
+                className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+                onClick={() => { play('CLICK'); setShowIconPicker(false); }}
+              >
+                <div 
+                  className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col h-[70vh]"
+                  onClick={e => e.stopPropagation()}
+                >
+                     <div className="flex-1 min-h-0 overflow-hidden">
+                        <IconPicker 
+                            selectedIcon={formData.icon}
+                            selectedColor={formData.iconColor}
+                            onSelect={(newIcon, newColor) => {
+                                setFormData(prev => ({ ...prev, icon: newIcon, iconColor: newColor }));
+                            }}
+                            onClose={() => setShowIconPicker(false)}
+                        />
+                     </div>
+                     <div className="p-4 border-t border-slate-700 flex justify-end">
+                        <button 
+                            onClick={() => { play('CLICK'); setShowIconPicker(false); }}
+                            className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold"
+                        >
+                            Confirmar
+                        </button>
+                     </div>
+                </div>
+              </div>
+           )}
            
            <input 
              className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-slate-100 text-sm" 
@@ -463,7 +574,33 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
              ) : (
                // Table Result Container
                <div className="w-full max-w-sm min-h-[160px] bg-slate-800 border border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center text-center shadow-lg transition-all landscape:h-full landscape:max-h-[80%]">
-                  {tableResult ? (
+                  {activeCollection.id === 'built-in-visual-portent' && visualResult ? (
+                      <div className="flex gap-2 sm:gap-4 animate-in fade-in zoom-in duration-300">
+                          {visualResult.map((res, i) => (
+                              <div key={i} className="flex flex-col items-center gap-2 group">
+                                  <div 
+                                      className="w-20 h-20 sm:w-28 sm:h-28 bg-slate-700/50 rounded-xl flex items-center justify-center border border-slate-600 shadow-lg group-hover:border-slate-500 transition-colors"
+                                      title={res.name}
+                                  >
+                                      <div 
+                                          className="w-12 h-12 sm:w-16 sm:h-16 transition-transform group-hover:scale-110"
+                                          style={{
+                                              backgroundColor: res.color,
+                                              maskImage: `url("${res.url}")`,
+                                              maskRepeat: 'no-repeat',
+                                              maskPosition: 'center',
+                                              maskSize: 'contain',
+                                              WebkitMaskImage: `url("${res.url}")`,
+                                              WebkitMaskRepeat: 'no-repeat',
+                                              WebkitMaskPosition: 'center',
+                                              WebkitMaskSize: 'contain'
+                                          }}
+                                      />
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  ) : tableResult ? (
                      <div className="animate-in fade-in zoom-in duration-200">
                         <h3 className="text-2xl font-bold text-slate-100 mb-1">{tableResult.text}</h3>
                         {tableResult.subtext && <p className="text-slate-400">{tableResult.subtext}</p>}
@@ -521,6 +658,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
          
          {collections.map(col => {
             const styles = getCollectionStyles(col);
+            const customIconUrl = col.icon ? `/icons/${col.icon}.svg` : undefined;
             
             return (
               <div 
@@ -530,7 +668,24 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
               >
                  <div className="flex items-start justify-between mb-2">
                     <div className={`p-2 rounded-lg ${styles.iconBg} ${styles.iconColor}`}>
-                       {styles.icon}
+                       {customIconUrl ? (
+                           <div 
+                               className="w-5 h-5"
+                               style={{
+                                   backgroundColor: col.iconColor || 'currentColor',
+                                   maskImage: `url("${customIconUrl}")`,
+                                   maskRepeat: 'no-repeat',
+                                   maskPosition: 'center',
+                                   maskSize: 'contain',
+                                   WebkitMaskImage: `url("${customIconUrl}")`,
+                                   WebkitMaskRepeat: 'no-repeat',
+                                   WebkitMaskPosition: 'center',
+                                   WebkitMaskSize: 'contain'
+                               }}
+                           />
+                       ) : (
+                           styles.icon
+                       )}
                     </div>
                  </div>
                  <div className="flex-1">

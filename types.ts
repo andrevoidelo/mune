@@ -15,6 +15,9 @@ export interface LogEntry {
   details?: string;
   highlight?: boolean;
   imageUrl?: string;
+  icon?: string;
+  iconColor?: string;
+  visualIcons?: { name: string; url: string; color: string }[];
 }
 
 export type OracleBias = 'LIKELY' | 'NORMAL' | 'UNLIKELY';
@@ -73,6 +76,8 @@ export interface Collection {
   type: CollectionType;
   items: CollectionItem[];
   isBuiltIn?: boolean;
+  icon?: string;
+  iconColor?: string;
 }
 
 export interface Thread {

@@ -224,6 +224,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
         ) : (
           logs.map((entry) => {
             const { dateStr, timeStr } = formatDateTime(entry.timestamp);
+            const iconUrl = entry.icon ? `/icons/${entry.icon}.svg` : undefined;
             return (
               <div 
                 key={entry.id} 
@@ -254,38 +255,91 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
                   </div>
                 </div>
 
-                {/* Título e Texto principal */}
-                {entry.type === 'NOTE' ? (
-                  // Layout específico para as Notas (Diário)
-                  <div className="mt-1">
-                    {entry.title && entry.title !== 'Nota' && (
-                      <h3 className="font-bold text-amber-500/80 print:text-black text-sm mb-1">{entry.title}</h3>
+                <div className="flex gap-3">
+                    {/* ICON RENDERING */}
+                    {iconUrl && (
+                       <div className="flex-none pt-1 print:hidden">
+                          <div 
+                             className="w-8 h-8 sm:w-10 sm:h-10"
+                             style={{
+                                 backgroundColor: entry.iconColor || '#cbd5e1',
+                                 maskImage: `url("${iconUrl}")`,
+                                 maskRepeat: 'no-repeat',
+                                 maskPosition: 'center',
+                                 maskSize: 'contain',
+                                 WebkitMaskImage: `url("${iconUrl}")`,
+                                 WebkitMaskRepeat: 'no-repeat',
+                                 WebkitMaskPosition: 'center',
+                                 WebkitMaskSize: 'contain'
+                             }}
+                          />
+                       </div>
                     )}
-                    <p className="text-base text-slate-100 print:text-black font-serif print-serif leading-relaxed whitespace-pre-wrap">
-                      {entry.result}
-                    </p>
-                  </div>
-                ) : (
-                  // Layout Padrão para Mecânicas
-                  <div className="mt-1">
-                    <h3 className="font-bold text-slate-100 print:text-black text-sm">{entry.title}</h3>
-                    <p className="text-lg text-slate-100 print:text-black font-medium mt-0.5 leading-snug">{entry.result}</p>
-                  </div>
-                )}
 
-                {/* Detalhes Técnicos */}
-                {entry.details && (
-                  <p className="text-xs text-slate-400 print:text-gray-600 mt-2 border-t border-slate-700/50 print:border-gray-300 pt-2 font-mono break-words">
-                    {renderFormattedText(entry.details)}
-                  </p>
-                )}
+                    <div className="flex-1 min-w-0">
+                        {/* Título e Texto principal */}
+                        {entry.type === 'NOTE' ? (
+                          // Layout específico para as Notas (Diário)
+                          <div className="mt-1">
+                            {entry.title && entry.title !== 'Nota' && (
+                              <h3 className="font-bold text-amber-500/80 print:text-black text-sm mb-1">{entry.title}</h3>
+                            )}
+                            <p className="text-base text-slate-100 print:text-black font-serif print-serif leading-relaxed whitespace-pre-wrap">
+                              {entry.result}
+                            </p>
+                          </div>
+                        ) : (
+                          // Layout Padrão para Mecânicas
+                          <div className="mt-1">
+                            <h3 className="font-bold text-slate-100 print:text-black text-sm">{entry.title}</h3>
+                            <p className="text-lg text-slate-100 print:text-black font-medium mt-0.5 leading-snug">{entry.result}</p>
+                          </div>
+                        )}
 
-                {/* Imagem Anexada */}
-                {entry.imageUrl && (
-                  <div className="mt-3 rounded-lg overflow-hidden border border-slate-700/50 print:border-none">
-                    <img src={entry.imageUrl} alt="Anexo do Log" className="w-full h-auto object-cover max-h-80 print:max-h-[8cm]" />
-                  </div>
-                )}
+                        {/* Detalhes Técnicos */}
+                        {entry.details && (
+                          <p className="text-xs text-slate-400 print:text-gray-600 mt-2 border-t border-slate-700/50 print:border-gray-300 pt-2 font-mono break-words">
+                            {renderFormattedText(entry.details)}
+                          </p>
+                        )}
+
+                        {/* Imagem Anexada */}
+                        {entry.imageUrl && (
+                          <div className="mt-3 rounded-lg overflow-hidden border border-slate-700/50 print:border-none">
+                            <img src={entry.imageUrl} alt="Anexo do Log" className="w-full h-auto object-cover max-h-80 print:max-h-[8cm]" />
+                          </div>
+                        )}
+
+                        {/* Presságio Visual Icons */}
+                        {entry.visualIcons && (
+                          <div className="mt-3 flex gap-2 flex-wrap">
+                            {entry.visualIcons.map((v, i) => (
+                              <div key={i} className="flex flex-col items-center gap-1">
+                                <div 
+                                  className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center border border-slate-600 print:border-gray-300"
+                                  title={v.name}
+                                >
+                                  <div 
+                                    className="w-6 h-6"
+                                    style={{
+                                      backgroundColor: v.color,
+                                      maskImage: `url("${v.url}")`,
+                                      maskRepeat: 'no-repeat',
+                                      maskPosition: 'center',
+                                      maskSize: 'contain',
+                                      WebkitMaskImage: `url("${v.url}")`,
+                                      WebkitMaskRepeat: 'no-repeat',
+                                      WebkitMaskPosition: 'center',
+                                      WebkitMaskSize: 'contain'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                </div>
               </div>
             );
           })

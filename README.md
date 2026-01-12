@@ -20,21 +20,24 @@
 - **Inventário Interativo:** Adicione itens, marque como "Permanentes/Equipamento" ou consumíveis, e defina fórmulas de dado para o item (ex: `1d8+2` de dano).
 
 ### 🛠️ Coleções & Ferramentas
-- **Tabelas de Rolagem:** Crie suas próprias tabelas aleatórias ou use as tabelas padrões (Presságio, etc.).
+- **Tabelas de Rolagem:** Crie suas próprias tabelas aleatórias ou use as tabelas padrões.
+- **Presságio Visual:** Gere 3 ícones abstratos aleatórios (com cores variadas) para inspirar cenas e detalhes visuais instantaneamente de uma lista de 4000+ ícones (Game-Icons.Net).
 - **Baralhos Customizáveis:** Crie baralhos de cartas, saque cartas, embaralhe e gerencie o descarte.
+- **Seletor de Ícones:** Uma biblioteca massiva de 4000+ ícones (Game-Icons.Net) disponível para customizar suas coleções e anotações.
 - **Persistência:** Todas as coleções customizadas são salvas localmente.
 
 ### 📜 Diário de Sessão (Log)
 - **Histórico Automático:** Todas as ações (rolagens do oráculo, testes de atributo, uso de itens) são registradas automaticamente.
-- **Notas Manuais:** Adicione anotações de texto ou imagens ao log a qualquer momento.
+- **Notas Manuais:** Adicione anotações de texto ou imagens ao log a qualquer momento. Você pode anexar ícones temáticos às suas notas.
 - **Exportação:** 
   - **PDF:** Imprima sua sessão formatada.
   - **Markdown (.md):** Exporte para usar no Obsidian, Notion ou outros editores de texto.
 
-### 🎨 Customização
+### 🎨 Customização & Performance
 - **Temas Visuais:** Alterne entre temas como Padrão (Dark), Claro (Paper/Journal), Fantasia, Sci-Fi, Cyberpunk e Terminal.
 - **Efeitos Sonoros:** Feedback auditivo para rolagens de dados, cartas e interações (pode ser desativado).
 - **Backup & Restore:** Exporte todos os seus dados (Aventuras e Coleções) para um arquivo JSON e restaure em qualquer dispositivo.
+- **Otimização:** Carregamento "Lazy" de ícones para garantir inicialização instantânea da aplicação.
 
 ---
 
@@ -67,7 +70,7 @@ Este projeto utiliza **Vite** e **React**.
 - **Core:** React 19, TypeScript
 - **Build Tool:** Vite
 - **Estilização:** Tailwind CSS v4
-- **Ícones:** Lucide React
+- **Ícones:** Lucide React & Game-Icons.Net (SVG)
 - **Áudio:** Howler.js / use-sound
 - **Armazenamento:** LocalStorage (Offline-first)
 
@@ -75,7 +78,8 @@ Este projeto utiliza **Vite** e **React**.
 
 ## 📄 Créditos
 
-Baseado no sistema de RPG Solo **M.U.N.E.** (Madey Upy Namey Emulator).
+- Baseado no sistema de RPG Solo **M.U.N.E.** (Madey Upy Namey Emulator). [Link para o PDF Original](https://drive.google.com/file/d/1mJbHcCNscMfs_NPnqMMz2Y8KiD8gWrkZ/view).
+- Ícones adicionais fornecidos por **[Game-Icons.Net](https://game-icons.net/)** sob licença [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 
 ---
 

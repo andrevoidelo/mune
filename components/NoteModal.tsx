@@ -1,18 +1,25 @@
 
-import React, { useState, useRef } from 'react';
-import { X, Image as ImageIcon, Save, Trash2, PenTool } from 'lucide-react';
+import React, { useState, useRef, useMemo } from 'react';
+import { X, Image as ImageIcon, Save, Trash2, PenTool, Sticker } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
+import IconPicker from './IconPicker';
 
 interface NoteModalProps {
   onClose: () => void;
-  onSave: (text: string, image: string | undefined) => void;
+  onSave: (text: string, image: string | undefined, icon: string | undefined, iconColor: string | undefined) => void;
 }
 
 const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
   const [text, setText] = useState('');
   const [image, setImage] = useState<string | undefined>(undefined);
+  const [icon, setIcon] = useState<string | undefined>(undefined);
+  const [iconColor, setIconColor] = useState<string>('#ffffff');
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { play } = useGameSound();
+
+  const iconUrl = icon ? `/icons/${icon}.svg` : undefined;
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -26,10 +33,44 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
   };
 
   const handleSave = () => {
-    if (!text.trim() && !image) return;
-    onSave(text, image);
+    if (!text.trim() && !image && !icon) return;
+    onSave(text, image, icon, iconColor);
     onClose();
   };
+
+  if (showIconPicker) {
+    return (
+      <div 
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        onClick={() => { play('CLICK'); setShowIconPicker(false); }}
+      >
+        <div 
+          className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col h-[70vh]"
+          onClick={e => e.stopPropagation()}
+        >
+             <div className="flex-1 min-h-0 overflow-hidden">
+                <IconPicker 
+                    selectedIcon={icon}
+                    selectedColor={iconColor}
+                    onSelect={(newIcon, newColor) => {
+                        if (newIcon) setIcon(newIcon);
+                        if (newColor) setIconColor(newColor);
+                    }}
+                    onClose={() => setShowIconPicker(false)}
+                />
+             </div>
+             <div className="p-4 border-t border-slate-700 flex justify-end">
+                <button 
+                    onClick={() => { play('CLICK'); setShowIconPicker(false); }}
+                    className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold"
+                >
+                    Confirmar
+                </button>
+             </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -77,6 +118,31 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
 
         <div className="flex gap-3 mt-4 pt-2 border-t border-slate-800 flex-none">
           <button
+            onClick={() => { play('CLICK'); setShowIconPicker(true); }}
+            className={`p-3 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-colors ${icon ? 'bg-slate-700 border-amber-500/50' : 'bg-slate-800'}`}
+            title="Selecionar Ícone"
+          >
+            {iconUrl ? (
+                <div 
+                    className="w-6 h-6"
+                    style={{
+                        backgroundColor: iconColor,
+                        maskImage: `url("${iconUrl}")`,
+                        maskRepeat: 'no-repeat',
+                        maskPosition: 'center',
+                        maskSize: 'contain',
+                        WebkitMaskImage: `url("${iconUrl}")`,
+                        WebkitMaskRepeat: 'no-repeat',
+                        WebkitMaskPosition: 'center',
+                        WebkitMaskSize: 'contain'
+                    }}
+                />
+            ) : (
+                <Sticker size={24} />
+            )}
+          </button>
+
+          <button
             onClick={() => { play('CLICK'); fileInputRef.current?.click(); }}
             className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-colors"
             title="Adicionar Imagem"
@@ -93,7 +159,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
 
           <button
             onClick={() => { play('CLICK'); handleSave(); }}
-            disabled={!text.trim() && !image}
+            disabled={!text.trim() && !image && !icon}
             className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:bg-slate-800 text-white font-bold rounded-xl py-3 flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20 active:translate-y-1 transition-all"
           >
             <Save size={20} /> Salvar no Log

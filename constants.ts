@@ -173,6 +173,14 @@ export const DEFAULT_COLLECTIONS: Collection[] = [
     isBuiltIn: true
   },
   {
+    id: 'built-in-visual-portent',
+    title: 'Presságio Visual',
+    description: 'Três ícones abstratos para inspirar cenas e detalhes.',
+    type: 'TABLE',
+    items: [], // Lógica customizada
+    isBuiltIn: true
+  },
+  {
     id: 'built-in-npc',
     title: 'Atitude de NPC',
     description: 'Reação inicial (Hostil, Neutro, Amigável).',
