@@ -13,6 +13,7 @@ import { MessageSquare, Wrench, Dices, ScrollText, HelpCircle, X, User, ChevronL
 import { generateUUID } from './utils';
 import { DEFAULT_COLLECTIONS } from './constants';
 import { SoundProvider } from './contexts/SoundContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { useGameSound } from './hooks/useGameSound';
 
 const AppContent: React.FC = () => {
@@ -21,7 +22,6 @@ const AppContent: React.FC = () => {
   const [adventures, setAdventures] = useState<Adventure[]>([]);
   const [currentAdventureId, setCurrentAdventureId] = useState<string | null>(null);
   const [collections, setCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
-  const [theme, setTheme] = useState<string>('default');
   
   // App View State
   const [activeTab, setActiveTab] = useState<Tab>(Tab.ORACLE);
@@ -41,37 +41,12 @@ const AppContent: React.FC = () => {
 
   const MANUAL_URL = "https://drive.google.com/file/d/1mJbHcCNscMfs_NPnqMMz2Y8KiD8gWrkZ/view";
 
-  // --- Theme Effect ---
-  useEffect(() => {
-    console.log('Changing theme to:', theme);
-    document.documentElement.setAttribute('data-theme', theme);
-    // Meta theme color update based on theme
-    const themeColors: Record<string, string> = {
-      'light': '#fcfbf7',
-      'fantasy': '#292524',
-      'scifi': '#0f172a',
-      'cyberpunk': '#0f0518',
-      'terminal': '#000000',
-      'default': '#0f172a'
-    };
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColors[theme] || '#0f172a');
-  }, [theme]);
-
   // --- Persistence & Migration Logic ---
 
   useEffect(() => {
     // Load Global Settings
     const savedCollections = localStorage.getItem('mune_collections');
     if (savedCollections) setCollections(JSON.parse(savedCollections));
-
-    const savedTheme = localStorage.getItem('mune_theme_mode');
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else {
-       // Legacy migration
-       const legacyPaper = localStorage.getItem('mune_theme');
-       if (legacyPaper === 'paper') setTheme('light');
-    }
 
     // Load Adventures
     const savedAdventures = localStorage.getItem('mune_adventures');
@@ -124,10 +99,6 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('mune_collections', JSON.stringify(collections));
   }, [collections]);
-
-  useEffect(() => {
-    localStorage.setItem('mune_theme_mode', theme);
-  }, [theme]);
 
 
   // --- Global Data Management (Backup/Restore) ---
@@ -950,9 +921,11 @@ const NavButton: React.FC<{
 
 const App: React.FC = () => {
   return (
-    <SoundProvider>
-      <AppContent />
-    </SoundProvider>
+    <ThemeProvider>
+      <SoundProvider>
+        <AppContent />
+      </SoundProvider>
+    </ThemeProvider>
   );
 };
 

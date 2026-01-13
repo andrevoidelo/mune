@@ -3,6 +3,7 @@ import React from 'react';
 import { Database, Download, Upload, Check, CloudCog, Sun, Moon, Volume2, VolumeX, Palette } from 'lucide-react';
 import { useSoundSettings } from '../contexts/SoundContext';
 import { useGameSound } from '../hooks/useGameSound';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SettingsViewProps {
   onBackup: () => void;
@@ -10,8 +11,6 @@ interface SettingsViewProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   importStatus: string | null;
   onRestoreAction: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  currentTheme: string;
-  setTheme: (t: string) => void;
 }
 
 const SettingsView: React.FC<SettingsViewProps> = ({ 
@@ -19,11 +18,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   onRestoreTrigger, 
   fileInputRef, 
   importStatus, 
-  onRestoreAction,
-  currentTheme,
-  setTheme
+  onRestoreAction
 }) => {
   const { isSoundEnabled, toggleSound } = useSoundSettings();
+  const { activeThemeId, setActiveTheme, allThemes } = useTheme();
   const { play } = useGameSound();
 
   return (
@@ -71,20 +69,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
                 
                 <div className="grid grid-cols-3 gap-2">
-                   {[
-                     { id: 'default', name: 'Padrão', color: 'bg-slate-900 border-slate-700' },
-                     { id: 'light', name: 'Claro', color: 'bg-stone-100 border-stone-300' },
-                     { id: 'fantasy', name: 'Fantasia', color: 'bg-[#292524] border-[#44403c]' },
-                     { id: 'scifi', name: 'Sci-Fi', color: 'bg-sky-950 border-sky-800' },
-                     { id: 'cyberpunk', name: 'Cyberpunk', color: 'bg-purple-950 border-purple-800' },
-                     { id: 'terminal', name: 'Terminal', color: 'bg-black border-green-900' },
-                   ].map(t => (
+                   {allThemes.map(t => (
                       <button
                         key={t.id}
-                        onClick={() => { play('CLICK'); setTheme(t.id); }}
-                        className={`p-3 rounded-lg border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 ${currentTheme === t.id ? 'bg-primary/20 border-primary text-primary ring-1 ring-primary' : 'bg-app border-border text-txt-muted hover:bg-card hover:text-txt-main'}`}
+                        onClick={() => { play('CLICK'); setActiveTheme(t.id); }}
+                        className={`p-3 rounded-lg border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 ${activeThemeId === t.id ? 'bg-primary/20 border-primary text-primary ring-1 ring-primary' : 'bg-app border-border text-txt-muted hover:bg-card hover:text-txt-main'}`}
                       >
-                         <div className={`w-6 h-6 rounded-full border shadow-sm ${t.color}`} />
+                         <div 
+                           className="w-6 h-6 rounded-full border shadow-sm" 
+                           style={{ backgroundColor: t.colors.appBg, borderColor: t.colors.border }} 
+                         />
                          <span className="text-[10px] font-bold uppercase tracking-wider">{t.name}</span>
                       </button>
                    ))}
