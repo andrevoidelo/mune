@@ -107,7 +107,7 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
         </div>
         <button 
           onClick={onClose}
-          className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white"
+          className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-100"
         >
           <X size={20} />
         </button>

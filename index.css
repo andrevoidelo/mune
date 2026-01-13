@@ -17,6 +17,13 @@
   --color-amber-600: rgb(var(--c-amber-600));
   --color-amber-700: rgb(var(--c-amber-700));
   --color-amber-900: rgb(var(--c-amber-900));
+
+  --color-on-primary: rgb(var(--c-on-primary));
+
+  --color-modifier-green: rgb(var(--c-green-modifier));
+  --color-modifier-green-bg: rgba(var(--c-green-modifier), 0.15);
+  --color-modifier-red: rgb(var(--c-red-modifier));
+  --color-modifier-red-bg: rgba(var(--c-red-modifier), 0.15);
 }
 
 :root {
@@ -37,6 +44,11 @@
   --c-amber-600: 217 119 6;
   --c-amber-700: 180 83 9;
   --c-amber-900: 120 53 15;
+
+  --c-on-primary: 2 6 23; /* slate-950 (Black) */
+
+  --c-green-modifier: 74 222 128; /* green-400 */
+  --c-red-modifier: 248 113 113;   /* red-400 */
 }
 
 [data-theme='light'] {
@@ -59,6 +71,11 @@
   --c-amber-600: 180 83 9;  /* amber-700 */
   --c-amber-700: 146 64 14; /* amber-800 */
   --c-amber-900: 120 53 15; /* amber-900 */
+
+  --c-on-primary: 12 10 9; /* slate-950 (Dark) */
+
+  --c-green-modifier: 21 128 61; /* green-700 (Dark Green) */
+  --c-red-modifier: 185 28 28;   /* red-700 (Dark Red) */
 }
 
 [data-theme='fantasy'] {
@@ -79,6 +96,11 @@
   --c-amber-600: 202 138 4; /* yellow-600 */
   --c-amber-700: 161 98 7;  /* yellow-700 */
   --c-amber-900: 113 63 18; /* yellow-900 */
+
+  --c-on-primary: 28 25 23; /* slate-950 (Dark) */
+
+  --c-green-modifier: 20 83 45; /* green-900 */
+  --c-red-modifier: 127 29 29;   /* red-900 */
 }
 
 [data-theme='scifi'] {
@@ -101,6 +123,11 @@
   --c-amber-600: 37 99 235;  /* blue-600 */
   --c-amber-700: 29 78 216;  /* blue-700 */
   --c-amber-900: 30 58 138;  /* blue-900 */
+
+  --c-on-primary: 8 47 73; /* slate-50 (Dark Blue) */
+
+  --c-green-modifier: 20 83 45; /* green-900 */
+  --c-red-modifier: 127 29 29;   /* red-900 */
 }
 
 [data-theme='cyberpunk'] {
@@ -120,6 +147,11 @@
   --c-amber-600: 14 165 233;  /* Cyan Darker */
   --c-amber-700: 2 132 199;   /* sky-600 */
   --c-amber-900: 12 74 110;   /* sky-900 */
+
+  --c-on-primary: 10 5 20; /* slate-950 (Dark Purple/Black) */
+
+  --c-green-modifier: 74 222 128; /* green-400 */
+  --c-red-modifier: 248 113 113;   /* red-400 */
 }
 
 [data-theme='terminal'] {
@@ -139,6 +171,11 @@
   --c-amber-600: 22 101 52;
   --c-amber-700: 21 128 61;
   --c-amber-900: 20 83 45;
+
+  --c-on-primary: 0 0 0; /* Black */
+
+  --c-green-modifier: 74 222 128; /* green-400 */
+  --c-red-modifier: 248 113 113;   /* red-400 */
 }
 
 @layer utilities {

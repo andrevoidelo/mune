@@ -375,7 +375,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
            <div className="flex gap-2">
                <button
                   onClick={() => { play('CLICK'); setShowIconPicker(true); }}
-                  className={`p-3 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-colors flex-none ${formData.icon ? 'bg-slate-800 border-amber-500' : 'bg-slate-800'}`}
+                  className={`p-3 hover:bg-slate-700 text-slate-400 hover:text-slate-100 rounded-xl border border-slate-700 transition-colors flex-none ${formData.icon ? 'bg-slate-800 border-amber-500' : 'bg-slate-800'}`}
                   title="Selecionar Ícone"
                >
                   {formData.icon ? (
@@ -428,7 +428,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                      <div className="p-4 border-t border-slate-700 flex justify-end">
                         <button 
                             onClick={() => { play('CLICK'); setShowIconPicker(false); }}
-                            className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold"
+                            className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-on-primary rounded-lg font-bold"
                         >
                             Confirmar
                         </button>
@@ -447,13 +447,13 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
            <div className="flex gap-2 p-1 bg-slate-800 rounded border border-slate-700">
               <button 
                 onClick={() => { play('CLICK'); setFormData({...formData, type: 'TABLE'}); }}
-                className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'TABLE' ? 'bg-amber-600 text-slate-100' : 'text-slate-400 hover:text-slate-100'}`}
+                className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'TABLE' ? 'bg-amber-600 text-on-primary' : 'text-slate-400 hover:text-slate-100'}`}
               >
                 Tabela
               </button>
               <button 
                 onClick={() => { play('CLICK'); setFormData({...formData, type: 'DECK'}); }}
-                className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'DECK' ? 'bg-amber-600 text-slate-100' : 'text-slate-400 hover:text-slate-100'}`}
+                className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'DECK' ? 'bg-amber-600 text-on-primary' : 'text-slate-400 hover:text-slate-100'}`}
               >
                 Baralho
               </button>
@@ -502,7 +502,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
               <div className="flex gap-2">
                  <button 
                     onClick={() => { play('CLICK'); handleEditCollection(activeCollection); }}
-                    className="p-2 bg-slate-800 rounded-full text-amber-500 hover:text-slate-100 hover:bg-amber-600 transition-colors"
+                    className="p-2 bg-slate-800 rounded-full text-amber-500 hover:text-on-primary hover:bg-amber-600 transition-colors"
                     title="Editar"
                  >
                     <Edit2 size={20} />
@@ -622,7 +622,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                    <button 
                      onClick={handleDrawCard}
                      disabled={deckState?.items.length === 0}
-                     className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:bg-slate-700 text-slate-100 font-bold py-4 landscape:py-8 rounded-xl shadow-lg active:translate-y-1 transition-all flex items-center justify-center gap-2 text-lg"
+                     className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:bg-slate-700 text-on-primary font-bold py-4 landscape:py-8 rounded-xl shadow-lg active:translate-y-1 transition-all flex items-center justify-center gap-2 text-lg"
                    >
                      <Layers size={24} /> Sacar Carta
                    </button>
@@ -636,7 +636,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
               ) : (
                  <button 
                    onClick={handleRollTable}
-                   className="w-full bg-amber-600 hover:bg-amber-500 text-slate-100 font-bold py-4 landscape:py-8 rounded-xl shadow-lg active:translate-y-1 transition-all flex items-center justify-center gap-2 text-lg"
+                   className="w-full bg-amber-600 hover:bg-amber-500 text-on-primary font-bold py-4 landscape:py-8 rounded-xl shadow-lg active:translate-y-1 transition-all flex items-center justify-center gap-2 text-lg"
                  >
                    <Dices size={24} /> Rolar Tabela
                  </button>

@@ -427,7 +427,7 @@ const AppContent: React.FC = () => {
         </h2>
         <button 
           onClick={() => { play('CLICK'); handleCreateAdventure(); }}
-          className="bg-amber-600 hover:bg-amber-500 text-slate-100 p-2 rounded-full shadow-lg active:scale-95 transition-all"
+          className="bg-amber-600 hover:bg-amber-500 text-on-primary p-2 rounded-full shadow-lg active:scale-95 transition-all"
           title="Nova Aventura"
         >
           <Plus size={24} />
@@ -523,7 +523,7 @@ const AppContent: React.FC = () => {
                <button 
                  onClick={() => { play('CLICK'); handleSaveAdventure(); }}
                  disabled={!advFormData.name.trim()}
-                 className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-100 font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+                 className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-on-primary font-bold py-3 rounded-lg flex items-center justify-center gap-2"
                >
                  <Save size={18} /> Salvar
                </button>
@@ -586,6 +586,22 @@ const AppContent: React.FC = () => {
                 >
                   <ChevronLeft size={24} />
                 </button>
+              )}
+
+              {!currentAdventureId && (
+                <div 
+                  className="w-8 h-8 rounded-lg bg-amber-500 flex-none"
+                  style={{
+                    maskImage: 'url("/mune-var.svg")',
+                    maskRepeat: 'no-repeat',
+                    maskPosition: 'center',
+                    maskSize: 'contain',
+                    WebkitMaskImage: 'url("/mune-var.svg")',
+                    WebkitMaskRepeat: 'no-repeat',
+                    WebkitMaskPosition: 'center',
+                    WebkitMaskSize: 'contain'
+                  }}
+                />
               )}
               
               <div className="flex flex-col min-w-0">
@@ -783,13 +799,13 @@ const AppContent: React.FC = () => {
               <p className="text-[10px] text-slate-500 mb-2 max-w-[200px] leading-tight mx-auto">
                  Este app foi baseado no sistema M.U.N.E. disponível no botão acima.
               </p>
-              <p className="text-[10px] text-slate-600 mb-6 max-w-[200px] leading-tight mx-auto">
+              <p className="text-[10px] text-slate-500 mb-2 max-w-[200px] leading-tight mx-auto">
                  Ícones por <a href="https://game-icons.net/" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-amber-500 underline">Game-Icons.Net</a> sob licença CC BY 3.0.
               </p>
 
               <button 
                 onClick={() => { play('CLICK'); setShowHelp(false); }}
-                className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-slate-100 font-bold rounded-lg transition-colors shadow-lg shadow-amber-900/20"
+                className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-on-primary font-bold rounded-lg transition-colors shadow-lg shadow-amber-900/20"
               >
                 Entendi
               </button>
@@ -885,7 +901,7 @@ const AppContent: React.FC = () => {
               </button>
               <button
                 onClick={() => { play('CLICK'); confirmImport(); }}
-                className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-500 text-slate-100 rounded-lg font-bold text-sm transition-colors shadow-lg shadow-amber-900/20"
+                className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-500 text-on-primary rounded-lg font-bold text-sm transition-colors shadow-lg shadow-amber-900/20"
               >
                 Sim, Restaurar
               </button>

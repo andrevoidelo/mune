@@ -124,7 +124,7 @@ const DraggableFab: React.FC<DraggableFabProps> = ({ onClick }) => {
   return (
     <button
       style={{ left: position.x, top: position.y }}
-      className={`fixed z-50 bg-amber-600 text-white p-4 rounded-full shadow-2xl shadow-black/50 touch-none select-none transition-transform duration-75 no-print ${isDragging ? 'scale-110 cursor-grabbing bg-amber-500' : 'scale-100 cursor-pointer hover:bg-amber-500 active:scale-95'}`}
+      className={`fixed z-50 bg-amber-600 text-on-primary p-4 rounded-full shadow-2xl shadow-black/50 touch-none select-none transition-transform duration-75 no-print ${isDragging ? 'scale-110 cursor-grabbing bg-amber-500' : 'scale-100 cursor-pointer hover:bg-amber-500 active:scale-95'}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={handleEnd}

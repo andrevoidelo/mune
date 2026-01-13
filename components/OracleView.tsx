@@ -276,7 +276,7 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog, threads, npcs, updateTh
               className="flex flex-col landscape:flex-row items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 border-b-4 border-amber-900 active:border-b-0 active:translate-y-1 rounded-xl p-4 landscape:py-6 transition-all shadow-lg"
             >
               <span className="text-xs text-amber-100 uppercase font-bold landscape:order-2">Normal</span>
-              <span className="text-2xl font-bold text-slate-100 landscape:order-1">Rolar</span>
+              <span className="text-2xl font-bold text-on-primary landscape:order-1">Rolar</span>
             </button>
 
             <button
@@ -350,7 +350,7 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog, threads, npcs, updateTh
                     />
                     <button 
                       onClick={handleAddItem}
-                      className="bg-amber-600 text-slate-100 p-2 rounded hover:bg-amber-500"
+                      className="bg-amber-600 text-on-primary p-2 rounded hover:bg-amber-500"
                     >
                       <Plus />
                     </button>

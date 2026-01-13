@@ -62,7 +62,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
              <div className="p-4 border-t border-slate-700 flex justify-end">
                 <button 
                     onClick={() => { play('CLICK'); setShowIconPicker(false); }}
-                    className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold"
+                    className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-on-primary rounded-lg font-bold"
                 >
                     Confirmar
                 </button>
@@ -82,13 +82,13 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-800 flex-none">
-           <h3 className="text-lg font-bold text-white flex items-center gap-2">
+           <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
              <PenTool className="text-amber-500" size={20} />
              Adicionar Nota
            </h3>
            <button 
              onClick={() => { play('CLICK'); onClose(); }}
-             className="text-slate-500 hover:text-white p-1 rounded-full hover:bg-slate-800"
+             className="text-slate-500 hover:text-slate-100 p-1 rounded-full hover:bg-slate-800"
            >
              <X size={24} />
            </button>
@@ -119,7 +119,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
         <div className="flex gap-3 mt-4 pt-2 border-t border-slate-800 flex-none">
           <button
             onClick={() => { play('CLICK'); setShowIconPicker(true); }}
-            className={`p-3 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-colors ${icon ? 'bg-slate-700 border-amber-500/50' : 'bg-slate-800'}`}
+            className={`p-3 hover:bg-slate-700 text-slate-400 hover:text-slate-100 rounded-xl border border-slate-700 transition-colors ${icon ? 'bg-slate-700 border-amber-500/50' : 'bg-slate-800'}`}
             title="Selecionar Ícone"
           >
             {iconUrl ? (
@@ -144,7 +144,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
 
           <button
             onClick={() => { play('CLICK'); fileInputRef.current?.click(); }}
-            className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-colors"
+            className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-100 rounded-xl border border-slate-700 transition-colors"
             title="Adicionar Imagem"
           >
             <ImageIcon size={24} />
@@ -160,7 +160,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
           <button
             onClick={() => { play('CLICK'); handleSave(); }}
             disabled={!text.trim() && !image && !icon}
-            className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:bg-slate-800 text-white font-bold rounded-xl py-3 flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20 active:translate-y-1 transition-all"
+            className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:bg-slate-800 text-on-primary font-bold rounded-xl py-3 flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20 active:translate-y-1 transition-all"
           >
             <Save size={20} /> Salvar no Log
           </button>

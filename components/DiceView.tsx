@@ -186,7 +186,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
            <div className="flex items-center gap-2 w-full">
               <button 
                 onClick={() => addModifier(-1)}
-                className="w-12 h-12 flex-none flex items-center justify-center bg-red-900/30 hover:bg-red-900/50 border border-red-800 rounded-xl text-red-400 font-bold transition-all active:scale-95 shadow-sm text-lg"
+                className="w-12 h-12 flex-none flex items-center justify-center bg-modifier-red-bg border border-modifier-red/50 rounded-xl text-modifier-red font-bold transition-all active:scale-95 shadow-sm text-lg"
               >
                 -1
               </button>
@@ -208,7 +208,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
 
               <button 
                 onClick={() => addModifier(1)}
-                className="w-12 h-12 flex-none flex items-center justify-center bg-green-900/30 hover:bg-green-900/50 border border-green-800 rounded-xl text-green-400 font-bold transition-all active:scale-95 shadow-sm text-lg"
+                className="w-12 h-12 flex-none flex items-center justify-center bg-modifier-green-bg border border-modifier-green/50 rounded-xl text-modifier-green font-bold transition-all active:scale-95 shadow-sm text-lg"
               >
                 +1
               </button>
@@ -218,14 +218,14 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
            <div className="grid grid-cols-4 gap-2 w-full">
                <button 
                  onClick={() => handleKeep('kh')}
-                 className="bg-slate-800 border border-slate-700 rounded-lg py-2 text-sm font-bold text-slate-400 hover:text-white uppercase tracking-wider flex items-center justify-center active:bg-slate-700 font-mono"
+                 className="bg-slate-800 border border-slate-700 rounded-lg py-2 text-sm font-bold text-slate-400 hover:text-slate-100 uppercase tracking-wider flex items-center justify-center active:bg-slate-700 font-mono"
                  title="Manter Maior (Keep Highest)"
                >
                  KH
                </button>
                <button 
                  onClick={() => handleKeep('kl')}
-                 className="bg-slate-800 border border-slate-700 rounded-lg py-2 text-sm font-bold text-slate-400 hover:text-white uppercase tracking-wider flex items-center justify-center active:bg-slate-700 font-mono"
+                 className="bg-slate-800 border border-slate-700 rounded-lg py-2 text-sm font-bold text-slate-400 hover:text-slate-100 uppercase tracking-wider flex items-center justify-center active:bg-slate-700 font-mono"
                  title="Manter Menor (Keep Lowest)"
                >
                  KL
@@ -233,7 +233,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
                
               <button 
                 onClick={() => { play('CLICK'); setExpression(prev => prev.slice(0, -1)); }}
-                className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg py-2 flex items-center justify-center text-slate-400 hover:text-white active:scale-95 transition-colors"
+                className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg py-2 flex items-center justify-center text-slate-400 hover:text-slate-100 active:scale-95 transition-colors"
               >
                 <Delete size={18} />
               </button>
@@ -253,7 +253,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
                  onClick={() => addDie(sides)}
                  className="aspect-square bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-600 active:border-amber-500 rounded-xl flex items-center justify-center transition-all active:scale-95 group shadow-sm"
                >
-                 <span className="text-sm sm:text-base font-bold font-mono text-slate-400 group-hover:text-white">
+                 <span className="text-sm sm:text-base font-bold font-mono text-slate-400 group-hover:text-slate-100">
                    d{sides}
                  </span>
                </button>
@@ -264,7 +264,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
            <button
              onClick={() => handleRoll()}
              disabled={!expression.trim()}
-             className="w-full mt-1 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white font-black text-xl uppercase tracking-wider py-3.5 rounded-xl shadow-lg shadow-amber-900/20 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2"
+             className="w-full mt-1 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-on-primary font-black text-xl uppercase tracking-wider py-3.5 rounded-xl shadow-lg shadow-amber-900/20 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2"
            >
              <Play size={22} fill="currentColor" /> Rolar
            </button>

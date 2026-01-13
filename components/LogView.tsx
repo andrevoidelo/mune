@@ -141,7 +141,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
             <X size={20} />
           </button>
           
-          <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-slate-100 mb-3 flex items-center gap-2">
             <Trash2 size={20} className="text-red-500" />
             Limpar Histórico
           </h3>
@@ -179,7 +179,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
           <div className="flex items-center gap-2">
             <button 
                 onClick={() => { play('CLICK'); handleMarkdownExport(); }}
-                className="text-slate-400 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors active:scale-95 flex items-center justify-center font-mono text-[10px] border border-slate-700 w-8 h-8"
+                className="text-slate-400 hover:text-slate-100 p-2 rounded-full hover:bg-slate-800 transition-colors active:scale-95 flex items-center justify-center font-mono text-[10px] border border-slate-700 w-8 h-8"
                 title="Exportar Markdown (.md)"
               >
                 .md

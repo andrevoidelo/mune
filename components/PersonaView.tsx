@@ -521,7 +521,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
             <button
               onClick={executeRoll}
-              className="w-full bg-amber-600 hover:bg-amber-500 text-slate-100 font-bold uppercase tracking-wider py-4 rounded-xl shadow-lg shadow-amber-900/20 active:translate-y-1 transition-all"
+              className="w-full bg-amber-600 hover:bg-amber-500 text-on-primary font-bold uppercase tracking-wider py-4 rounded-xl shadow-lg shadow-amber-900/20 active:translate-y-1 transition-all"
             >
               Rolar {attr.dice || 'd20'}
             </button>
@@ -740,7 +740,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             </button>
             <button
               onClick={confirmUseItem}
-              className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-500 text-slate-100 rounded-lg font-bold text-sm transition-colors shadow-lg shadow-amber-900/20"
+              className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-500 text-on-primary rounded-lg font-bold text-sm transition-colors shadow-lg shadow-amber-900/20"
             >
               Sim, usar
             </button>
@@ -1239,34 +1239,13 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     };
 
     return (
-      <div className="flex flex-col h-full bg-slate-900 overflow-y-auto pb-24 w-full">
-        <div className="max-w-3xl mx-auto w-full min-h-full">
-          {/* Header / Image Upload */}
-          <div className="relative h-48 w-full flex-none bg-slate-950 group cursor-pointer" onClick={() => { play('CLICK'); triggerFileUpload(); }}>
-            {formData.imageUrl ? (
-              <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover object-top opacity-60 group-hover:opacity-40 transition-opacity" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-800 bg-slate-900 group-hover:bg-slate-800 transition-colors">
-                <ImageIcon size={64} />
-              </div>
-            )}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="bg-slate-900/90 border border-slate-600 text-slate-100 px-5 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 shadow-xl">
-                <Upload size={16} /> Alterar Imagem
-              </span>
-            </div>
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-            />
-            
+      <div className="flex flex-col h-full bg-slate-900 relative">
+        {/* Persistent Form Header */}
+        <div className="absolute top-0 left-0 right-0 z-30 p-4 flex justify-between items-center pointer-events-none">
             <button 
               type="button"
               onClick={(e) => { play('CLICK'); e.stopPropagation(); setMode('LIST'); }}
-              className="absolute top-4 left-4 p-2 bg-black/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-black/60 z-10"
+              className="p-2 bg-black/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-black/60 shadow-lg pointer-events-auto transition-all active:scale-95"
             >
               <X size={24} />
             </button>
@@ -1274,13 +1253,38 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             <button 
               type="button"
               onClick={(e) => { play('CLICK'); e.preventDefault(); e.stopPropagation(); handleSave(); }}
-              className="absolute top-4 right-4 px-4 py-2 bg-green-600 hover:bg-green-500 text-slate-100 font-bold rounded-full shadow-lg z-10 flex items-center gap-2"
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-on-primary font-bold rounded-full shadow-lg pointer-events-auto flex items-center gap-2 transition-all active:scale-95"
             >
               <CheckSquare size={18} /> Salvar
             </button>
-          </div>
+        </div>
 
-          <div className="p-4 space-y-6">
+        <div className="flex-1 overflow-y-auto pb-24 w-full">
+          <div className="max-w-3xl mx-auto w-full min-h-full">
+            {/* Header / Image Upload */}
+            <div className="relative h-48 w-full flex-none bg-slate-950 group cursor-pointer" onClick={() => { play('CLICK'); triggerFileUpload(); }}>
+              {formData.imageUrl ? (
+                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover object-top opacity-60 group-hover:opacity-40 transition-opacity" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-800 bg-slate-900 group-hover:bg-slate-800 transition-colors">
+                  <ImageIcon size={64} />
+                </div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="bg-slate-900/90 border border-slate-600 text-slate-100 px-5 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 shadow-xl">
+                  <Upload size={16} /> Alterar Imagem
+                </span>
+              </div>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+              />
+            </div>
+
+            <div className="p-4 space-y-6">
             {/* Basic Info */}
             <div>
                <h3 className="flex items-center gap-2 text-slate-400 uppercase font-bold text-xs tracking-wider mb-3">
@@ -1512,7 +1516,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                             play('CLICK');
                           }}
                           disabled={!newItemName.trim()}
-                          className="px-4 bg-amber-600 hover:bg-amber-500 text-slate-100 rounded font-bold uppercase text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-4 bg-amber-600 hover:bg-amber-500 text-on-primary rounded font-bold uppercase text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                         >
 <Plus size={16} />
                         </button>
@@ -1554,6 +1558,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           </div>
         </div>
       </div>
+    </div>
     );
   };
 

@@ -168,7 +168,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="mt-auto pt-6 pb-4 flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-opacity space-y-2 flex-none">
         <div className="w-12 h-1 bg-slate-800 rounded-full mb-1"></div>
         <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400">
-          v1.0.5
+          v1.0.6
         </span>
         <p className="text-[10px] font-medium text-slate-500 font-mono uppercase tracking-widest">
           Conjurado por André Ricardo Voidelo
