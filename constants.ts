@@ -205,3 +205,15 @@ export const DEFAULT_COLLECTIONS: Collection[] = [
     isBuiltIn: true
   }
 ];
+
+export const CARD_THEMES: Record<string, string> = {
+  slate:  'bg-slate-800 border-slate-700 text-slate-200', 
+  red:    'bg-red-900/40 border-red-500/50 text-red-100',
+  blue:   'bg-blue-900/40 border-blue-500/50 text-blue-100',
+  amber:  'bg-orange-900/40 border-orange-500/50 text-orange-100',
+  green:  'bg-emerald-900/40 border-emerald-500/50 text-emerald-100',
+  purple: 'bg-purple-900/40 border-purple-500/50 text-purple-100',
+  yellow: 'bg-yellow-900/40 border-yellow-400/50 text-yellow-100',
+  cyan:   'bg-cyan-900/40 border-cyan-500/50 text-cyan-100',
+  pink:   'bg-pink-900/40 border-pink-500/50 text-pink-100',
+};
