@@ -170,7 +170,4 @@ Este projeto utiliza **Vite** e **React**.
 
 ---
 
-
-*Boas rolagens!* 🎲
-
-Happy Rolling! 🎲 Boas rolagens!
+*Happy Rolling! 🎲 Boas rolagens!*
