@@ -14,7 +14,7 @@
 <a name="-english"></a>
 ## 🇺🇸 English
 
-**Mestre Mune** is a Progressive Web App (PWA) developed to facilitate Solo RPG sessions. Based on the **M.U.N.E. (Madey Upy Namey Emulator)** system, the tool centralizes the oracle, character sheet management, dice rolling, and notes into a modern, responsive, and highly customizable interface.
+**Master Mune** is a Progressive Web App (PWA) developed to facilitate Solo RPG sessions. Based on the **M.U.N.E. (Madey Upy Namey Emulator)** system, the tool centralizes the oracle, character sheet management, dice rolling, and notes into a modern, responsive, and highly customizable interface.
 
 ### ✨ Key Features
 
@@ -83,7 +83,7 @@ This project uses **Vite** and **React**.
 - Based on the Solo RPG system **M.U.N.E.** (Madey Upy Namey Emulator). **[Link to original PDF](https://drive.google.com/file/d/1mJbHcCNscMfs_NPnqMMz2Y8KiD8gWrkZ/view).**
 - Additional icons provided by **[Game-Icons.Net](https://game-icons.net/)** under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) license.
 
---
+-- 
 
 <a name="-português-brasileiro"></a>
 
