@@ -30,6 +30,7 @@ export interface Attribute {
   value: number;
   rollType: AttributeType;
   dice?: string;
+  color?: string;
 }
 
 export interface Resource {
@@ -37,6 +38,7 @@ export interface Resource {
   name: string;
   current: number;
   max: number;
+  color?: string;
 }
 
 export interface InventoryItem {
