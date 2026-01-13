@@ -420,14 +420,14 @@ const AppContent: React.FC = () => {
   // --- RENDER: Adventure List (Home) ---
 
   const renderAdventureList = () => (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-100 p-4 overflow-y-auto">
+    <div className="flex flex-col h-full bg-app text-txt-main p-4 overflow-y-auto">
       <div className="flex justify-between items-center mb-6 mt-2">
-        <h2 className="text-xl font-bold text-slate-200 uppercase tracking-wide flex items-center gap-2">
-          <ScrollText className="text-amber-500" /> Minhas Aventuras
+        <h2 className="text-xl font-bold text-txt-main uppercase tracking-wide flex items-center gap-2">
+          <ScrollText className="text-primary" /> Minhas Aventuras
         </h2>
         <button 
           onClick={() => { play('CLICK'); handleCreateAdventure(); }}
-          className="bg-amber-600 hover:bg-amber-500 text-on-primary p-2 rounded-full shadow-lg active:scale-95 transition-all"
+          className="bg-primary hover:bg-primary-hover text-on-primary p-2 rounded-full shadow-lg active:scale-95 transition-all"
           title="Nova Aventura"
         >
           <Plus size={24} />
@@ -437,7 +437,7 @@ const AppContent: React.FC = () => {
       <div className="grid gap-4 pb-20">
         {adventures.length === 0 ? (
           <div className="text-center py-20 opacity-50 flex flex-col items-center">
-            <Dices size={64} className="mb-4 text-slate-600" />
+            <Dices size={64} className="mb-4 text-txt-dim" />
             <p className="text-lg font-bold">Nenhuma aventura encontrada.</p>
             <p className="text-sm">Clique no botão "+" para começar sua jornada.</p>
           </div>
@@ -446,12 +446,12 @@ const AppContent: React.FC = () => {
             <div 
               key={adv.id}
               onClick={() => { play('CLICK'); handleSelectAdventure(adv.id); }}
-              className="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg hover:border-amber-500/50 transition-all active:scale-[0.98] group cursor-pointer relative overflow-hidden"
+              className="bg-card border border-border rounded-xl p-4 shadow-lg hover:border-primary/50 transition-all active:scale-[0.98] group cursor-pointer relative overflow-hidden"
             >
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-100 group-hover:text-amber-500 transition-colors line-clamp-1">{adv.name}</h3>
-                  <div className="flex items-center gap-4 text-[10px] text-slate-500 font-mono mt-1">
+                  <h3 className="text-lg font-bold text-txt-main group-hover:text-primary transition-colors line-clamp-1">{adv.name}</h3>
+                  <div className="flex items-center gap-4 text-[10px] text-txt-muted font-mono mt-1">
                     <span className="flex items-center gap-1"><Calendar size={10} /> {new Date(adv.lastPlayedAt).toLocaleDateString()}</span>
                     <span className="flex items-center gap-1"><User size={10} /> {adv.characters.length} Personas</span>
                     <span className="flex items-center gap-1"><ScrollText size={10} /> {adv.logs.length} Logs</span>
@@ -459,25 +459,25 @@ const AppContent: React.FC = () => {
                 </div>
               </div>
               
-              <p className="text-sm text-slate-400 mb-4 line-clamp-2 min-h-[1.25rem]">
+              <p className="text-sm text-txt-muted mb-4 line-clamp-2 min-h-[1.25rem]">
                 {adv.description || <span className="italic opacity-50">Sem descrição...</span>}
               </p>
 
-              <div className="flex justify-between items-center border-t border-slate-700/50 pt-3 mt-2">
-                 <span className="text-xs font-bold text-amber-500 uppercase tracking-wider flex items-center gap-1">
+              <div className="flex justify-between items-center border-t border-border/50 pt-3 mt-2">
+                 <span className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1">
                    <Play size={12} fill="currentColor" /> Jogar
                  </span>
                  
                  <div className="flex gap-2">
                     <button 
                       onClick={(e) => { play('CLICK'); handleEditAdventure(adv, e); }}
-                      className="p-2 text-slate-500 hover:text-slate-100 hover:bg-slate-700 rounded-lg transition-colors"
+                      className="p-2 text-txt-muted hover:text-txt-main hover:bg-card-hover rounded-lg transition-colors"
                     >
                       <Edit2 size={16} />
                     </button>
                     <button 
                       onClick={(e) => { play('CLICK'); handleDeleteAdventure(adv.id, e); }}
-                      className="p-2 text-slate-500 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
+                      className="p-2 text-txt-muted hover:text-error hover:bg-card-hover rounded-lg transition-colors"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -491,39 +491,39 @@ const AppContent: React.FC = () => {
       {/* Modal: Create/Edit Adventure */}
       {isEditingAdv && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
              <div className="flex justify-between items-center mb-4">
-               <h3 className="text-lg font-bold text-slate-100">
+               <h3 className="text-lg font-bold text-txt-main">
                  {advFormData.id ? 'Editar Aventura' : 'Nova Aventura'}
                </h3>
-               <button onClick={() => { play('CLICK'); setIsEditingAdv(false); }}><X className="text-slate-500" /></button>
+               <button onClick={() => { play('CLICK'); setIsEditingAdv(false); }}><X className="text-txt-muted" /></button>
              </div>
              
              <div className="space-y-4">
                <div>
-                 <label className="text-xs uppercase font-bold text-slate-500 block mb-1">Título</label>
+                 <label className="text-xs uppercase font-bold text-txt-muted block mb-1">Título</label>
                  <input 
                    autoFocus
                    type="text" 
                    value={advFormData.name}
                    onChange={e => setAdvFormData({...advFormData, name: e.target.value})}
-                   className="w-full bg-slate-900 border border-slate-700 rounded p-3 text-slate-100 focus:border-amber-500 placeholder-slate-500 outline-none"
+                   className="w-full bg-app border border-border rounded p-3 text-txt-main focus:border-primary placeholder-txt-dim outline-none"
                    placeholder="Ex: A Tumba dos Horrores"
                  />
                </div>
                <div>
-                 <label className="text-xs uppercase font-bold text-slate-500 block mb-1">Descrição</label>
+                 <label className="text-xs uppercase font-bold text-txt-muted block mb-1">Descrição</label>
                  <textarea 
                    value={advFormData.description}
                    onChange={e => setAdvFormData({...advFormData, description: e.target.value})}
-                   className="w-full bg-slate-900 border border-slate-700 rounded p-3 text-slate-100 focus:border-amber-500 placeholder-slate-500 outline-none h-24 resize-none"
+                   className="w-full bg-app border border-border rounded p-3 text-txt-main focus:border-primary placeholder-txt-dim outline-none h-24 resize-none"
                    placeholder="Uma breve sinopse..."
                    />
                </div>
                <button 
                  onClick={() => { play('CLICK'); handleSaveAdventure(); }}
                  disabled={!advFormData.name.trim()}
-                 className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-on-primary font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+                 className="w-full bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-on-primary font-bold py-3 rounded-lg flex items-center justify-center gap-2"
                >
                  <Save size={18} /> Salvar
                </button>
@@ -535,23 +535,23 @@ const AppContent: React.FC = () => {
       {/* Modal: Confirm Delete */}
       {advToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
-             <h3 className="text-lg font-bold text-slate-100 mb-2 flex items-center gap-2">
-               <Trash2 className="text-red-500" /> Excluir Aventura?
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
+             <h3 className="text-lg font-bold text-txt-main mb-2 flex items-center gap-2">
+               <Trash2 className="text-error" /> Excluir Aventura?
              </h3>
-             <p className="text-slate-400 text-sm mb-6">
+             <p className="text-txt-muted text-sm mb-6">
                Isso apagará permanentemente todos os logs e personagens desta aventura.
              </p>
              <div className="flex gap-3">
                <button 
                  onClick={() => { play('CLICK'); setAdvToDelete(null); }}
-                 className="flex-1 py-2 bg-slate-700 text-slate-200 rounded font-bold"
+                 className="flex-1 py-2 bg-card-hover text-txt-main rounded font-bold"
                >
                  Cancelar
                </button>
                <button 
                  onClick={() => { play('CLICK'); confirmDeleteAdventure(); }}
-                 className="flex-1 py-2 bg-red-600 text-slate-100 rounded font-bold"
+                 className="flex-1 py-2 bg-error text-slate-100 rounded font-bold"
                >
                  Excluir
                </button>
@@ -563,26 +563,26 @@ const AppContent: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-slate-900 text-slate-100 overflow-hidden relative">
+    <div className="flex flex-col h-screen bg-app text-txt-main overflow-hidden relative">
       {/* Header */}
-      <header className="flex-none h-14 bg-slate-950 flex items-center justify-between px-4 border-b border-slate-800 shadow-md z-20 relative">
+      <header className="flex-none h-14 bg-app flex items-center justify-between px-4 border-b border-border shadow-md z-20 relative">
         <div className="flex items-center gap-3 min-w-0">
           {showSettings ? (
              <div className="flex items-center gap-2 animate-in slide-in-from-left duration-200 min-w-0">
                 <button 
                   onClick={() => { play('CLICK'); setShowSettings(false); }}
-                  className="p-1 ml-1 text-slate-400 hover:text-slate-100 rounded-full hover:bg-slate-800 transition-colors flex-none"
+                  className="p-1 ml-1 text-txt-muted hover:text-txt-main rounded-full hover:bg-card-hover transition-colors flex-none"
                 >
                   <ChevronLeft size={24} />
                 </button>
-                <h1 className="text-lg font-bold text-slate-100 truncate">Configurações</h1>
+                <h1 className="text-lg font-bold text-txt-main truncate">Configurações</h1>
              </div>
           ) : (
             <div className="flex items-center gap-3 min-w-0 animate-in fade-in duration-300">
               {currentAdventureId && (
                 <button 
                   onClick={() => { play('CLICK'); setCurrentAdventureId(null); }}
-                  className="p-1 ml-1 text-slate-400 hover:text-slate-100 rounded-full hover:bg-slate-800 transition-colors flex-none"
+                  className="p-1 ml-1 text-txt-muted hover:text-txt-main rounded-full hover:bg-card-hover transition-colors flex-none"
                 >
                   <ChevronLeft size={24} />
                 </button>
@@ -590,7 +590,7 @@ const AppContent: React.FC = () => {
 
               {!currentAdventureId && (
                 <div 
-                  className="w-8 h-8 rounded-lg bg-amber-500 flex-none"
+                  className="w-8 h-8 rounded-lg bg-primary flex-none"
                   style={{
                     maskImage: 'url("/mune-var.svg")',
                     maskRepeat: 'no-repeat',
@@ -605,11 +605,11 @@ const AppContent: React.FC = () => {
               )}
               
               <div className="flex flex-col min-w-0">
-                <h1 className="text-sm sm:text-lg font-bold tracking-wider text-amber-500 uppercase truncate">
+                <h1 className="text-sm sm:text-lg font-bold tracking-wider text-primary uppercase truncate">
                   {currentAdventureId && activeAdventure ? activeAdventure.name : 'Mestre Mune'}
                 </h1>
                 {currentAdventureId && (
-                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest leading-none">Em Aventura</span>
+                  <span className="text-[10px] text-txt-dim uppercase font-bold tracking-widest leading-none">Em Aventura</span>
                 )}
               </div>
             </div>
@@ -621,14 +621,14 @@ const AppContent: React.FC = () => {
             <>
               <button 
                 onClick={() => { play('CLICK'); setShowHelp(true); }}
-                className="p-2 text-slate-500 hover:text-amber-500 active:text-amber-400 transition-colors rounded-full hover:bg-slate-900"
+                className="p-2 text-txt-muted hover:text-primary active:text-primary-active transition-colors rounded-full hover:bg-app"
                 aria-label="Ajuda Contextual"
               >
                 <HelpCircle size={20} />
               </button>
               <button 
                 onClick={() => { play('CLICK'); setShowSettings(true); }}
-                className="p-2 text-slate-500 hover:text-amber-500 active:text-amber-400 transition-colors rounded-full hover:bg-slate-900"
+                className="p-2 text-txt-muted hover:text-primary active:text-primary-active transition-colors rounded-full hover:bg-app"
                 aria-label="Configurações"
               >
                 <Settings size={20} />
@@ -643,7 +643,7 @@ const AppContent: React.FC = () => {
         
         {/* Side Navigation (Landscape Only) */}
         {currentAdventureId && !showSettings && (
-          <nav className="hidden landscape:flex flex-col w-16 bg-slate-950 border-r border-slate-800 h-full py-4 items-center gap-4 z-30">
+          <nav className="hidden landscape:flex flex-col w-16 bg-app border-r border-border h-full py-4 items-center gap-4 z-30">
             <NavButton 
               active={activeTab === Tab.ORACLE} 
               onClick={() => setActiveTab(Tab.ORACLE)}
@@ -741,7 +741,7 @@ const AppContent: React.FC = () => {
               </div>
             </>
           ) : (
-            <div className="h-full flex items-center justify-center text-red-500">Erro ao carregar aventura.</div>
+            <div className="h-full flex items-center justify-center text-error">Erro ao carregar aventura.</div>
           )}
         </main>
       </div>
@@ -766,46 +766,46 @@ const AppContent: React.FC = () => {
           onClick={() => { play('CLICK'); setShowHelp(false); }}
         >
            <div 
-             className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 flex flex-col items-center text-center"
+             className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 flex flex-col items-center text-center"
              onClick={e => e.stopPropagation()}
            >
-              <button onClick={() => { play('CLICK'); setShowHelp(false); }} className="absolute top-4 right-4 text-slate-500 hover:text-slate-100"><X size={20} /></button>
+              <button onClick={() => { play('CLICK'); setShowHelp(false); }} className="absolute top-4 right-4 text-txt-muted hover:text-txt-main"><X size={20} /></button>
               
-              <div className="p-4 bg-slate-900 rounded-full mb-4 text-amber-500 border border-slate-700 shadow-inner">
+              <div className="p-4 bg-app rounded-full mb-4 text-primary border border-border shadow-inner">
                  {helpContent.icon}
               </div>
               
-              <h3 className="text-xl font-bold text-slate-100 mb-2">{helpContent.title}</h3>
+              <h3 className="text-xl font-bold text-txt-main mb-2">{helpContent.title}</h3>
               
-              <p className="text-slate-300 text-sm mb-4 leading-relaxed">
+              <p className="text-txt-muted text-sm mb-4 leading-relaxed">
                  {helpContent.text}
               </p>
               
               {/* SPACER LINE */}
-              <div className="w-full h-px bg-slate-700/50 my-4"></div>
+              <div className="w-full h-px bg-border/50 my-4"></div>
 
               {/* PDF BUTTON */}
               <a 
                 href={MANUAL_URL} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-amber-500 font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm mb-2"
+                className="w-full py-3 bg-card-hover hover:bg-border text-primary font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm mb-2"
               >
                 <BookOpen size={18} />
                 Acessar M.U.N.E. em PDF
               </a>
 
               {/* SMALL TEXT */}
-              <p className="text-[10px] text-slate-500 mb-2 max-w-[200px] leading-tight mx-auto">
+              <p className="text-[10px] text-txt-dim mb-2 max-w-[200px] leading-tight mx-auto">
                  Este app foi baseado no sistema M.U.N.E. disponível no botão acima.
               </p>
-              <p className="text-[10px] text-slate-500 mb-2 max-w-[200px] leading-tight mx-auto">
-                 Ícones por <a href="https://game-icons.net/" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-amber-500 underline">Game-Icons.Net</a> sob licença CC BY 3.0.
+              <p className="text-[10px] text-txt-dim mb-2 max-w-[200px] leading-tight mx-auto">
+                 Ícones por <a href="https://game-icons.net/" target="_blank" rel="noopener noreferrer" className="text-txt-dim hover:text-primary underline">Game-Icons.Net</a> sob licença CC BY 3.0.
               </p>
 
               <button 
                 onClick={() => { play('CLICK'); setShowHelp(false); }}
-                className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-on-primary font-bold rounded-lg transition-colors shadow-lg shadow-amber-900/20"
+                className="w-full py-3 bg-primary hover:bg-primary-hover text-on-primary font-bold rounded-lg transition-colors shadow-lg shadow-primary/20"
               >
                 Entendi
               </button>
@@ -815,7 +815,7 @@ const AppContent: React.FC = () => {
 
       {/* Bottom Navigation (Portrait Only) */}
       {currentAdventureId && !showSettings && (
-        <nav className="flex-none h-16 bg-slate-950 border-t border-slate-800 grid grid-cols-5 pb-safe z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden">
+        <nav className="flex-none h-16 bg-app border-t border-border grid grid-cols-5 pb-safe z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden">
           <NavButton 
             active={activeTab === Tab.ORACLE} 
             onClick={() => setActiveTab(Tab.ORACLE)}
@@ -853,55 +853,55 @@ const AppContent: React.FC = () => {
       {/* Restore Confirmation Modal (Replaces native window.confirm for Mobile) */}
       {pendingImportData && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <h3 className="text-lg font-bold text-slate-100 mb-3 flex items-center gap-2">
-              <UploadCloud size={24} className="text-amber-500" />
+          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-txt-main mb-3 flex items-center gap-2">
+              <UploadCloud size={24} className="text-primary" />
               Confirmar Restauração?
             </h3>
             
-            <div className="bg-slate-900/50 p-3 rounded-lg mb-4 border border-slate-800">
-               <p className="text-sm text-slate-300 mb-2 font-bold uppercase tracking-wider">
+            <div className="bg-app/50 p-3 rounded-lg mb-4 border border-card">
+               <p className="text-sm text-txt-muted mb-2 font-bold uppercase tracking-wider">
                  Conteúdo do Arquivo:
                </p>
-               <ul className="text-xs text-slate-400 list-disc list-inside space-y-1">
-                 <li><strong className="text-slate-100">{pendingImportData.adventures.length}</strong> Aventuras</li>
+               <ul className="text-xs text-txt-muted list-disc list-inside space-y-1">
+                 <li><strong className="text-txt-main">{pendingImportData.adventures.length}</strong> Aventuras</li>
                  <li>
-                   <strong className="text-slate-100">
+                   <strong className="text-txt-main">
                       {pendingImportData.adventures.reduce((acc, a) => acc + (a?.threads?.length || 0) + (a?.npcs?.length || 0), 0)}
                    </strong> Tramas e NPCs
                  </li>
                  <li>
-                   <strong className="text-slate-100">
+                   <strong className="text-txt-main">
                      {(pendingImportData.collections || []).filter(c => !c.isBuiltIn).length}
                    </strong> Coleções Customizadas
                  </li>
                  <li>
-                   <strong className="text-slate-100">
+                   <strong className="text-txt-main">
                      {pendingImportData.adventures.reduce((acc, a) => acc + (a?.characters?.length || 0), 0)}
                    </strong> Personagens
                  </li>
                  <li>
-                   <strong className="text-slate-100">
+                   <strong className="text-txt-main">
                      {pendingImportData.adventures.reduce((acc, a) => acc + (a?.logs?.length || 0), 0)}
                    </strong> Logs
                  </li>
                </ul>
             </div>
 
-            <p className="text-xs text-amber-500/80 mb-6 border-l-2 border-amber-500 pl-3">
+            <p className="text-xs text-primary/80 mb-6 border-l-2 border-primary pl-3">
               Atenção: Isso substituirá suas aventuras atuais. Coleções padrão do sistema serão mantidas.
             </p>
             
             <div className="flex gap-3">
               <button
                 onClick={() => { play('CLICK'); cancelImport(); }}
-                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold text-sm transition-colors"
+                className="flex-1 px-4 py-3 bg-card-hover hover:bg-border text-txt-main rounded-lg font-bold text-sm transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => { play('CLICK'); confirmImport(); }}
-                className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-500 text-on-primary rounded-lg font-bold text-sm transition-colors shadow-lg shadow-amber-900/20"
+                className="flex-1 px-4 py-3 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold text-sm transition-colors shadow-lg shadow-primary/20"
               >
                 Sim, Restaurar
               </button>
@@ -930,17 +930,17 @@ const NavButton: React.FC<{
     title={label}
     className={`relative flex items-center justify-center transition-colors ${
       vertical 
-        ? 'flex-col p-2 w-full rounded-lg hover:bg-slate-800' 
+        ? 'flex-col p-2 w-full rounded-lg hover:bg-card-hover' 
         : 'flex-col gap-1'
     } ${
-      active ? 'text-amber-500 bg-slate-900/50' : 'text-slate-500 hover:text-slate-300'
+      active ? 'text-primary bg-app/50' : 'text-txt-muted hover:text-txt-main'
     }`}
   >
     {icon}
     {/* Hide label in vertical mode if space is tight, currently showing very small */}
     <span className={`font-bold uppercase truncate max-w-full px-1 ${vertical ? 'hidden' : 'text-[9px] sm:text-[10px]'}`}>{label}</span>
     {badge !== undefined && badge > 0 && (
-      <span className="absolute top-1 right-1 sm:right-4 w-4 h-4 bg-red-600 text-slate-100 text-[9px] flex items-center justify-center rounded-full shadow-sm border border-slate-900">
+      <span className="absolute top-1 right-1 sm:right-4 w-4 h-4 bg-error text-slate-100 text-[9px] flex items-center justify-center rounded-full shadow-sm border border-app">
         {badge > 99 ? '99+' : badge}
       </span>
     )}
