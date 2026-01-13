@@ -129,3 +129,28 @@ export const exportLogsToMarkdown = (logs: LogEntry[], adventureName: string): s
 
   return md;
 };
+
+export const getContrastColor = (hex: string): string => {
+  // If no hex or invalid, return white as safe default for dark mode
+  if (!hex || !/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) return '#ffffff';
+
+  let c = hex.substring(1);
+  if (c.length === 3) {
+    c = c.split('').map(char => char + char).join('');
+  }
+
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+
+  // HSP equation (perceived brightness)
+  // 0.299 R + 0.587 G + 0.114 B
+  const brightness = Math.sqrt(
+    0.299 * (r * r) +
+    0.587 * (g * g) +
+    0.114 * (b * b)
+  );
+
+  // Threshold can be tweaked. 127.5 is standard midpoint.
+  return brightness > 127.5 ? '#000000' : '#ffffff';
+};

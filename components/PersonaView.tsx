@@ -1,19 +1,97 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Character, Attribute, AttributeType, LogEntry, InventoryItem, Resource } from '../types';
-import { generateUUID, rollDiceNotation } from '../utils';
+import { generateUUID, rollDiceNotation, getContrastColor } from '../utils';
 import { CARD_THEMES } from '../constants';
 import { User, Plus, Trash2, Edit2, X, ChevronLeft, Shield, Backpack, Image as ImageIcon, Upload, Minus, CheckSquare, Square, Dices, Activity, Zap, TrendingUp, TrendingDown, Target, Sword, FileText, PaintBucket } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from './SortableItem';
+import { ColorPicker } from './ColorPicker';
+
+const PREVIEW_COLORS: Record<string, string> = {
+  slate:  '#64748b', 
+  red:    '#ef4444',
+  blue:   '#3b82f6',
+  amber:  '#f97316', // Orange-500
+  green:  '#10b981',
+  purple: '#a855f7',
+  yellow: '#eab308',
+  cyan:   '#06b6d4',
+  pink:   '#ec4899',
+};
 
 interface PersonaViewProps {
   characters: Character[];
   setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
   addLog: (entry: LogEntry) => void;
 }
+
+// Helper to resolve styles for themes vs custom hex
+const getCardStyle = (color?: string) => {
+  if (!color || color === 'slate') return { className: CARD_THEMES['slate'] };
+  
+  // If it's a preset theme
+  if (CARD_THEMES[color]) {
+    return { className: CARD_THEMES[color] };
+  }
+  
+  // If it's a custom hex
+  if (color.startsWith('#')) {
+    const textColor = getContrastColor(color);
+    return {
+      className: 'transition-colors border shadow-sm',
+      style: {
+        backgroundColor: color,
+        borderColor: color, // Solid border matching bg
+        color: textColor
+      } as React.CSSProperties
+    };
+  }
+  
+  return { className: CARD_THEMES['slate'] };
+};
+
+// Helper for text elements inside custom cards
+const getTextStyle = (color?: string) => {
+  if (!color || color === 'slate') return 'text-slate-400';
+  if (CARD_THEMES[color]) return 'text-white/90';
+  
+  // For custom hex, we rely on the container's inline style 'color', 
+  // but we return 'opacity-90' to mimic the hierarchy if needed, 
+  // or just empty string to let inheritance work.
+  return 'opacity-90'; 
+};
+
+const getLabelStyle = (color?: string) => {
+    if (!color || color === 'slate') return 'text-slate-500';
+    if (CARD_THEMES[color]) return 'text-white/70';
+    return 'opacity-70 font-bold'; 
+};
+
+const getInputStyle = (color?: string) => {
+  if (!color || color === 'slate') {
+    return 'border-slate-700 text-slate-100 placeholder-slate-500 focus:border-amber-500';
+  }
+  if (CARD_THEMES[color]) {
+    return 'border-white/30 text-white placeholder-white/50 focus:border-white';
+  }
+  // Custom Hex
+  const textColor = getContrastColor(color);
+  const isDark = textColor === '#ffffff';
+  return `border-current bg-transparent ${isDark ? 'placeholder-white/50' : 'placeholder-black/50'} focus:brightness-110`;
+};
+
+const getButtonStyle = (color?: string) => {
+    if (!color || color === 'slate') {
+        return 'text-slate-400 hover:text-slate-100 hover:bg-slate-700';
+    }
+    if (CARD_THEMES[color]) {
+        return 'text-white/70 hover:text-white hover:bg-white/10';
+    }
+    return 'opacity-70 hover:opacity-100 hover:bg-black/10';
+};
 
 type ViewMode = 'LIST' | 'DETAIL' | 'FORM';
 type RollMode = 'NORMAL' | 'ADVANTAGE' | 'DISADVANTAGE';
@@ -46,40 +124,6 @@ interface PendingRoll {
   attr: Attribute;
 }
 
-const ThemeSelector = ({ selected, onSelect }: { selected?: string, onSelect: (color: string) => void }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-        className={`p-2 rounded-lg transition-colors ${selected ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
-        title="Alterar Cor"
-      >
-        <PaintBucket size={16} />
-      </button>
-
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 mt-2 z-50 bg-slate-800 border border-slate-700 p-2 rounded-xl shadow-xl grid grid-cols-5 gap-2 w-[140px] animate-in zoom-in-95 duration-200">
-            {Object.keys(CARD_THEMES).map(color => (
-              <button
-                key={color}
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onSelect(color === 'slate' ? '' : color); setIsOpen(false); }}
-                className={`w-5 h-5 rounded-full border border-slate-600 transition-all active:scale-90 ${CARD_THEMES[color].split(' ')[0]} ${selected === color || (!selected && color === 'slate') ? 'ring-2 ring-white scale-110' : 'hover:scale-110'}`}
-                title={color}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
 const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, addLog }) => {
   const [mode, setMode] = useState<ViewMode>('LIST');
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
@@ -97,6 +141,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   const [isItemRevealing, setIsItemRevealing] = useState(false); // Controls the suspense animation for Items
 
   const [editingQtyId, setEditingQtyId] = useState<string | null>(null);
+  const [colorPickerTargetId, setColorPickerTargetId] = useState<string | null>(null); // ID of resource/attribute being colored
   const [itemToUse, setItemToUse] = useState<ItemToUse | null>(null);
   const [charToDelete, setCharToDelete] = useState<Character | null>(null);
   
@@ -1012,9 +1057,11 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                     <p className="text-slate-600 text-sm italic">Sem recursos.</p>
                   </div>
                 ) : (
-                  char.resources.map(res => (
-                    <div key={res.id} className={`flex flex-col items-center justify-between p-2 rounded-lg border transition-colors ${CARD_THEMES[res.color || 'slate']}`}>
-                      <span className={`text-[10px] uppercase font-bold mb-2 w-full truncate text-center ${res.color ? 'text-white/90' : 'text-slate-400'}`} title={res.name}>
+                  char.resources.map(res => {
+                    const style = getCardStyle(res.color);
+                    return (
+                    <div key={res.id} className={`flex flex-col items-center justify-between p-2 rounded-lg border transition-colors ${style.className}`} style={style.style}>
+                      <span className={`text-[10px] uppercase font-bold mb-2 w-full truncate text-center ${getTextStyle(res.color)}`} title={res.name}>
                         {res.name}
                       </span>
                       
@@ -1040,7 +1087,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                         </button>
                       </div>
                     </div>
-                  ))
+                  )})
                 )}
               </div>
             </div>
@@ -1062,14 +1109,17 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                       <p className="text-slate-600 text-sm italic">Sem atributos definidos.</p>
                     </div>
                   ) : (
-                    char.attributes.map(attr => (
+                    char.attributes.map(attr => {
+                      const style = getCardStyle(attr.color);
+                      return (
                       <button
                         type="button"
                         key={attr.id}
                         onClick={() => initiateAttributeRoll(char.name, attr)}
-                        className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all active:scale-[0.98] ${CARD_THEMES[attr.color || 'slate']} ${attr.color ? 'hover:brightness-110' : 'hover:border-amber-500 hover:bg-slate-700'}`}
+                        className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all active:scale-[0.98] ${style.className} ${attr.color ? 'hover:brightness-110' : 'hover:border-amber-500 hover:bg-slate-700'}`}
+                        style={style.style}
                       >
-                        <span className={`text-[10px] uppercase font-bold mb-1 w-full truncate text-center ${attr.color ? 'text-white/90' : 'text-slate-400'}`} title={attr.name}>{attr.name}</span>
+                        <span className={`text-[10px] uppercase font-bold mb-1 w-full truncate text-center ${getTextStyle(attr.color)}`} title={attr.name}>{attr.name}</span>
                         
                         <div className={`flex items-center justify-center rounded px-2 w-full mb-1 ${attr.color ? 'bg-black/20' : 'bg-slate-900/50'}`}>
                             <span className={`text-2xl font-black font-mono ${attr.color ? 'text-white' : 'text-amber-500'}`}>
@@ -1086,7 +1136,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                              )}
                         </div>
                       </button>
-                    ))
+                    )})
                   )}
                 </div>
              </div>
@@ -1442,33 +1492,42 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                     items={formData.resources.map(r => r.id)} 
                     strategy={verticalListSortingStrategy}
                   >
-                    {formData.resources.map((res, idx) => (
+                    {formData.resources.map((res, idx) => {
+                      const style = getCardStyle(res.color);
+                      return (
                       <SortableItem key={res.id} id={res.id}>
-                        <div className={`p-3 rounded-lg border transition-colors flex flex-col gap-2 ${CARD_THEMES[res.color || 'slate']}`}>
+                        <div className={`p-3 rounded-lg border transition-colors flex flex-col gap-2 ${style.className}`} style={style.style}>
                             <div className="flex justify-between gap-2 items-center">
-                              <ThemeSelector selected={res.color} onSelect={(c) => updateResource(res.id, 'color', c)} />
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setColorPickerTargetId(`resource:${res.id}`); }}
+                                className={`p-2 rounded-lg transition-all flex items-center justify-center border active:scale-95 shadow-sm ${res.color ? 'text-white border-white/30 bg-white/10 hover:bg-white/20' : 'text-slate-400 border-slate-700 bg-slate-800/50 hover:text-slate-200 hover:border-slate-600'}`}
+                                title="Alterar Cor"
+                              >
+                                <PaintBucket size={16} />
+                              </button>
                               <input 
                                 type="text" 
                                 value={res.name}
                                 onChange={(e) => updateResource(res.id, 'name', e.target.value)}
-                                className={`flex-1 bg-transparent border-b ${res.color ? 'border-white/30 text-white placeholder-white/50 focus:border-white' : 'border-slate-700 text-slate-100 placeholder-slate-500 focus:border-amber-500'} font-bold outline-none pb-1 transition-colors`}
+                                className={`flex-1 bg-transparent border-b ${getInputStyle(res.color)} font-bold outline-none pb-1 transition-colors`}
                                 placeholder="Nome do Recurso"
                               />
-                              <button onClick={() => { play('CLICK'); removeResource(res.id); }} className={`${res.color ? 'text-white/50 hover:text-white' : 'text-slate-500 hover:text-red-500'}`}><Trash2 size={16} /></button>
+                              <button onClick={() => { play('CLICK'); removeResource(res.id); }} className={`${getButtonStyle(res.color)}`}><Trash2 size={16} /></button>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${res.color ? 'text-white/70' : 'text-slate-500'}`}>Atual</label>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(res.color)}`}>Atual</label>
                                   <input 
                                     type="number" 
                                     value={res.current}
                                     onChange={(e) => updateResource(res.id, 'current', parseInt(e.target.value) || 0)}
-                                    className={`w-full rounded p-2 font-mono text-center outline-none border ${res.color ? 'bg-black/20 text-white border-white/20 focus:border-white' : 'bg-slate-900 text-slate-100 border-slate-700 focus:border-amber-500'}`}
+                                    className={`w-full rounded p-2 font-mono text-center outline-none border ${getInputStyle(res.color).replace('bg-transparent', 'bg-black/10')}`}
                                   />
                                 </div>
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${res.color ? 'text-white/70' : 'text-slate-500'}`}>Máximo</label>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(res.color)}`}>Máximo</label>
                                   <input 
                                     type="number" 
                                     value={res.max}
@@ -1492,13 +1551,13 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                         };
                                       });
                                     }}
-                                    className={`w-full rounded p-2 font-mono text-center outline-none border ${res.color ? 'bg-black/20 text-white border-white/20 focus:border-white' : 'bg-slate-900 text-slate-100 border-slate-700 focus:border-amber-500'}`}
+                                    className={`w-full rounded p-2 font-mono text-center outline-none border ${getInputStyle(res.color).replace('bg-transparent', 'bg-black/10')}`}
                                   />
                                 </div>
                             </div>
                         </div>
                       </SortableItem>
-                    ))}
+                    )})}
                   </SortableContext>
                 </DndContext>
                 {formData.resources.length === 0 && <p className="text-xs text-slate-600 italic text-center">Nenhum recurso adicionado.</p>}
@@ -1532,37 +1591,45 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                   >
                     {formData.attributes.map((attr) => {
                       const isDiceEmpty = !attr.dice || attr.dice.trim() === '';
+                      const style = getCardStyle(attr.color);
                       return (
                         <SortableItem key={attr.id} id={attr.id}>
-                          <div className={`p-3 rounded-lg border transition-colors flex flex-col gap-2 ${CARD_THEMES[attr.color || 'slate']}`}>
+                          <div className={`p-3 rounded-lg border transition-colors flex flex-col gap-2 ${style.className}`} style={style.style}>
                               <div className="flex justify-between gap-2 items-center">
-                                <ThemeSelector selected={attr.color} onSelect={(c) => updateAttribute(attr.id, 'color', c)} />
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setColorPickerTargetId(`attribute:${attr.id}`); }}
+                                  className={`p-2 rounded-lg transition-all flex items-center justify-center border active:scale-95 shadow-sm ${attr.color ? 'text-white border-white/30 bg-white/10 hover:bg-white/20' : 'text-slate-400 border-slate-700 bg-slate-800/50 hover:text-slate-200 hover:border-slate-600'}`}
+                                  title="Alterar Cor"
+                                >
+                                  <PaintBucket size={16} />
+                                </button>
                                 <input 
                                   type="text" 
                                   value={attr.name}
                                   onChange={(e) => updateAttribute(attr.id, 'name', e.target.value)}
-                                  className={`flex-1 bg-transparent border-b ${attr.color ? 'border-white/30 text-white placeholder-white/50 focus:border-white' : 'border-slate-700 text-slate-100 placeholder-slate-500 focus:border-amber-500'} font-bold outline-none pb-1 transition-colors`}
+                                  className={`flex-1 bg-transparent border-b ${getInputStyle(attr.color)} font-bold outline-none pb-1 transition-colors`}
                                   placeholder="Nome do Atributo"
                                 />
-                                <button onClick={() => { play('CLICK'); removeAttribute(attr.id); }} className={`${attr.color ? 'text-white/50 hover:text-white' : 'text-slate-500 hover:text-red-500'}`}><Trash2 size={16} /></button>
+                                <button onClick={() => { play('CLICK'); removeAttribute(attr.id); }} className={`${getButtonStyle(attr.color)}`}><Trash2 size={16} /></button>
                               </div>
                               
                               <div className="grid grid-cols-3 gap-2">
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${attr.color ? 'text-white/70' : 'text-slate-500'}`}>Valor</label>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>Valor</label>
                                   <input 
                                     type="number" 
                                     value={attr.value}
                                     onChange={(e) => updateAttribute(attr.id, 'value', parseInt(e.target.value) || 0)}
-                                    className={`w-full rounded p-2 font-mono text-center outline-none border h-10 ${attr.color ? 'bg-black/20 text-white border-white/20 focus:border-white' : 'bg-slate-900 text-slate-100 border-slate-700 focus:border-amber-500'}`}
+                                    className={`w-full rounded p-2 font-mono text-center outline-none border h-10 ${getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
                                   />
                                 </div>
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${attr.color ? 'text-white/70' : 'text-slate-500'}`}>Tipo</label>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>Tipo</label>
                                   <select 
                                     value={attr.rollType}
                                     onChange={(e) => updateAttribute(attr.id, 'rollType', e.target.value)}
-                                    className={`w-full rounded px-2 text-xs outline-none border appearance-none h-10 ${attr.color ? 'bg-black/20 text-white border-white/20 focus:border-white' : 'bg-slate-900 text-slate-100 border-slate-700 focus:border-amber-500'}`}
+                                    className={`w-full rounded px-2 text-xs outline-none border appearance-none h-10 ${getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
                                   >
                                       <option value="UNDER" className="text-slate-900">≤ (Menor)</option>
                                       <option value="OVER" className="text-slate-900">≥ (Maior)</option>
@@ -1570,14 +1637,14 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                   </select>
                                 </div>
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${isDiceEmpty ? 'text-red-400' : (attr.color ? 'text-white/70' : 'text-slate-500')} ${validationErrors.has(attr.id) ? 'animate-pulse' : ''}`}>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${isDiceEmpty ? 'text-red-400' : getLabelStyle(attr.color)} ${validationErrors.has(attr.id) ? 'animate-pulse' : ''}`}>
                                       Dado {isDiceEmpty && '*'}
                                   </label>
                                   <input 
                                     type="text" 
                                     value={attr.dice || ''}
                                     onChange={(e) => updateAttribute(attr.id, 'dice', e.target.value)}
-                                    className={`w-full rounded p-2 font-mono text-center text-xs outline-none border h-10 ${isDiceEmpty ? 'border-red-500/60 focus:border-red-500' : (attr.color ? 'bg-black/20 text-white border-white/20 focus:border-white placeholder-white/30' : 'bg-slate-900 text-slate-100 border-slate-700 focus:border-amber-500 placeholder-slate-600')}`}
+                                    className={`w-full rounded p-2 font-mono text-center text-xs outline-none border h-10 ${isDiceEmpty ? 'border-red-500/60 focus:border-red-500' : getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
                                     placeholder="Ex: 1d20"
                                   />
                                 </div>
@@ -1705,6 +1772,28 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
       {renderPreRollModal()}
       {renderUseItemModal()}
       {renderDeleteConfirmModal()}
+      <ColorPicker 
+        isOpen={!!colorPickerTargetId} 
+        onClose={() => setColorPickerTargetId(null)}
+        selectedColor={
+          colorPickerTargetId?.startsWith('resource:') 
+            ? formData?.resources.find(r => r.id === colorPickerTargetId.split(':')[1])?.color 
+            : formData?.attributes.find(a => a.id === colorPickerTargetId?.split(':')[1])?.color
+        }
+        onSelect={(color) => {
+          if (!colorPickerTargetId || !formData) return;
+          const [type, id] = colorPickerTargetId.split(':');
+          
+          setFormData(prev => {
+            if (!prev) return null;
+            if (type === 'resource') {
+              return { ...prev, resources: prev.resources.map(r => r.id === id ? { ...r, color } : r) };
+            } else {
+              return { ...prev, attributes: prev.attributes.map(a => a.id === id ? { ...a, color } : a) };
+            }
+          });
+        }}
+      />
     </div>
   );
 };
