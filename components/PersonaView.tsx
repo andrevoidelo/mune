@@ -4,6 +4,9 @@ import { Character, Attribute, AttributeType, LogEntry, InventoryItem, Resource 
 import { generateUUID, rollDiceNotation } from '../utils';
 import { User, Plus, Trash2, Edit2, X, ChevronLeft, Shield, Backpack, Image as ImageIcon, Upload, Minus, CheckSquare, Square, Dices, Activity, Zap, TrendingUp, TrendingDown, Target, Sword, FileText } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableItem } from './SortableItem';
 
 interface PersonaViewProps {
   characters: Character[];
@@ -69,6 +72,60 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { play } = useGameSound();
+
+  // --- Drag and Drop Handlers ---
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEndResources = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setFormData((prev) => {
+        if (!prev) return null;
+        const oldIndex = prev.resources.findIndex((item) => item.id === active.id);
+        const newIndex = prev.resources.findIndex((item) => item.id === over.id);
+        return {
+          ...prev,
+          resources: arrayMove(prev.resources, oldIndex, newIndex),
+        };
+      });
+    }
+  };
+
+  const handleDragEndAttributes = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setFormData((prev) => {
+        if (!prev) return null;
+        const oldIndex = prev.attributes.findIndex((item) => item.id === active.id);
+        const newIndex = prev.attributes.findIndex((item) => item.id === over.id);
+        return {
+          ...prev,
+          attributes: arrayMove(prev.attributes, oldIndex, newIndex),
+        };
+      });
+    }
+  };
+
+  const handleDragEndInventory = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setFormData((prev) => {
+        if (!prev) return null;
+        const oldIndex = prev.inventory.findIndex((item) => (item as InventoryItem).id === active.id);
+        const newIndex = prev.inventory.findIndex((item) => (item as InventoryItem).id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return prev;
+        return {
+          ...prev,
+          inventory: arrayMove(prev.inventory, oldIndex, newIndex),
+        };
+      });
+    }
+  };
 
   // --- Actions ---
 
@@ -1341,60 +1398,73 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
               </div>
 
               <div className="space-y-3">
-                {formData.resources.map((res, idx) => (
-                    <div key={res.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
-                        <div className="flex justify-between gap-2">
-                          <input 
-                            type="text" 
-                            value={res.name}
-                            onChange={(e) => updateResource(res.id, 'name', e.target.value)}
-                            className="flex-1 bg-transparent border-b border-slate-700 text-slate-100 font-bold outline-none focus:border-amber-500 pb-1"
-                            placeholder="Nome do Recurso"
-                          />
-                          <button onClick={() => { play('CLICK'); removeResource(res.id); }} className="text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-[9px] uppercase font-bold text-slate-500 block mb-1">Atual</label>
+                <DndContext 
+                  sensors={sensors} 
+                  collisionDetection={closestCenter} 
+                  onDragEnd={handleDragEndResources}
+                >
+                  <SortableContext 
+                    items={formData.resources.map(r => r.id)} 
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {formData.resources.map((res, idx) => (
+                      <SortableItem key={res.id} id={res.id}>
+                        <div className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
+                            <div className="flex justify-between gap-2">
                               <input 
-                                type="number" 
-                                value={res.current}
-                                onChange={(e) => updateResource(res.id, 'current', parseInt(e.target.value) || 0)}
-                                className="w-full bg-slate-900 rounded p-2 text-slate-100 font-mono text-center outline-none border border-slate-700 focus:border-amber-500"
+                                type="text" 
+                                value={res.name}
+                                onChange={(e) => updateResource(res.id, 'name', e.target.value)}
+                                className="flex-1 bg-transparent border-b border-slate-700 text-slate-100 font-bold outline-none focus:border-amber-500 pb-1"
+                                placeholder="Nome do Recurso"
                               />
+                              <button onClick={() => { play('CLICK'); removeResource(res.id); }} className="text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
                             </div>
-                            <div>
-                              <label className="text-[9px] uppercase font-bold text-slate-500 block mb-1">Máximo</label>
-                              <input 
-                                type="number" 
-                                value={res.max}
-                                onChange={(e) => {
-                                  const newMax = parseInt(e.target.value) || 0;
-                                  setFormData(prev => {
-                                    if (!prev) return null;
-                                    return {
-                                      ...prev,
-                                      resources: prev.resources.map(r => {
-                                        if (r.id === res.id) {
-                                          return { 
-                                            ...r, 
-                                            max: newMax, 
-                                            // Enforce logical constraint: Current cannot be > Max
-                                            current: r.current > newMax ? newMax : r.current 
-                                          };
-                                        }
-                                        return r;
-                                      })
-                                    };
-                                  });
-                                }}
-                                className="w-full bg-slate-900 rounded p-2 text-slate-100 font-mono text-center outline-none border border-slate-700 focus:border-amber-500"
-                              />
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[9px] uppercase font-bold text-slate-500 block mb-1">Atual</label>
+                                  <input 
+                                    type="number" 
+                                    value={res.current}
+                                    onChange={(e) => updateResource(res.id, 'current', parseInt(e.target.value) || 0)}
+                                    className="w-full bg-slate-900 rounded p-2 text-slate-100 font-mono text-center outline-none border border-slate-700 focus:border-amber-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[9px] uppercase font-bold text-slate-500 block mb-1">Máximo</label>
+                                  <input 
+                                    type="number" 
+                                    value={res.max}
+                                    onChange={(e) => {
+                                      const newMax = parseInt(e.target.value) || 0;
+                                      setFormData(prev => {
+                                        if (!prev) return null;
+                                        return {
+                                          ...prev,
+                                          resources: prev.resources.map(r => {
+                                            if (r.id === res.id) {
+                                              return { 
+                                                ...r, 
+                                                max: newMax, 
+                                                // Enforce logical constraint: Current cannot be > Max
+                                                current: r.current > newMax ? newMax : r.current 
+                                              };
+                                            }
+                                            return r;
+                                          })
+                                        };
+                                      });
+                                    }}
+                                    className="w-full bg-slate-900 rounded p-2 text-slate-100 font-mono text-center outline-none border border-slate-700 focus:border-amber-500"
+                                  />
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                      </SortableItem>
+                    ))}
+                  </SortableContext>
+                </DndContext>
                 {formData.resources.length === 0 && <p className="text-xs text-slate-600 italic text-center">Nenhum recurso adicionado.</p>}
               </div>
             </div>
@@ -1415,59 +1485,72 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
               </div>
 
               <div className="space-y-3">
-                {formData.attributes.map((attr) => {
-                  const isDiceEmpty = !attr.dice || attr.dice.trim() === '';
-                  return (
-                    <div key={attr.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
-                        <div className="flex justify-between gap-2">
-                          <input 
-                            type="text" 
-                            value={attr.name}
-                            onChange={(e) => updateAttribute(attr.id, 'name', e.target.value)}
-                            className="flex-1 bg-transparent border-b border-slate-700 text-slate-100 font-bold outline-none focus:border-amber-500 pb-1"
-                            placeholder="Nome do Atributo"
-                          />
-                          <button onClick={() => { play('CLICK'); removeAttribute(attr.id); }} className="text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="text-[9px] uppercase font-bold text-slate-500 block mb-1">Valor</label>
-                            <input 
-                              type="number" 
-                              value={attr.value}
-                              onChange={(e) => updateAttribute(attr.id, 'value', parseInt(e.target.value) || 0)}
-                              className="w-full bg-slate-900 rounded p-2 text-slate-100 font-mono text-center outline-none border border-slate-700 focus:border-amber-500 h-10"
-                            />
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEndAttributes}
+                >
+                  <SortableContext
+                    items={formData.attributes.map(a => a.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {formData.attributes.map((attr) => {
+                      const isDiceEmpty = !attr.dice || attr.dice.trim() === '';
+                      return (
+                        <SortableItem key={attr.id} id={attr.id}>
+                          <div className="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
+                              <div className="flex justify-between gap-2">
+                                <input 
+                                  type="text" 
+                                  value={attr.name}
+                                  onChange={(e) => updateAttribute(attr.id, 'name', e.target.value)}
+                                  className="flex-1 bg-transparent border-b border-slate-700 text-slate-100 font-bold outline-none focus:border-amber-500 pb-1"
+                                  placeholder="Nome do Atributo"
+                                />
+                                <button onClick={() => { play('CLICK'); removeAttribute(attr.id); }} className="text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
+                              </div>
+                              
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="text-[9px] uppercase font-bold text-slate-500 block mb-1">Valor</label>
+                                  <input 
+                                    type="number" 
+                                    value={attr.value}
+                                    onChange={(e) => updateAttribute(attr.id, 'value', parseInt(e.target.value) || 0)}
+                                    className="w-full bg-slate-900 rounded p-2 text-slate-100 font-mono text-center outline-none border border-slate-700 focus:border-amber-500 h-10"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[9px] uppercase font-bold text-slate-500 block mb-1">Tipo de Teste</label>
+                                  <select 
+                                    value={attr.rollType}
+                                    onChange={(e) => updateAttribute(attr.id, 'rollType', e.target.value)}
+                                    className="w-full bg-slate-900 rounded px-2 text-slate-100 text-xs outline-none border border-slate-700 focus:border-amber-500 appearance-none h-10"
+                                  >
+                                      <option value="UNDER">≤ (Rolar Abaixo)</option>
+                                      <option value="OVER">≥ (Rolar Acima)</option>
+                                      <option value="NONE">Apenas Rolar</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${isDiceEmpty ? 'text-red-400' : 'text-slate-500'} ${validationErrors.has(attr.id) ? 'animate-pulse' : ''}`}>
+                                      Dado {isDiceEmpty && '*'}
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    value={attr.dice || ''}
+                                    onChange={(e) => updateAttribute(attr.id, 'dice', e.target.value)}
+                                    className={`w-full bg-slate-900 rounded p-2 text-slate-100 font-mono text-center text-xs outline-none border ${isDiceEmpty ? 'border-red-500/60 focus:border-red-500' : 'border-slate-700 focus:border-amber-500'} h-10 placeholder-slate-600`}
+                                    placeholder="Ex: 1d20"
+                                  />
+                                </div>
+                              </div>
                           </div>
-                          <div>
-                            <label className="text-[9px] uppercase font-bold text-slate-500 block mb-1">Tipo de Teste</label>
-                            <select 
-                              value={attr.rollType}
-                              onChange={(e) => updateAttribute(attr.id, 'rollType', e.target.value)}
-                              className="w-full bg-slate-900 rounded px-2 text-slate-100 text-xs outline-none border border-slate-700 focus:border-amber-500 appearance-none h-10"
-                            >
-                                <option value="UNDER">≤ (Rolar Abaixo)</option>
-                                <option value="OVER">≥ (Rolar Acima)</option>
-                                <option value="NONE">Apenas Rolar</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className={`text-[9px] uppercase font-bold block mb-1 ${isDiceEmpty ? 'text-red-400' : 'text-slate-500'} ${validationErrors.has(attr.id) ? 'animate-pulse' : ''}`}>
-                                Dado {isDiceEmpty && '*'}
-                            </label>
-                            <input 
-                              type="text" 
-                              value={attr.dice || ''}
-                              onChange={(e) => updateAttribute(attr.id, 'dice', e.target.value)}
-                              className={`w-full bg-slate-900 rounded p-2 text-slate-100 font-mono text-center text-xs outline-none border ${isDiceEmpty ? 'border-red-500/60 focus:border-red-500' : 'border-slate-700 focus:border-amber-500'} h-10 placeholder-slate-600`}
-                              placeholder="Ex: 1d20"
-                            />
-                          </div>
-                        </div>
-                    </div>
-                  );
-                })}
+                        </SortableItem>
+                      );
+                    })}
+                  </SortableContext>
+                </DndContext>
                 {formData.attributes.length === 0 && <p className="text-xs text-slate-600 italic text-center">Nenhum atributo adicionado.</p>}
               </div>
             </div>
@@ -1525,33 +1608,46 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
               </div>
 
               <div className="space-y-2">
-                {formData.inventory.map((item, idx) => {
-                  // Safe rendering for migrated items or new structure
-                  const isString = typeof item === 'string';
-                  const id = isString ? `str-${idx}` : item.id;
-                  const name = isString ? item : item.name;
-                  const quantity = isString ? 1 : item.quantity;
-                  const isPerm = isString ? false : item.isPermanent;
-                  const dice = isString ? undefined : item.dice;
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEndInventory}
+                >
+                  <SortableContext
+                    items={formData.inventory.map((item) => (typeof item === 'string' ? `str-${item}` : item.id))}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {formData.inventory.map((item, idx) => {
+                      // Safe rendering for migrated items or new structure
+                      const isString = typeof item === 'string';
+                      const id = isString ? `str-${idx}` : item.id;
+                      const name = isString ? item : item.name;
+                      const quantity = isString ? 1 : item.quantity;
+                      const isPerm = isString ? false : item.isPermanent;
+                      const dice = isString ? undefined : item.dice;
 
-                  return (
-                    <div key={id} className="flex items-center justify-between p-2 bg-slate-800 rounded border border-slate-700 group">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          {isPerm ? <Shield size={14} className="text-blue-400 flex-none" /> : <div className="w-3.5" />}
-                          <span className="text-sm font-bold text-slate-200 truncate">{name}</span>
-                          {quantity > 1 && <span className="text-xs text-amber-500 font-mono">x{quantity}</span>}
-                          {dice && <span className="text-[10px] text-slate-500 font-mono bg-slate-900 px-1 rounded">{dice}</span>}
-                        </div>
-                        <button 
-                          type="button"
-                          onClick={() => { play('CLICK'); removeItem(isString ? name : item.id); }} // For string items we might have issues removing exact one if duplicates exist, but minimal impact for now
-                          className="text-slate-600 hover:text-red-500 p-1"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                    </div>
-                  );
-                })}
+                      return (
+                        <SortableItem key={id} id={id}>
+                          <div className="flex items-center justify-between p-2 bg-slate-800 rounded border border-slate-700 group">
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                {isPerm ? <Shield size={14} className="text-blue-400 flex-none" /> : <div className="w-3.5" />}
+                                <span className="text-sm font-bold text-slate-200 truncate">{name}</span>
+                                {quantity > 1 && <span className="text-xs text-amber-500 font-mono">x{quantity}</span>}
+                                {dice && <span className="text-[10px] text-slate-500 font-mono bg-slate-900 px-1 rounded">{dice}</span>}
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={() => { play('CLICK'); removeItem(isString ? name : item.id); }} // For string items we might have issues removing exact one if duplicates exist, but minimal impact for now
+                                className="text-slate-600 hover:text-red-500 p-1"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                          </div>
+                        </SortableItem>
+                      );
+                    })}
+                  </SortableContext>
+                </DndContext>
                 {formData.inventory.length === 0 && <p className="text-xs text-slate-600 italic text-center">Inventário vazio.</p>}
               </div>
             </div>
