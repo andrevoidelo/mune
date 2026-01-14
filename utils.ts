@@ -154,3 +154,38 @@ export const getContrastColor = (hex: string): string => {
   // Threshold can be tweaked. 127.5 is standard midpoint.
   return brightness > 127.5 ? '#000000' : '#ffffff';
 };
+
+export const getLuminance = (hex: string): number => {
+  if (!hex || !/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) return 0;
+
+  let c = hex.substring(1);
+  if (c.length === 3) {
+      c = c.split('').map(char => char + char).join('');
+  }
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  
+  // Perceived brightness (0-255)
+  return Math.sqrt(0.299 * r * r + 0.587 * g * g + 0.114 * b * b);
+};
+
+export const adjustColorBrightness = (hex: string, percent: number): string => {
+  if (!hex || !/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) return hex;
+
+  let c = hex.substring(1);
+  if (c.length === 3) {
+      c = c.split('').map(char => char + char).join('');
+  }
+  
+  const num = parseInt(c, 16);
+  let r = (num >> 16) + percent;
+  let g = ((num >> 8) & 0x00FF) + percent;
+  let b = (num & 0x0000FF) + percent;
+
+  r = Math.min(255, Math.max(0, r));
+  g = Math.min(255, Math.max(0, g));
+  b = Math.min(255, Math.max(0, b));
+
+  return `#${(g | (b << 8) | (r << 16)).toString(16).padStart(6, '0')}`;
+};

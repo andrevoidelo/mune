@@ -217,3 +217,132 @@ export const CARD_THEMES: Record<string, string> = {
   cyan:   'bg-cyan-900/40 border-cyan-500/50 text-cyan-100',
   pink:   'bg-pink-900/40 border-pink-500/50 text-pink-100',
 };
+
+export const BUILT_IN_THEMES = [
+  {
+    id: 'default',
+    name: 'Padrão',
+    isBuiltIn: true,
+    colors: {
+      appBg: '#0f172a',
+      cardBg: '#1e293b',
+      cardHover: '#334155',
+      border: '#334155',
+      textMain: '#f1f5f9',
+      textMuted: '#94a3b8',
+      textDim: '#475569',
+      primary: '#f59e0b',
+      primaryHover: '#d97706',
+      primaryActive: '#b45309',
+      textAccent: '#f59e0b',
+      onPrimary: '#020617',
+      success: '#4ade80',
+      error: '#f87171'
+    }
+  },
+  {
+    id: 'light',
+    name: 'Claro',
+    isBuiltIn: true,
+    colors: {
+      appBg: '#fafaf9',
+      cardBg: '#ffffff',
+      cardHover: '#f5f5f4',
+      border: '#e7e5e4',
+      textMain: '#1c1917',
+      textMuted: '#57534e',
+      textDim: '#a8a29e',
+      primary: '#d97706',
+      primaryHover: '#b45309',
+      primaryActive: '#92400e',
+      textAccent: '#b45309',
+      onPrimary: '#ffffff',
+      success: '#15803d',
+      error: '#b91c1c'
+    }
+  },
+  {
+    id: 'fantasy',
+    name: 'Fantasia',
+    isBuiltIn: true,
+    colors: {
+      appBg: '#1c1917',
+      cardBg: '#292524',
+      cardHover: '#44403c',
+      border: '#57534e',
+      textMain: '#f5f5f4',
+      textMuted: '#a8a29e',
+      textDim: '#57534e',
+      primary: '#eab308',
+      primaryHover: '#ca8a04',
+      primaryActive: '#a16207',
+      textAccent: '#eab308',
+      onPrimary: '#1c1917',
+      success: '#14532d',
+      error: '#7f1d1d'
+    }
+  },
+  {
+    id: 'scifi',
+    name: 'Sci-Fi',
+    isBuiltIn: true,
+    colors: {
+      appBg: '#f0f9ff',
+      cardBg: '#e0f2fe',
+      cardHover: '#bae6fd',
+      border: '#7dd3fc',
+      textMain: '#0c4a6e',
+      textMuted: '#0284c7',
+      textDim: '#38bdf8',
+      primary: '#3b82f6',
+      primaryHover: '#2563eb',
+      primaryActive: '#1d4ed8',
+      textAccent: '#1d4ed8',
+      onPrimary: '#ffffff',
+      success: '#15803d',
+      error: '#b91c1c'
+    }
+  },
+  {
+    id: 'cyberpunk',
+    name: 'Cyberpunk',
+    isBuiltIn: true,
+    colors: {
+      appBg: '#0a0514',
+      cardBg: '#140a23',
+      cardHover: '#280f3c',
+      border: '#501e6e',
+      textMain: '#e879f9',
+      textMuted: '#c026d3',
+      textDim: '#6b21a8',
+      primary: '#38bdf8',
+      primaryHover: '#0ea5e9',
+      primaryActive: '#0284c7',
+      textAccent: '#38bdf8',
+      onPrimary: '#0a0514',
+      success: '#4ade80',
+      error: '#f87171'
+    }
+  },
+  {
+    id: 'terminal',
+    name: 'Terminal',
+    isBuiltIn: true,
+    colors: {
+      appBg: '#000000',
+      cardBg: '#050505',
+      cardHover: '#0a190a',
+      border: '#143214',
+      textMain: '#4ade80',
+      textMuted: '#22c55e',
+      textDim: '#15803d',
+      primary: '#4ade80',
+      primaryHover: '#166534',
+      primaryActive: '#15803d',
+      textAccent: '#4ade80',
+      onPrimary: '#000000',
+      success: '#4ade80',
+      error: '#f87171'
+    }
+  }
+];

@@ -94,6 +94,31 @@ export interface NpcEntry {
   notes: string;
 }
 
+export interface AppTheme {
+  id: string;
+  name: string;
+  isBuiltIn: boolean;
+  colors: {
+    appBg: string;      // --app-bg
+    cardBg: string;     // --card-bg
+    cardHover: string;  // --card-hover
+    border: string;     // --border-color
+    
+    textMain: string;   // --text-main
+    textMuted: string;  // --text-muted
+    textDim: string;    // --text-dim
+    
+    primary: string;       // --primary
+    primaryHover: string;  // --primary-hover
+    primaryActive: string; // --primary-active
+    textAccent: string;    // --text-accent (usually same as primary)
+    onPrimary: string;     // --on-primary (contrast text for primary buttons)
+    
+    success: string;       // --success
+    error: string;         // --error
+  };
+}
+
 export interface Adventure {
   id: string;
   name: string;
