@@ -9,6 +9,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from './SortableItem';
 import { ColorPicker } from './ColorPicker';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 const PREVIEW_COLORS: Record<string, string> = {
   slate:  '#64748b', 
@@ -72,7 +73,7 @@ const getLabelStyle = (color?: string) => {
 
 const getInputStyle = (color?: string) => {
   if (!color || color === 'slate') {
-    return 'border-slate-700 text-slate-100 placeholder-slate-500 focus:border-amber-500';
+    return 'border-border text-txt-main placeholder-txt-dim focus:border-primary';
   }
   if (CARD_THEMES[color]) {
     return 'border-white/30 text-white placeholder-white/50 focus:border-white';
@@ -85,7 +86,7 @@ const getInputStyle = (color?: string) => {
 
 const getButtonStyle = (color?: string) => {
     if (!color || color === 'slate') {
-        return 'text-slate-400 hover:text-slate-100 hover:bg-slate-700';
+        return 'text-txt-muted hover:text-txt-main hover:bg-card-hover';
     }
     if (CARD_THEMES[color]) {
         return 'text-white/70 hover:text-white hover:bg-white/10';
@@ -557,24 +558,24 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         onClick={() => { play('CLICK'); setPendingRoll(null); }}
       >
         <div 
-          className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200"
+          className="w-full max-w-sm bg-card border border-border rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200"
           onClick={e => e.stopPropagation()}
         >
           <button 
             type="button"
             onClick={() => { play('CLICK'); setPendingRoll(null); }}
-            className="absolute top-4 right-4 text-slate-500 hover:text-slate-100"
+            className="absolute top-4 right-4 text-txt-muted hover:text-txt-main"
           >
             <X size={20} />
           </button>
 
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-slate-800 rounded-xl border border-slate-700">
-               <Shield size={24} className="text-amber-500" />
+            <div className="p-3 bg-card-hover rounded-xl border border-border">
+               <Shield size={24} className="text-primary" />
             </div>
             <div>
-               <h3 className="text-lg font-bold text-slate-100 leading-none">{pendingRoll.charName}</h3>
-               <p className="text-sm text-slate-400 mt-1 uppercase font-bold tracking-wider">
+               <h3 className="text-lg font-bold text-txt-main leading-none">{pendingRoll.charName}</h3>
+               <p className="text-sm text-txt-muted mt-1 uppercase font-bold tracking-wider">
                  {attr.name} {!isNone && `• ${attr.value}`}
                </p>
             </div>
@@ -589,8 +590,8 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                  onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, mode: 'DISADVANTAGE' })); }}
                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
                    rollConfig.mode === 'DISADVANTAGE' 
-                   ? 'bg-red-900/30 border-red-500 text-red-100' 
-                   : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'
+                   ? 'bg-error/20 border-error text-error' 
+                   : 'bg-card border-border text-txt-muted hover:bg-card-hover'
                  }`}
                >
                  <TrendingDown size={20} className="mb-1" />
@@ -601,8 +602,8 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                  onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, mode: 'NORMAL' })); }}
                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
                    rollConfig.mode === 'NORMAL' 
-                   ? 'bg-slate-700 border-slate-500 text-slate-100' 
-                   : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'
+                   ? 'bg-card-hover border-txt-muted text-txt-main' 
+                   : 'bg-card border-border text-txt-muted hover:bg-card-hover'
                  }`}
                >
                  <Shield size={20} className="mb-1" />
@@ -613,8 +614,8 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                  onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, mode: 'ADVANTAGE' })); }}
                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
                    rollConfig.mode === 'ADVANTAGE' 
-                   ? 'bg-green-900/30 border-green-500 text-green-100' 
-                   : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'
+                   ? 'bg-success/20 border-success text-success' 
+                   : 'bg-card border-border text-txt-muted hover:bg-card-hover'
                  }`}
                >
                  <TrendingUp size={20} className="mb-1" />
@@ -624,31 +625,31 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
             {/* Target Modifier - Only show if not NONE */}
             {!isNone && (
-                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                <div className="bg-card/50 rounded-xl p-4 border border-border">
                    <div className="flex justify-between items-center mb-3">
-                     <span className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
+                     <span className="text-xs font-bold text-txt-muted uppercase flex items-center gap-2">
                        <Target size={14} /> Modificar Alvo
                      </span>
-                     <span className="text-xs font-mono text-slate-500">
-                       Alvo Final: <span className="text-slate-100 font-bold text-sm">{attr.value + rollConfig.modifier}</span>
+                     <span className="text-xs font-mono text-txt-dim">
+                       Alvo Final: <span className="text-txt-main font-bold text-sm">{attr.value + rollConfig.modifier}</span>
                      </span>
                    </div>
                    
                    <div className="flex items-center gap-3">
                      <button 
                        onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, modifier: prev.modifier - 1 })); }}
-                       className="w-12 h-12 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-600 active:scale-95 transition-all"
+                       className="w-12 h-12 flex items-center justify-center bg-card hover:bg-card-hover text-txt-muted rounded-lg border border-border active:scale-95 transition-all"
                      >
                        <Minus size={20} />
                      </button>
                      
-                     <div className="flex-1 text-center font-mono text-2xl font-black text-slate-100 bg-slate-900 rounded-lg py-2 border border-slate-700">
+                     <div className="flex-1 text-center font-mono text-2xl font-black text-txt-main bg-app rounded-lg py-2 border border-border">
                        {rollConfig.modifier > 0 ? '+' : ''}{rollConfig.modifier}
                      </div>
 
                      <button 
                        onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, modifier: prev.modifier + 1 })); }}
-                       className="w-12 h-12 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-600 active:scale-95 transition-all"
+                       className="w-12 h-12 flex items-center justify-center bg-card hover:bg-card-hover text-txt-muted rounded-lg border border-border active:scale-95 transition-all"
                      >
                        <Plus size={20} />
                      </button>
@@ -658,7 +659,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
             <button
               onClick={executeRoll}
-              className="w-full bg-amber-600 hover:bg-amber-500 text-on-primary font-bold uppercase tracking-wider py-4 rounded-xl shadow-lg shadow-amber-900/20 active:translate-y-1 transition-all"
+              className="w-full bg-primary hover:bg-primary-hover text-on-primary font-bold uppercase tracking-wider py-4 rounded-xl shadow-lg shadow-primary/20 active:translate-y-1 transition-all"
             >
               Rolar {attr.dice || 'd20'}
             </button>
@@ -678,14 +679,14 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     
     let borderClass = "";
     if (isNone) {
-        borderClass = "border-blue-500 shadow-blue-900/20";
+        borderClass = "border-primary shadow-primary/20";
     } else {
-        borderClass = rollResult.isSuccess ? 'border-green-500 shadow-green-900/20' : 'border-red-500 shadow-red-900/20';
+        borderClass = rollResult.isSuccess ? 'border-success shadow-success/20' : 'border-error shadow-error/20';
     }
 
     const containerState = isRevealing 
-      ? "bg-slate-800 border-2 border-slate-600 scale-100" 
-      : `bg-slate-900 border-2 ${borderClass} scale-105`;
+      ? "bg-card border-2 border-border scale-100" 
+      : `bg-app border-2 ${borderClass} scale-105`;
 
     return (
       <div 
@@ -700,44 +701,44 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
              <button 
                type="button"
                onClick={() => { play('CLICK'); setRollResult(null); }}
-               className="absolute top-3 right-3 text-slate-500 hover:text-slate-100 bg-slate-800 rounded-full p-1 animate-in fade-in"
+               className="absolute top-3 right-3 text-txt-muted hover:text-txt-main bg-card rounded-full p-1 animate-in fade-in"
              >
                <X size={16} />
              </button>
           )}
 
-          <h3 className="text-slate-400 uppercase text-[10px] font-bold tracking-widest mb-4">
+          <h3 className="text-txt-muted uppercase text-[10px] font-bold tracking-widest mb-4">
             {rollResult.charName} • {rollResult.attrName}
           </h3>
           
           <div className="flex items-center justify-center gap-3 mb-6">
              <div className="flex flex-col items-center relative">
-                <span className="text-[10px] uppercase font-bold text-slate-500 mb-1">Resultado</span>
+                <span className="text-[10px] uppercase font-bold text-txt-dim mb-1">Resultado</span>
                 
                 {isRevealing ? (
                   <div className="h-16 flex items-center justify-center">
-                    <Dices className="text-slate-600 animate-spin" size={40} />
+                    <Dices className="text-txt-dim animate-spin" size={40} />
                   </div>
                 ) : (
                   <div className="animate-in zoom-in spin-in-180 duration-500">
-                    <span className={`text-6xl font-black ${!isNone && rollResult.isSuccess ? 'text-slate-100' : (isNone ? 'text-blue-200' : 'text-slate-200')}`}>
+                    <span className={`text-6xl font-black ${!isNone && rollResult.isSuccess ? 'text-txt-main' : (isNone ? 'text-primary' : 'text-txt-main')}`}>
                       {rollResult.roll}
                     </span>
                   </div>
                 )}
                 
-                <span className="text-[10px] text-slate-500 font-mono mt-1 min-h-[15px]">
+                <span className="text-[10px] text-txt-dim font-mono mt-1 min-h-[15px]">
                    {!isRevealing && rollResult.diceNotation}
                 </span>
              </div>
              
              {!isNone && (
                  <>
-                     <div className="h-12 w-px bg-slate-700 mx-2"></div>
+                     <div className="h-12 w-px bg-border mx-2"></div>
 
                      <div className="flex flex-col items-center justify-center">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 mb-1">Alvo</span>
-                        <span className="text-3xl font-bold text-slate-400 font-mono">
+                        <span className="text-[10px] uppercase font-bold text-txt-dim mb-1">Alvo</span>
+                        <span className="text-3xl font-bold text-txt-muted font-mono">
                           {rollResult.target}
                         </span>
                      </div>
@@ -747,10 +748,10 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
           <div className="h-8 flex items-center justify-center">
             {isRevealing ? (
-               <span className="text-slate-500 font-bold uppercase tracking-widest text-sm animate-pulse">Rolando...</span>
+               <span className="text-txt-dim font-bold uppercase tracking-widest text-sm animate-pulse">Rolando...</span>
             ) : (
                !isNone && (
-                   <div className={`text-2xl font-black uppercase tracking-tight animate-in slide-in-from-bottom-2 duration-300 ${rollResult.isSuccess ? 'text-green-500' : 'text-red-500'}`}>
+                   <div className={`text-2xl font-black uppercase tracking-tight animate-in slide-in-from-bottom-2 duration-300 ${rollResult.isSuccess ? 'text-success' : 'text-error'}`}>
                      {rollResult.isSuccess ? 'SUCESSO!' : 'FALHA!'}
                    </div>
                )
@@ -758,8 +759,8 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           </div>
           
           {!isRevealing && !isNone && (
-            <div className="mt-4 inline-block bg-slate-800 px-3 py-1 rounded-full border border-slate-700 animate-in fade-in delay-100">
-               <span className="text-[10px] text-slate-400 uppercase font-bold">
+            <div className="mt-4 inline-block bg-card px-3 py-1 rounded-full border border-border animate-in fade-in delay-100">
+               <span className="text-[10px] text-txt-muted uppercase font-bold">
                  {rollResult.rollType === 'UNDER' ? 'Roll Under (Menor)' : 'Roll Over (Maior)'}
                </span>
             </div>
@@ -774,11 +775,11 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
     // Animation Classes matching Attribute Modal
     const containerBase = "w-full max-w-xs rounded-2xl p-6 text-center shadow-2xl relative transition-all duration-300";
-    const borderClass = "border-blue-500 shadow-blue-900/20"; // Items are always Blue/Neutral
+    const borderClass = "border-primary shadow-primary/20"; 
 
     const containerState = isItemRevealing 
-      ? "bg-slate-800 border-2 border-slate-600 scale-100" 
-      : `bg-slate-900 border-2 ${borderClass} scale-105`;
+      ? "bg-card border-2 border-border scale-100" 
+      : `bg-app border-2 ${borderClass} scale-105`;
 
     return (
       <div 
@@ -793,39 +794,39 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             <button 
               type="button"
               onClick={() => { play('CLICK'); setItemRollResult(null); }}
-              className="absolute top-3 right-3 text-slate-500 hover:text-slate-100 bg-slate-800 rounded-full p-1 animate-in fade-in"
+              className="absolute top-3 right-3 text-txt-muted hover:text-txt-main bg-card rounded-full p-1 animate-in fade-in"
             >
               <X size={16} />
             </button>
           )}
 
-          <h3 className="text-slate-400 uppercase text-[10px] font-bold tracking-widest mb-4 flex items-center justify-center gap-2">
+          <h3 className="text-txt-muted uppercase text-[10px] font-bold tracking-widest mb-4 flex items-center justify-center gap-2">
             <Backpack size={12} /> {itemRollResult.itemName}
           </h3>
           
           <div className="flex flex-col items-center relative mb-4">
-            <span className="text-[10px] uppercase font-bold text-slate-500 mb-2">Resultado</span>
+            <span className="text-[10px] uppercase font-bold text-txt-dim mb-2">Resultado</span>
             
             {isItemRevealing ? (
               <div className="h-16 flex items-center justify-center">
-                <Dices className="text-slate-600 animate-spin" size={40} />
+                <Dices className="text-txt-dim animate-spin" size={40} />
               </div>
             ) : (
               <div className="animate-in zoom-in spin-in-180 duration-500">
-                <span className="text-6xl font-black text-blue-400 drop-shadow-lg">
+                <span className="text-6xl font-black text-primary drop-shadow-lg">
                   {itemRollResult.roll}
                 </span>
               </div>
             )}
             
-            <span className="text-xs text-slate-500 font-mono mt-2 bg-slate-800 px-2 py-1 rounded border border-slate-700 min-h-[24px] flex items-center">
+            <span className="text-xs text-txt-dim font-mono mt-2 bg-card px-2 py-1 rounded border border-border min-h-[24px] flex items-center">
                {!isItemRevealing && itemRollResult.diceNotation}
             </span>
           </div>
 
-           <div className="mt-2 text-xs text-slate-400 font-mono min-h-[16px] flex items-center justify-center">
+           <div className="mt-2 text-xs text-txt-muted font-mono min-h-[16px] flex items-center justify-center">
               {isItemRevealing ? (
-                <span className="text-slate-500 font-bold uppercase tracking-widest text-sm animate-pulse">Rolando...</span>
+                <span className="text-txt-dim font-bold uppercase tracking-widest text-sm animate-pulse">Rolando...</span>
               ) : (
                 itemRollResult.detailText
               )}
@@ -846,38 +847,38 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         onClick={() => { play('CLICK'); setItemToUse(null); }}
       >
         <div 
-          className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
+          className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
           onClick={e => e.stopPropagation()}
         >
           <button 
             type="button"
             onClick={() => { play('CLICK'); setItemToUse(null); }}
-            className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
+            className="absolute top-4 right-4 text-txt-muted hover:text-txt-main"
           >
             <X size={20} />
           </button>
           
-          <h3 className="text-lg font-bold text-slate-100 mb-3 flex items-center gap-2">
-            <Backpack size={20} className="text-amber-500" />
+          <h3 className="text-lg font-bold text-txt-main mb-3 flex items-center gap-2">
+            <Backpack size={20} className="text-primary" />
             Usar Item
           </h3>
           
-          <p className="text-slate-300 mb-6 text-sm leading-relaxed">
-            Deseja usar o item <span className="text-slate-100 font-bold">"{itemName}"</span>?
+          <p className="text-txt-muted mb-6 text-sm leading-relaxed">
+            Deseja usar o item <span className="text-txt-main font-bold">"{itemName}"</span>?
             <br />
-            <span className="text-xs text-slate-500 mt-1 block">Isso registrará a ação no log.</span>
+            <span className="text-xs text-txt-dim mt-1 block">Isso registrará a ação no log.</span>
           </p>
           
           <div className="flex gap-3">
             <button
               onClick={() => { play('CLICK'); setItemToUse(null); }}
-              className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold text-sm transition-colors"
+              className="flex-1 px-4 py-3 bg-card-hover hover:bg-border text-txt-main rounded-lg font-bold text-sm transition-colors"
             >
               Cancelar
             </button>
             <button
               onClick={confirmUseItem}
-              className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-500 text-on-primary rounded-lg font-bold text-sm transition-colors shadow-lg shadow-amber-900/20"
+              className="flex-1 px-4 py-3 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold text-sm transition-colors shadow-lg shadow-primary/20"
             >
               Sim, usar
             </button>
@@ -887,77 +888,28 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     );
   };
 
-  const renderDeleteConfirmModal = () => {
-    if (!charToDelete) return null;
-    return (
-      <div 
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        onClick={() => { play('CLICK'); setCharToDelete(null); }}
-      >
-        <div 
-          className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
-          onClick={e => e.stopPropagation()}
-        >
-          <button 
-            type="button"
-            onClick={() => { play('CLICK'); setCharToDelete(null); }}
-            className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
-          >
-            <X size={20} />
-          </button>
-          
-          <h3 className="text-lg font-bold text-slate-100 mb-3 flex items-center gap-2">
-            <Trash2 size={20} className="text-red-500" />
-            Excluir Personagem
-          </h3>
-          
-          <p className="text-slate-300 mb-6 text-sm leading-relaxed">
-            Tem certeza que deseja excluir permanentemente <strong>{charToDelete.name}</strong>?
-            <br/>
-            <span className="text-xs text-slate-500 mt-1 block">Esta ação não pode ser desfeita.</span>
-          </p>
-          
-          <div className="flex gap-3">
-            <button
-              onClick={() => { play('CLICK'); setCharToDelete(null); }}
-              className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold text-sm transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => { play('CLICK'); confirmDelete(); }}
-              className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-slate-100 rounded-lg font-bold text-sm transition-colors shadow-lg shadow-red-900/20"
-            >
-              Sim, excluir
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const renderList = () => (
-    <div className="h-full overflow-y-auto bg-slate-900">
+    <div className="h-full overflow-y-auto bg-app">
       <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-24 max-w-7xl mx-auto">
         {characters.map(char => (
           <div 
             key={char.id}
             onClick={() => { play('CLICK'); setSelectedCharId(char.id); setMode('DETAIL'); }}
-            className="aspect-[3/4] rounded-xl bg-slate-800 border border-slate-700 overflow-hidden relative shadow-lg hover:shadow-amber-900/10 hover:border-amber-500/50 transition-all active:scale-95 cursor-pointer flex flex-col"
+            className="aspect-[3/4] rounded-xl bg-card border border-border overflow-hidden relative shadow-lg hover:border-primary/50 transition-all active:scale-95 cursor-pointer flex flex-col"
           >
-            <div className="flex-1 bg-slate-900 relative min-h-0">
+            <div className="flex-1 bg-app relative min-h-0">
                {char.imageUrl ? (
                  <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover object-top" />
                ) : (
-                 <div className="w-full h-full flex items-center justify-center text-slate-700">
+                 <div className="w-full h-full flex items-center justify-center text-txt-dim">
                    <User size={48} />
                  </div>
                )}
-               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60" />
+               <div className="absolute inset-0 bg-gradient-to-t from-app/80 via-transparent to-transparent opacity-60" />
             </div>
-            <div className="p-3 bg-slate-800 border-t border-slate-700/50">
-              <h3 className="font-bold text-slate-100 leading-tight truncate">{char.name}</h3>
-              <p className="text-xs text-amber-500 truncate">{char.profession}</p>
+            <div className="p-3 bg-card border-t border-border/50">
+              <h3 className="font-bold text-txt-main leading-tight truncate">{char.name}</h3>
+              <p className="text-xs text-primary truncate">{char.profession}</p>
             </div>
           </div>
         ))}
@@ -965,9 +917,9 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         <button 
           type="button"
           onClick={() => { play('CLICK'); handleCreateNew(); }}
-          className="aspect-[3/4] rounded-xl border-2 border-dashed border-slate-700 hover:border-amber-500 bg-slate-800/50 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-amber-500 transition-all active:scale-95 group"
+          className="aspect-[3/4] rounded-xl border-2 border-dashed border-border hover:border-primary bg-card/50 flex flex-col items-center justify-center gap-2 text-txt-dim hover:text-primary transition-all active:scale-95 group"
         >
-          <div className="bg-slate-800 p-3 rounded-full group-hover:bg-amber-500/10 transition-colors">
+          <div className="bg-card p-3 rounded-full group-hover:bg-primary/10 transition-colors">
             <Plus size={32} />
           </div>
           <span className="font-bold uppercase text-xs tracking-wider">Novo Personagem</span>
@@ -981,22 +933,22 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     if (!char) return null;
 
     return (
-      <div className="h-full bg-slate-900 relative flex flex-col landscape:flex-row overflow-y-auto landscape:overflow-hidden">
+      <div className="h-full bg-app relative flex flex-col landscape:flex-row overflow-y-auto landscape:overflow-hidden">
         
         {/* LEFT COLUMN: Identity & Resources */}
         {/* Landscape: Fixed sidebar. Portrait: Part of the main scroll flow */}
-        <div className="w-full landscape:w-[45%] landscape:h-full landscape:overflow-y-auto landscape:border-r border-slate-800 bg-slate-900 flex-none">
+        <div className="w-full landscape:w-[45%] landscape:h-full landscape:overflow-y-auto landscape:border-r border-border bg-app flex-none">
           
           {/* Header Image With Info */}
-          <div className="relative w-full flex-none bg-slate-950 h-64 landscape:h-40">
+          <div className="relative w-full flex-none bg-black/20 h-64 landscape:h-40">
             {char.imageUrl ? (
               <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover object-top opacity-60" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-800 bg-slate-900">
+              <div className="w-full h-full flex items-center justify-center text-card bg-app">
                 <User size={50} />
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-app via-app/60 to-transparent" />
             
             {/* Top Buttons */}
             <button 
@@ -1017,7 +969,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                   handleDelete(char.id);
                   play('CLICK');
                 }}
-                className="p-2 bg-red-900/40 backdrop-blur-md rounded-full text-red-200 hover:bg-red-900/60"
+                className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60"
               >
                 <Trash2 size={20} />
               </button>
@@ -1027,18 +979,18 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                   handleEdit(char);
                   play('CLICK');
                 }}
-                className="p-2 bg-amber-900/40 backdrop-blur-md rounded-full text-amber-200 hover:bg-amber-900/60"
+                className="p-2 bg-primary/40 backdrop-blur-md rounded-full text-on-primary hover:bg-primary/60"
               >
                 <Edit2 size={20} />
               </button>
             </div>
 
             {/* Text Info Overlay */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 pt-12 bg-gradient-to-t from-slate-900 to-transparent">
-              <h2 className="text-3xl font-black text-slate-100 drop-shadow-md leading-none mb-1 line-clamp-2">{char.name}</h2>
-              <p className="text-amber-500 font-bold uppercase tracking-wider text-xs shadow-black drop-shadow-sm">{char.profession}</p>
+            <div className="absolute bottom-0 left-0 right-0 p-4 pt-12 bg-gradient-to-t from-app to-transparent">
+              <h2 className="text-3xl font-black text-txt-main drop-shadow-md leading-none mb-1 line-clamp-2">{char.name}</h2>
+              <p className="text-primary font-bold uppercase tracking-wider text-xs shadow-black drop-shadow-sm">{char.profession}</p>
               {char.description && (
-                 <p className="text-slate-300 text-sm italic mt-2 leading-snug drop-shadow-sm line-clamp-3">
+                 <p className="text-txt-muted text-sm italic mt-2 leading-snug drop-shadow-sm line-clamp-3">
                    "{char.description}"
                  </p>
               )}
@@ -1048,13 +1000,13 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           <div className="p-4 space-y-6">
             {/* Resources Block */}
             <div>
-              <h3 className="flex items-center gap-2 text-slate-400 uppercase font-bold text-xs tracking-wider mb-3">
+              <h3 className="flex items-center gap-2 text-txt-muted uppercase font-bold text-xs tracking-wider mb-3">
                 <Activity size={14} /> Recursos
               </h3>
               <div className={`grid gap-2 ${(char.resources?.length || 0) > 0 && (char.resources?.length || 0) % 4 === 0 ? "grid-cols-4" : "grid-cols-3"}`}>
                 {(!char.resources || char.resources.length === 0) ? (
                   <div className="col-span-full">
-                    <p className="text-slate-600 text-sm italic">Sem recursos.</p>
+                    <p className="text-txt-dim text-sm italic">Sem recursos.</p>
                   </div>
                 ) : (
                   char.resources.map(res => {
@@ -1068,20 +1020,20 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                       <div className="flex items-center justify-between w-full bg-black/20 rounded p-1">
                         <button 
                           onClick={() => updateResourceValue(char.id, res.id, -1)}
-                          className={`p-1 rounded transition-colors active:scale-90 ${res.color ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700'}`}
+                          className={`p-1 rounded transition-colors active:scale-90 ${res.color ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-txt-muted hover:text-txt-main hover:bg-card-hover'}`}
                         >
                           <Minus size={14} />
                         </button>
                         
                         <div className="flex flex-col items-center leading-none">
-                           <span className={`text-lg font-black ${res.color ? 'text-white' : 'text-slate-100'}`}>{res.current}</span>
-                           <div className={`w-full h-px my-0.5 ${res.color ? 'bg-white/30' : 'bg-slate-700'}`}></div>
-                           <span className={`text-[9px] font-mono ${res.color ? 'text-white/60' : 'text-slate-500'}`}>{res.max}</span>
+                           <span className={`text-lg font-black ${res.color ? 'text-white' : 'text-txt-main'}`}>{res.current}</span>
+                           <div className={`w-full h-px my-0.5 ${res.color ? 'bg-white/30' : 'bg-border'}`}></div>
+                           <span className={`text-[9px] font-mono ${res.color ? 'text-white/60' : 'text-txt-dim'}`}>{res.max}</span>
                         </div>
 
                         <button 
                           onClick={() => updateResourceValue(char.id, res.id, 1)}
-                          className={`p-1 rounded transition-colors active:scale-90 ${res.color ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700'}`}
+                          className={`p-1 rounded transition-colors active:scale-90 ${res.color ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-txt-muted hover:text-txt-main hover:bg-card-hover'}`}
                         >
                           <Plus size={14} />
                         </button>
@@ -1096,17 +1048,17 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
         {/* RIGHT COLUMN: Stats & Inventory */}
         {/* Landscape: Independent scroll. Portrait: Part of the main scroll flow */}
-        <div className="w-full landscape:flex-1 landscape:h-full landscape:overflow-y-auto bg-slate-900 flex-none">
+        <div className="w-full landscape:flex-1 landscape:h-full landscape:overflow-y-auto bg-app flex-none">
           <div className="p-4 space-y-6 pb-24">
              {/* Attributes Block */}
              <div>
-                <h3 className="flex items-center gap-2 text-slate-400 uppercase font-bold text-xs tracking-wider mb-3">
+                <h3 className="flex items-center gap-2 text-txt-muted uppercase font-bold text-xs tracking-wider mb-3">
                   <Shield size={14} /> Atributos
                 </h3>
                 <div className={`grid gap-2 ${char.attributes.length > 0 && char.attributes.length % 4 === 0 ? "grid-cols-4" : "grid-cols-3"}`}>
                   {char.attributes.length === 0 ? (
                     <div className="col-span-3">
-                      <p className="text-slate-600 text-sm italic">Sem atributos definidos.</p>
+                      <p className="text-txt-dim text-sm italic">Sem atributos definidos.</p>
                     </div>
                   ) : (
                     char.attributes.map(attr => {
@@ -1116,21 +1068,21 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                         type="button"
                         key={attr.id}
                         onClick={() => initiateAttributeRoll(char.name, attr)}
-                        className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all active:scale-[0.98] ${style.className} ${attr.color ? 'hover:brightness-110' : 'hover:border-amber-500 hover:bg-slate-700'}`}
+                        className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all active:scale-[0.98] ${style.className} ${attr.color ? 'hover:brightness-110' : 'hover:border-primary hover:bg-card-hover'}`}
                         style={style.style}
                       >
                         <span className={`text-[10px] uppercase font-bold mb-1 w-full truncate text-center ${getTextStyle(attr.color)}`} title={attr.name}>{attr.name}</span>
                         
-                        <div className={`flex items-center justify-center rounded px-2 w-full mb-1 ${attr.color ? 'bg-black/20' : 'bg-slate-900/50'}`}>
-                            <span className={`text-2xl font-black font-mono ${attr.color ? 'text-white' : 'text-amber-500'}`}>
+                        <div className={`flex items-center justify-center rounded px-2 w-full mb-1 ${attr.color ? 'bg-black/20' : 'bg-app/50'}`}>
+                            <span className={`text-2xl font-black font-mono ${attr.color ? 'text-white' : 'text-primary'}`}>
                                 {attr.value}
                             </span>
                         </div>
 
                         <div className="flex flex-col items-center">
-                             <span className={`text-[9px] font-mono ${attr.color ? 'text-white/70' : 'text-slate-600'}`}>{attr.dice || 'd20'}</span>
+                             <span className={`text-[9px] font-mono ${attr.color ? 'text-white/70' : 'text-txt-dim'}`}>{attr.dice || 'd20'}</span>
                              {attr.rollType !== 'NONE' && (
-                                 <span className={`text-[8px] uppercase font-bold ${attr.color ? 'text-white/50' : 'text-slate-500'}`}>
+                                 <span className={`text-[8px] uppercase font-bold ${attr.color ? 'text-white/50' : 'text-txt-dim'}`}>
                                     {attr.rollType === 'UNDER' ? 'Menor' : 'Maior'}
                                  </span>
                              )}
@@ -1143,12 +1095,12 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
              {/* Inventory Block */}
              <div>
-                <h3 className="flex items-center gap-2 text-slate-400 uppercase font-bold text-xs tracking-wider mb-3">
+                <h3 className="flex items-center gap-2 text-txt-muted uppercase font-bold text-xs tracking-wider mb-3">
                   <Backpack size={14} /> Inventário ({char.inventory.length})
                 </h3>
                 <div className="space-y-2">
                   {char.inventory.length === 0 ? (
-                    <p className="text-slate-600 text-sm italic col-span-full">Mochila vazia.</p>
+                    <p className="text-txt-dim text-sm italic col-span-full">Mochila vazia.</p>
                   ) : (
                     char.inventory.map((item: InventoryItem | string, idx) => {
                       const displayName = typeof item === 'string' ? item : item.name;
@@ -1162,29 +1114,29 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                           <div 
                             key={idx} 
                             onClick={() => handleUseItem(char.name, item)}
-                            className="flex items-center gap-2 text-slate-300 text-sm p-3 bg-slate-800/30 rounded border border-slate-800 cursor-pointer hover:bg-slate-800 hover:border-slate-700 transition-colors active:scale-[0.98]"
+                            className="flex items-center gap-2 text-txt-muted text-sm p-3 bg-card/30 rounded border border-card cursor-pointer hover:bg-card hover:border-border transition-colors active:scale-[0.98]"
                           >
-                            <span className="text-amber-500">•</span> {item} (Antigo)
+                            <span className="text-primary">•</span> {item} (Antigo)
                           </div>
                         );
                       }
 
                       return (
-                        <div key={item.id} className="flex items-center justify-between p-3 bg-slate-800 rounded border border-slate-700">
+                        <div key={item.id} className="flex items-center justify-between p-3 bg-card rounded border border-border">
                           <div 
                             onClick={() => handleUseItem(char.name, item)}
                             className="flex items-center gap-3 flex-1 overflow-hidden cursor-pointer group active:opacity-80 transition-opacity"
                           >
                             {isPerm ? (
-                              <Shield size={16} className="text-blue-400 flex-none group-hover:text-blue-300 transition-colors" />
+                              <Shield size={16} className="text-primary flex-none group-hover:opacity-80 transition-opacity" />
                             ) : (
                               <div className="w-4 flex-none" />
                             )}
-                            <span className={`text-sm font-bold truncate transition-colors ${item.isPermanent ? 'text-blue-100 group-hover:text-slate-100' : 'text-slate-200 group-hover:text-amber-500'}`}>
+                            <span className="text-sm font-bold truncate transition-colors text-txt-main group-hover:text-primary">
                               {item.name}
                             </span>
                             {diceNotation && (
-                               <span className="text-[10px] bg-slate-900 border border-slate-600 text-slate-400 px-1.5 py-0.5 rounded font-mono group-hover:border-amber-500/50 group-hover:text-amber-500">
+                               <span className="text-[10px] bg-app border border-border text-txt-muted px-1.5 py-0.5 rounded font-mono group-hover:border-primary/50 group-hover:text-primary">
                                  {diceNotation}
                                </span>
                             )}
@@ -1194,16 +1146,16 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                             <button 
                               type="button"
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteInventoryItem(char.id, item.id); }} 
-                              className="p-2 text-slate-500 hover:text-red-400 bg-slate-900 rounded"
+                              className="p-2 text-txt-muted hover:text-error bg-app rounded"
                             >
                               <Trash2 size={16} />
                             </button>
                           ) : (
-                            <div className="flex items-center gap-1 bg-slate-900 rounded p-1">
+                            <div className="flex items-center gap-1 bg-app rounded p-1">
                               <button 
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateInventoryItem(char.id, item.id, { quantity: Math.max(0, item.quantity - 1) }); }}
-                                className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-700 rounded transition-colors"
+                                className="p-2 text-txt-muted hover:text-txt-main hover:bg-card-hover rounded transition-colors"
                               >
                                 <Minus size={14} />
                               </button>
@@ -1214,7 +1166,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                   type="number"
                                   inputMode="numeric"
                                   pattern="[0-9]*"
-                                  className="w-12 bg-slate-700 text-slate-100 text-center font-bold text-sm rounded py-1 outline-none border border-amber-500"
+                                  className="w-12 bg-card-hover text-txt-main text-center font-bold text-sm rounded py-1 outline-none border border-primary"
                                   defaultValue={item.quantity}
                                   onBlur={(e) => {
                                     const val = parseInt(e.target.value);
@@ -1231,7 +1183,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                               ) : (
                                 <span 
                                   onClick={(e) => { e.stopPropagation(); setEditingQtyId(item.id); }}
-                                  className="w-8 text-center text-amber-500 font-black font-mono text-lg cursor-text"
+                                  className="w-8 text-center text-primary font-black font-mono text-lg cursor-text"
                                 >
                                   {item.quantity}
                                 </span>
@@ -1240,17 +1192,17 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                               <button 
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateInventoryItem(char.id, item.id, { quantity: item.quantity + 1 }); }}
-                                className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-700 rounded transition-colors"
+                                className="p-2 text-txt-muted hover:text-txt-main hover:bg-card-hover rounded transition-colors"
                               >
                                 <Plus size={14} />
                               </button>
                               
-                              <div className="w-px h-6 bg-slate-700 mx-1"></div>
+                              <div className="w-px h-6 bg-border mx-1"></div>
                               
                               <button 
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteInventoryItem(char.id, item.id); }} 
-                                className="p-2 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded transition-colors"
+                                className="p-2 text-txt-muted hover:text-error hover:bg-card rounded transition-colors"
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -1381,7 +1333,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     };
 
     return (
-      <div className="flex flex-col h-full bg-slate-900 relative">
+      <div className="flex flex-col h-full bg-app relative">
         {/* Persistent Form Header */}
         <div className="absolute top-0 left-0 right-0 z-30 p-4 flex justify-between items-center pointer-events-none">
             <button 
@@ -1395,7 +1347,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             <button 
               type="button"
               onClick={(e) => { play('CLICK'); e.preventDefault(); e.stopPropagation(); handleSave(); }}
-              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-on-primary font-bold rounded-full shadow-lg pointer-events-auto flex items-center gap-2 transition-all active:scale-95"
+              className="px-4 py-2 bg-success hover:bg-green-500 text-on-primary font-bold rounded-full shadow-lg pointer-events-auto flex items-center gap-2 transition-all active:scale-95"
             >
               <CheckSquare size={18} /> Salvar
             </button>
@@ -1404,16 +1356,16 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         <div className="flex-1 overflow-y-auto pb-24 w-full">
           <div className="max-w-3xl mx-auto w-full min-h-full">
             {/* Header / Image Upload */}
-            <div className="relative h-48 w-full flex-none bg-slate-950 group cursor-pointer" onClick={() => { play('CLICK'); triggerFileUpload(); }}>
+            <div className="relative h-48 w-full flex-none bg-black/20 group cursor-pointer" onClick={() => { play('CLICK'); triggerFileUpload(); }}>
               {formData.imageUrl ? (
                 <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover object-top opacity-60 group-hover:opacity-40 transition-opacity" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-800 bg-slate-900 group-hover:bg-slate-800 transition-colors">
+                <div className="w-full h-full flex items-center justify-center text-txt-dim bg-app group-hover:bg-card transition-colors">
                   <ImageIcon size={64} />
                 </div>
               )}
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-slate-900/90 border border-slate-600 text-slate-100 px-5 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 shadow-xl">
+                <span className="bg-app/90 border border-border text-txt-main px-5 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 shadow-xl">
                   <Upload size={16} /> Alterar Imagem
                 </span>
               </div>
@@ -1429,38 +1381,38 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             <div className="p-4 space-y-6">
             {/* Basic Info */}
             <div>
-               <h3 className="flex items-center gap-2 text-slate-400 uppercase font-bold text-xs tracking-wider mb-3">
+               <h3 className="flex items-center gap-2 text-txt-muted uppercase font-bold text-xs tracking-wider mb-3">
                   <FileText size={14} /> Dados Básicos
                </h3>
-               <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
+               <div className="bg-card/50 p-4 rounded-xl border border-border/50 space-y-4">
                  <div>
-                   <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Nome do Personagem</label>
+                   <label className="text-xs uppercase font-bold text-txt-muted mb-1 block">Nome do Personagem</label>
                    <input 
                      type="text" 
                      value={formData.name}
                      onChange={e => setFormData({...formData, name: e.target.value})}
-                     className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-slate-100 font-bold text-lg focus:border-amber-500 outline-none"
+                     className="w-full bg-card border border-border rounded-lg p-3 text-txt-main font-bold text-lg focus:border-primary outline-none"
                      placeholder="Ex: Gandalf, o Cinzento"
                    />
                  </div>
                  
                  <div>
-                   <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Arquétipo / Profissão</label>
+                   <label className="text-xs uppercase font-bold text-txt-muted mb-1 block">Arquétipo / Profissão</label>
                    <input 
                      type="text" 
                      value={formData.profession}
                      onChange={e => setFormData({...formData, profession: e.target.value})}
-                     className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-slate-100 focus:border-amber-500 outline-none"
+                     className="w-full bg-card border border-border rounded-lg p-3 text-txt-main focus:border-primary outline-none"
                      placeholder="Ex: Mago, Guerreiro, Detetive..."
                    />
                  </div>
 
                  <div>
-                   <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Descrição / Notas</label>
+                   <label className="text-xs uppercase font-bold text-txt-muted mb-1 block">Descrição / Notas</label>
                    <textarea 
                      value={formData.description}
                      onChange={e => setFormData({...formData, description: e.target.value})}
-                     className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-slate-100 text-sm focus:border-amber-500 outline-none min-h-[80px]"
+                     className="w-full bg-card border border-border rounded-lg p-3 text-txt-main text-sm focus:border-primary outline-none min-h-[80px]"
                      placeholder="Detalhes sobre o personagem..."
                    />
                  </div>
@@ -1470,13 +1422,13 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             {/* Resources Management */}
             <div className="pt-2">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2">
+                <h3 className="text-sm font-bold text-txt-muted uppercase flex items-center gap-2">
                   <Activity size={16} /> Recursos
                 </h3>
                 <button 
                   type="button" 
                   onClick={() => { play('CLICK'); addResource(); }}
-                  className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 bg-slate-800 px-2 py-1 rounded"
+                  className="text-xs font-bold text-primary hover:text-primary-active flex items-center gap-1 bg-card px-2 py-1 rounded"
                 >
                   <Plus size={12} /> Adicionar
                 </button>
@@ -1501,7 +1453,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); setColorPickerTargetId(`resource:${res.id}`); }}
-                                className={`p-2 rounded-lg transition-all flex items-center justify-center border active:scale-95 shadow-sm ${res.color ? 'text-white border-white/30 bg-white/10 hover:bg-white/20' : 'text-slate-400 border-slate-700 bg-slate-800/50 hover:text-slate-200 hover:border-slate-600'}`}
+                                className={`p-2 rounded-lg transition-all flex items-center justify-center border active:scale-95 shadow-sm ${res.color ? 'text-white border-white/30 bg-white/10 hover:bg-white/20' : 'text-txt-muted border-border bg-card/50 hover:text-txt-main hover:border-card-hover'}`}
                                 title="Alterar Cor"
                               >
                                 <PaintBucket size={16} />
@@ -1560,20 +1512,20 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                     )})}
                   </SortableContext>
                 </DndContext>
-                {formData.resources.length === 0 && <p className="text-xs text-slate-600 italic text-center">Nenhum recurso adicionado.</p>}
+                {formData.resources.length === 0 && <p className="text-xs text-txt-dim italic text-center">Nenhum recurso adicionado.</p>}
               </div>
             </div>
 
             {/* Attributes Management */}
             <div className="pt-2">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2">
+                <h3 className="text-sm font-bold text-txt-muted uppercase flex items-center gap-2">
                   <Shield size={16} /> Atributos
                 </h3>
                 <button 
                   type="button" 
                   onClick={() => { play('CLICK'); addAttribute(); }}
-                  className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 bg-slate-800 px-2 py-1 rounded"
+                  className="text-xs font-bold text-primary hover:text-primary-active flex items-center gap-1 bg-card px-2 py-1 rounded"
                 >
                   <Plus size={12} /> Adicionar
                 </button>
@@ -1599,7 +1551,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                 <button
                                   type="button"
                                   onClick={(e) => { e.stopPropagation(); setColorPickerTargetId(`attribute:${attr.id}`); }}
-                                  className={`p-2 rounded-lg transition-all flex items-center justify-center border active:scale-95 shadow-sm ${attr.color ? 'text-white border-white/30 bg-white/10 hover:bg-white/20' : 'text-slate-400 border-slate-700 bg-slate-800/50 hover:text-slate-200 hover:border-slate-600'}`}
+                                  className={`p-2 rounded-lg transition-all flex items-center justify-center border active:scale-95 shadow-sm ${attr.color ? 'text-white border-white/30 bg-white/10 hover:bg-white/20' : 'text-txt-muted border-border bg-card/50 hover:text-txt-main hover:border-card-hover'}`}
                                   title="Alterar Cor"
                                 >
                                   <PaintBucket size={16} />
@@ -1631,9 +1583,9 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                     onChange={(e) => updateAttribute(attr.id, 'rollType', e.target.value)}
                                     className={`w-full rounded px-2 text-xs outline-none border appearance-none h-10 ${getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
                                   >
-                                      <option value="UNDER" className="text-slate-900">≤ (Menor)</option>
-                                      <option value="OVER" className="text-slate-900">≥ (Maior)</option>
-                                      <option value="NONE" className="text-slate-900">Rolar</option>
+                                      <option value="UNDER" className="text-black">≤ (Menor)</option>
+                                      <option value="OVER" className="text-black">≥ (Maior)</option>
+                                      <option value="NONE" className="text-black">Rolar</option>
                                   </select>
                                 </div>
                                 <div>
@@ -1655,26 +1607,26 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                     })}
                   </SortableContext>
                 </DndContext>
-                {formData.attributes.length === 0 && <p className="text-xs text-slate-600 italic text-center">Nenhum atributo adicionado.</p>}
+                {formData.attributes.length === 0 && <p className="text-xs text-txt-dim italic text-center">Nenhum atributo adicionado.</p>}
               </div>
             </div>
 
             {/* Inventory Management */}
             <div className="pt-2">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2">
+                <h3 className="text-sm font-bold text-txt-muted uppercase flex items-center gap-2">
                   <Backpack size={16} /> Inventário
                 </h3>
               </div>
 
               {/* Add New Item Form */}
-              <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700 mb-4">
+              <div className="bg-card/50 p-3 rounded-lg border border-border mb-4">
                   <div className="flex flex-col gap-2">
                     <input 
                       type="text" 
                       value={newItemName}
                       onChange={(e) => setNewItemName(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-100 outline-none focus:border-amber-500 placeholder-slate-600"
+                      className="w-full bg-app border border-border rounded p-2 text-sm text-txt-main outline-none focus:border-primary placeholder-txt-dim"
                       placeholder="Nome do Item (Ex: Corda, Espada...)"
                     />
                     <div className="flex gap-2">
@@ -1682,7 +1634,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                           type="text" 
                           value={newItemDice}
                           onChange={(e) => setNewItemDice(e.target.value)}
-                          className="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-100 outline-none focus:border-amber-500 placeholder-slate-600 font-mono"
+                          className="flex-1 bg-app border border-border rounded p-2 text-sm text-txt-main outline-none focus:border-primary placeholder-txt-dim font-mono"
                           placeholder="Dano/Efeito (Ex: 1d8)"
                         />
                         <button 
@@ -1691,7 +1643,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                             setNewItemIsPermanent(!newItemIsPermanent);
                             play('CLICK');
                           }}
-                          className={`px-3 rounded border transition-colors flex items-center justify-center ${newItemIsPermanent ? 'bg-blue-900/50 border-blue-500 text-blue-200' : 'bg-slate-900 border-slate-700 text-slate-500'}`}
+                          className={`px-3 rounded border transition-colors flex items-center justify-center ${newItemIsPermanent ? 'bg-primary/20 border-primary text-primary' : 'bg-app border-border text-txt-dim'}`}
                           title="Item Permanente?"
                         >
                           <Shield size={16} />
@@ -1703,7 +1655,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                             play('CLICK');
                           }}
                           disabled={!newItemName.trim()}
-                          className="px-4 bg-amber-600 hover:bg-amber-500 text-on-primary rounded font-bold uppercase text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-4 bg-primary hover:bg-primary-hover text-on-primary rounded font-bold uppercase text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                         >
 <Plus size={16} />
                         </button>
@@ -1732,17 +1684,17 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
                       return (
                         <SortableItem key={id} id={id}>
-                          <div className="flex items-center justify-between p-2 bg-slate-800 rounded border border-slate-700 group">
+                          <div className="flex items-center justify-between p-2 bg-card rounded border border-border group">
                               <div className="flex items-center gap-2 overflow-hidden">
-                                {isPerm ? <Shield size={14} className="text-blue-400 flex-none" /> : <div className="w-3.5" />}
-                                <span className="text-sm font-bold text-slate-200 truncate">{name}</span>
-                                {quantity > 1 && <span className="text-xs text-amber-500 font-mono">x{quantity}</span>}
-                                {dice && <span className="text-[10px] text-slate-500 font-mono bg-slate-900 px-1 rounded">{dice}</span>}
+                                {isPerm ? <Shield size={14} className="text-primary flex-none" /> : <div className="w-3.5" />}
+                                <span className="text-sm font-bold text-txt-main truncate">{name}</span>
+                                {quantity > 1 && <span className="text-xs text-primary font-mono">x{quantity}</span>}
+                                {dice && <span className="text-[10px] text-txt-dim font-mono bg-app px-1 rounded">{dice}</span>}
                               </div>
                               <button 
                                 type="button"
                                 onClick={() => { play('CLICK'); removeItem(isString ? name : item.id); }} // For string items we might have issues removing exact one if duplicates exist, but minimal impact for now
-                                className="text-slate-600 hover:text-red-500 p-1"
+                                className="text-txt-dim hover:text-error p-1"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -1752,7 +1704,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                     })}
                   </SortableContext>
                 </DndContext>
-                {formData.inventory.length === 0 && <p className="text-xs text-slate-600 italic text-center">Inventário vazio.</p>}
+                {formData.inventory.length === 0 && <p className="text-xs text-txt-dim italic text-center">Inventário vazio.</p>}
               </div>
             </div>
           </div>
@@ -1763,7 +1715,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   };
 
   return (
-    <div className="h-full bg-slate-900 relative">
+    <div className="h-full bg-app relative">
       {mode === 'LIST' && renderList()}
       {mode === 'DETAIL' && renderDetail()}
       {mode === 'FORM' && renderForm()}
@@ -1771,7 +1723,21 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
       {renderItemRollResultModal()}
       {renderPreRollModal()}
       {renderUseItemModal()}
-      {renderDeleteConfirmModal()}
+      
+      <ConfirmDeleteModal
+        isOpen={!!charToDelete}
+        title="Excluir Personagem"
+        description={
+          <>
+            Tem certeza que deseja excluir permanentemente <strong>{charToDelete?.name}</strong>?
+            <br/>
+            <span className="text-xs text-txt-dim mt-1 block">Esta ação não pode ser desfeita.</span>
+          </>
+        }
+        onConfirm={confirmDelete}
+        onCancel={() => setCharToDelete(null)}
+      />
+
       <ColorPicker 
         isOpen={!!colorPickerTargetId} 
         onClose={() => setColorPickerTargetId(null)}

@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Collection, CollectionItem, CollectionType, LogEntry } from '../types';
-import { generatePortent, generateUUID, shuffleArray } from '../utils';
+import { generatePortent, generateUUID, shuffleArray, getLuminance, adjustColorBrightness } from '../utils';
 import { Sparkles, User, Plus, Trash2, Edit2, Dices, Layers, X, Save, RefreshCw, ChevronLeft, Zap, HelpCircle, Sticker, Eye } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
+import { useTheme } from '../contexts/ThemeContext';
 import IconPicker, { PRESET_COLORS } from './IconPicker';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface ToolsViewProps {
   addLog: (entry: LogEntry) => void;
@@ -13,6 +15,11 @@ interface ToolsViewProps {
 }
 
 const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollections }) => {
+  const { activeThemeId, allThemes } = useTheme();
+  const activeTheme = allThemes.find(t => t.id === activeThemeId);
+  // Threshold can be tweaked, but > 128 usually means light background
+  const isLightMode = activeTheme ? getLuminance(activeTheme.colors.appBg) > 128 : false;
+
   const [activeCollection, setActiveCollection] = useState<Collection | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -27,8 +34,11 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
   const [allIcons, setAllIcons] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch('/icons.json')
-      .then(res => res.json())
+    fetch(`/icons.json?t=${new Date().getTime()}`)
+      .then(res => {
+         if (!res.ok) throw new Error(`Status: ${res.status}`);
+         return res.json();
+      })
       .then((data: string[]) => setAllIcons(data))
       .catch(err => console.error("Failed to load icons manifest", err));
   }, []);
@@ -259,35 +269,37 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
 
   const getCollectionStyles = (col: Collection) => {
     // Specific colors for built-ins
+    // We reverse the logic for Light Mode to ensure visibility (Light Bg + Dark Icon)
+    
     if (col.id === 'built-in-portent') {
       return {
         container: 'hover:border-purple-500/50',
-        iconBg: 'bg-purple-900/30',
-        iconColor: 'text-purple-400',
+        iconBg: isLightMode ? 'bg-purple-200' : 'bg-purple-900/30',
+        iconColor: isLightMode ? 'text-purple-800' : 'text-purple-400',
         icon: <Sparkles size={20} />
       };
     }
     if (col.id === 'built-in-visual-portent') {
       return {
         container: 'hover:border-teal-500/50',
-        iconBg: 'bg-teal-900/30',
-        iconColor: 'text-teal-400',
+        iconBg: isLightMode ? 'bg-teal-200' : 'bg-teal-900/30',
+        iconColor: isLightMode ? 'text-teal-800' : 'text-teal-400',
         icon: <Eye size={20} />
       };
     }
     if (col.id === 'built-in-npc') {
       return {
         container: 'hover:border-yellow-500/50',
-        iconBg: 'bg-yellow-900/30',
-        iconColor: 'text-yellow-400',
+        iconBg: isLightMode ? 'bg-yellow-200' : 'bg-yellow-900/30',
+        iconColor: isLightMode ? 'text-yellow-800' : 'text-yellow-400',
         icon: <User size={20} />
       };
     }
     if (col.id === 'built-in-twene') {
       return {
         container: 'hover:border-orange-500/50',
-        iconBg: 'bg-orange-900/30',
-        iconColor: 'text-orange-400',
+        iconBg: isLightMode ? 'bg-orange-200' : 'bg-orange-900/30',
+        iconColor: isLightMode ? 'text-orange-800' : 'text-orange-400',
         icon: <Zap size={20} />
       };
     }
@@ -295,94 +307,45 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
     // Default types
     if (col.type === 'DECK') {
       return {
-        container: 'hover:border-blue-500/50',
-        iconBg: 'bg-blue-900/30',
-        iconColor: 'text-blue-400',
+        container: 'hover:border-primary/50',
+        iconBg: 'bg-primary/20',
+        iconColor: 'text-primary',
         icon: <Layers size={20} />
       };
     }
 
     return {
-      container: 'hover:border-emerald-500/50',
-      iconBg: 'bg-emerald-900/30',
-      iconColor: 'text-emerald-400',
+      container: 'hover:border-success/50',
+      iconBg: 'bg-success/20',
+      iconColor: 'text-success',
       icon: <Dices size={20} />
     };
   };
 
   // --- RENDERERS ---
 
-  const renderDeleteConfirmModal = () => {
-    if (!collectionToDelete) return null;
-    return (
-      <div 
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        onClick={() => { play('CLICK'); setCollectionToDelete(null); }}
-      >
-        <div 
-          className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
-          onClick={e => e.stopPropagation()}
-        >
-          <button 
-            type="button"
-            onClick={() => { play('CLICK'); setCollectionToDelete(null); }}
-            className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
-          >
-            <X size={20} />
-          </button>
-          
-          <h3 className="text-lg font-bold text-slate-100 mb-3 flex items-center gap-2">
-            <Trash2 size={20} className="text-red-500" />
-            Excluir Coleção
-          </h3>
-          
-          <p className="text-slate-300 mb-6 text-sm leading-relaxed">
-            Tem certeza que deseja excluir permanentemente <strong>{collectionToDelete.title}</strong>?
-            <br/>
-            <span className="text-xs text-slate-500 mt-1 block">Esta ação não pode ser desfeita.</span>
-          </p>
-          
-          <div className="flex gap-3">
-            <button
-              onClick={() => { play('CLICK'); setCollectionToDelete(null); }}
-              className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-bold text-sm transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => { play('CLICK'); confirmDeleteCollection(); }}
-              className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-slate-100 rounded-lg font-bold text-sm transition-colors shadow-lg shadow-red-900/20"
-            >
-              Sim, excluir
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   if (isEditing) {
     return (
-      <div className="h-full p-4 overflow-y-auto bg-slate-900">
+      <div className="h-full p-4 overflow-y-auto bg-app">
         <div className="max-w-md mx-auto space-y-4">
            <div className="flex justify-between items-center mb-4">
-             <h2 className="text-xl font-bold text-slate-100">
+             <h2 className="text-xl font-bold text-txt-main">
                {formData.id && collections.some(c => c.id === formData.id) ? 'Editar Coleção' : 'Nova Coleção'}
              </h2>
-             <button onClick={() => { play('CLICK'); setIsEditing(false); }}><X className="text-slate-400" /></button>
+             <button onClick={() => { play('CLICK'); setIsEditing(false); }}><X className="text-txt-muted" /></button>
            </div>
            
            <div className="flex gap-2">
                <button
                   onClick={() => { play('CLICK'); setShowIconPicker(true); }}
-                  className={`p-3 hover:bg-slate-700 text-slate-400 hover:text-slate-100 rounded-xl border border-slate-700 transition-colors flex-none ${formData.icon ? 'bg-slate-800 border-amber-500' : 'bg-slate-800'}`}
+                  className={`p-3 hover:bg-card-hover text-txt-muted hover:text-txt-main rounded-xl border border-border transition-colors flex-none ${formData.icon ? 'bg-card border-primary' : 'bg-card'}`}
                   title="Selecionar Ícone"
                >
                   {formData.icon ? (
                       <div 
                           className="w-6 h-6"
                           style={{
-                              backgroundColor: formData.iconColor || '#ffffff',
+                              backgroundColor: formData.iconColor || 'currentColor',
                               maskImage: `url("/icons/${formData.icon}.svg")`,
                               maskRepeat: 'no-repeat',
                               maskPosition: 'center',
@@ -399,7 +362,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                </button>
 
                <input 
-                 className="flex-1 w-full bg-slate-800 border border-slate-700 rounded p-3 text-slate-100" 
+                 className="flex-1 w-full bg-card border border-border rounded p-3 text-txt-main outline-none focus:border-primary placeholder-txt-dim" 
                  placeholder="Título (ex: Encontros na Floresta)"
                  value={formData.title}
                  onChange={e => setFormData({...formData, title: e.target.value})}
@@ -412,7 +375,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                 onClick={() => { play('CLICK'); setShowIconPicker(false); }}
               >
                 <div 
-                  className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col h-[70vh]"
+                  className="w-full max-w-2xl bg-app border border-border rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col h-[70vh]"
                   onClick={e => e.stopPropagation()}
                 >
                      <div className="flex-1 min-h-0 overflow-hidden">
@@ -425,10 +388,10 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                             onClose={() => setShowIconPicker(false)}
                         />
                      </div>
-                     <div className="p-4 border-t border-slate-700 flex justify-end">
+                     <div className="p-4 border-t border-border flex justify-end">
                         <button 
                             onClick={() => { play('CLICK'); setShowIconPicker(false); }}
-                            className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-on-primary rounded-lg font-bold"
+                            className="px-6 py-2 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold"
                         >
                             Confirmar
                         </button>
@@ -438,31 +401,31 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
            )}
            
            <input 
-             className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-slate-100 text-sm" 
+             className="w-full bg-card border border-border rounded p-3 text-txt-main text-sm outline-none focus:border-primary placeholder-txt-dim" 
              placeholder="Descrição curta"
              value={formData.description}
              onChange={e => setFormData({...formData, description: e.target.value})}
            />
            
-           <div className="flex gap-2 p-1 bg-slate-800 rounded border border-slate-700">
+           <div className="flex gap-2 p-1 bg-card rounded border border-border">
               <button 
                 onClick={() => { play('CLICK'); setFormData({...formData, type: 'TABLE'}); }}
-                className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'TABLE' ? 'bg-amber-600 text-on-primary' : 'text-slate-400 hover:text-slate-100'}`}
+                className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'TABLE' ? 'bg-primary text-on-primary' : 'text-txt-muted hover:text-txt-main'}`}
               >
                 Tabela
               </button>
               <button 
                 onClick={() => { play('CLICK'); setFormData({...formData, type: 'DECK'}); }}
-                className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'DECK' ? 'bg-amber-600 text-on-primary' : 'text-slate-400 hover:text-slate-100'}`}
+                className={`flex-1 py-2 rounded text-sm font-bold transition-colors ${formData.type === 'DECK' ? 'bg-primary text-on-primary' : 'text-txt-muted hover:text-txt-main'}`}
               >
                 Baralho
               </button>
            </div>
 
            <div>
-              <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Itens (Um por linha)</label>
+              <label className="text-xs uppercase font-bold text-txt-muted mb-1 block">Itens (Um por linha)</label>
               <textarea 
-                className="w-full h-40 bg-slate-800 border border-slate-700 rounded p-3 text-slate-100 text-sm font-mono"
+                className="w-full h-40 bg-card border border-border rounded p-3 text-txt-main text-sm font-mono outline-none focus:border-primary placeholder-txt-dim"
                 placeholder="Item 1&#10;Item 2&#10;Item 3"
                 value={bulkItems}
                 onChange={e => setBulkItems(e.target.value)}
@@ -471,7 +434,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
 
            <button 
              onClick={() => { play('CLICK'); handleSaveCollection(); }}
-             className="w-full bg-green-600 hover:bg-green-500 text-slate-100 font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+             className="w-full bg-success hover:bg-green-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"
            >
              <Save size={18} /> Salvar Coleção
            </button>
@@ -485,16 +448,16 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
     const isDeck = activeCollection.type === 'DECK';
     
     return (
-      <div className="flex flex-col h-full bg-slate-900 relative">
+      <div className="flex flex-col h-full bg-app relative">
         {/* Header */}
-        <div className="flex-none p-4 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-950 z-10">
+        <div className="flex-none p-4 flex items-center justify-between gap-3 border-b border-border bg-app z-10">
            <div className="flex items-center gap-3">
-              <button onClick={handleCloseCollection} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-slate-100">
+              <button onClick={handleCloseCollection} className="p-2 bg-card rounded-full text-txt-muted hover:text-txt-main">
                 <ChevronLeft size={24} />
               </button>
               <div>
-                <h2 className="text-lg font-bold text-slate-100 leading-none">{activeCollection.title}</h2>
-                <p className="text-xs text-slate-500">{isDeck ? `${deckState?.items.length} cartas restantes` : 'Tabela de Rolagem'}</p>
+                <h2 className="text-lg font-bold text-txt-main leading-none">{activeCollection.title}</h2>
+                <p className="text-xs text-txt-dim">{isDeck ? `${deckState?.items.length} cartas restantes` : 'Tabela de Rolagem'}</p>
               </div>
            </div>
 
@@ -502,14 +465,14 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
               <div className="flex gap-2">
                  <button 
                     onClick={() => { play('CLICK'); handleEditCollection(activeCollection); }}
-                    className="p-2 bg-slate-800 rounded-full text-amber-500 hover:text-on-primary hover:bg-amber-600 transition-colors"
+                    className="p-2 bg-card rounded-full text-primary hover:text-on-primary hover:bg-primary transition-colors"
                     title="Editar"
                  >
                     <Edit2 size={20} />
                  </button>
                  <button 
                     onClick={() => { play('CLICK'); setCollectionToDelete(activeCollection); }}
-                    className="p-2 bg-slate-800 rounded-full text-red-500 hover:text-slate-100 hover:bg-red-600 transition-colors"
+                    className="p-2 bg-card rounded-full text-error hover:text-slate-100 hover:bg-error transition-colors"
                     title="Excluir"
                  >
                     <Trash2 size={20} />
@@ -565,7 +528,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                       </div>
                     );
                   })() : (
-                    <div className="w-full h-full bg-slate-800 rounded-xl border-2 border-slate-700 flex flex-col items-center justify-center text-slate-600 border-dashed">
+                    <div className="w-full h-full bg-card rounded-xl border-2 border-border flex flex-col items-center justify-center text-txt-dim border-dashed">
                        <Layers size={48} className="mb-2" />
                        <span className="text-sm font-bold uppercase">Baralho</span>
                     </div>
@@ -573,13 +536,13 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                </div>
              ) : (
                // Table Result Container
-               <div className="w-full max-w-sm min-h-[160px] bg-slate-800 border border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center text-center shadow-lg transition-all landscape:h-full landscape:max-h-[80%]">
+               <div className="w-full max-w-sm min-h-[160px] bg-card border border-border rounded-xl p-6 flex flex-col items-center justify-center text-center shadow-lg transition-all landscape:h-full landscape:max-h-[80%]">
                   {activeCollection.id === 'built-in-visual-portent' && visualResult ? (
                       <div className="flex gap-2 sm:gap-4 animate-in fade-in zoom-in duration-300">
                           {visualResult.map((res, i) => (
                               <div key={i} className="flex flex-col items-center gap-2 group">
                                   <div 
-                                      className="w-20 h-20 sm:w-28 sm:h-28 bg-slate-700/50 rounded-xl flex items-center justify-center border border-slate-600 shadow-lg group-hover:border-slate-500 transition-colors"
+                                      className="w-20 h-20 sm:w-28 sm:h-28 bg-card-hover rounded-xl flex items-center justify-center border border-border shadow-lg group-hover:border-primary/50 transition-colors"
                                       title={res.name}
                                   >
                                       <div 
@@ -602,11 +565,11 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                       </div>
                   ) : tableResult ? (
                      <div className="animate-in fade-in zoom-in duration-200">
-                        <h3 className="text-2xl font-bold text-slate-100 mb-1">{tableResult.text}</h3>
-                        {tableResult.subtext && <p className="text-slate-400">{tableResult.subtext}</p>}
+                        <h3 className="text-2xl font-bold text-txt-main mb-1">{tableResult.text}</h3>
+                        {tableResult.subtext && <p className="text-txt-muted">{tableResult.subtext}</p>}
                      </div>
                   ) : (
-                     <div className="text-slate-600 flex flex-col items-center">
+                     <div className="text-txt-dim flex flex-col items-center">
                         <Dices size={32} className="mb-2" />
                         <p className="text-sm uppercase font-bold">Role para ver o resultado</p>
                      </div>
@@ -622,13 +585,13 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                    <button 
                      onClick={handleDrawCard}
                      disabled={deckState?.items.length === 0}
-                     className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:bg-slate-700 text-on-primary font-bold py-4 landscape:py-8 rounded-xl shadow-lg active:translate-y-1 transition-all flex items-center justify-center gap-2 text-lg"
+                     className="w-full bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:bg-card-hover text-on-primary font-bold py-4 landscape:py-8 rounded-xl shadow-lg active:translate-y-1 transition-all flex items-center justify-center gap-2 text-lg"
                    >
                      <Layers size={24} /> Sacar Carta
                    </button>
                    <button 
                      onClick={() => { play('CLICK'); handleShuffle(); }}
-                     className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 landscape:py-4 rounded-xl border border-slate-700 flex items-center justify-center gap-2"
+                     className="w-full bg-card hover:bg-card-hover text-txt-muted font-bold py-3 landscape:py-4 rounded-xl border border-border flex items-center justify-center gap-2"
                    >
                      <RefreshCw size={18} /> Embaralhar ({deckState?.discarded.length})
                    </button>
@@ -636,7 +599,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
               ) : (
                  <button 
                    onClick={handleRollTable}
-                   className="w-full bg-amber-600 hover:bg-amber-500 text-on-primary font-bold py-4 landscape:py-8 rounded-xl shadow-lg active:translate-y-1 transition-all flex items-center justify-center gap-2 text-lg"
+                   className="w-full bg-primary hover:bg-primary-hover text-on-primary font-bold py-4 landscape:py-8 rounded-xl shadow-lg active:translate-y-1 transition-all flex items-center justify-center gap-2 text-lg"
                  >
                    <Dices size={24} /> Rolar Tabela
                  </button>
@@ -645,14 +608,26 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
         </div>
 
         {/* DELETE CONFIRMATION MODAL */}
-        {renderDeleteConfirmModal()}
+        <ConfirmDeleteModal 
+          isOpen={!!collectionToDelete}
+          title="Excluir Coleção"
+          description={
+            <>
+              Tem certeza que deseja excluir permanentemente <strong>{collectionToDelete?.title}</strong>?
+              <br/>
+              <span className="text-xs text-txt-dim mt-1 block">Esta ação não pode ser desfeita.</span>
+            </>
+          }
+          onConfirm={confirmDeleteCollection}
+          onCancel={() => setCollectionToDelete(null)}
+        />
       </div>
     );
   }
 
   // COLLECTION LIST VIEW
   return (
-    <div className="flex flex-col h-full bg-slate-900 overflow-y-auto">
+    <div className="flex flex-col h-full bg-app overflow-y-auto">
       {/* Responsive Grid */}
       <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-24 max-w-7xl mx-auto w-full">
          
@@ -660,14 +635,27 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
             const styles = getCollectionStyles(col);
             const customIconUrl = col.icon ? `/icons/${col.icon}.svg` : undefined;
             
+            // Calculate dynamic contrast bg for custom icons
+            let dynamicBgStyle = {};
+            if (customIconUrl && col.iconColor) {
+                const lum = getLuminance(col.iconColor);
+                // If icon is light (>128), we want a Dark background (-150).
+                // If icon is dark (<128), we want a Light background (+150).
+                const bg = adjustColorBrightness(col.iconColor, lum > 128 ? -150 : 150);
+                dynamicBgStyle = { backgroundColor: bg };
+            }
+
             return (
               <div 
                 key={col.id}
                 onClick={() => handleOpenCollection(col)}
-                className={`bg-slate-800 border border-slate-700 ${styles.container} rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-all relative group shadow-sm flex flex-col aspect-[4/3]`}
+                className={`bg-card border border-border ${styles.container} rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-all relative group shadow-sm flex flex-col aspect-[4/3]`}
               >
                  <div className="flex items-start justify-between mb-2">
-                    <div className={`p-2 rounded-lg ${styles.iconBg} ${styles.iconColor}`}>
+                    <div 
+                        className={`p-2 rounded-lg ${!customIconUrl ? styles.iconBg : ''} ${styles.iconColor}`}
+                        style={dynamicBgStyle}
+                    >
                        {customIconUrl ? (
                            <div 
                                className="w-5 h-5"
@@ -689,8 +677,8 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                     </div>
                  </div>
                  <div className="flex-1">
-                   <h3 className="font-bold text-slate-100 text-sm leading-tight line-clamp-1">{col.title}</h3>
-                   <p className="text-[10px] text-slate-400 mt-1 line-clamp-3 opacity-80">{col.description}</p>
+                   <h3 className="font-bold text-txt-main text-sm leading-tight line-clamp-1">{col.title}</h3>
+                   <p className="text-[10px] text-txt-muted mt-1 line-clamp-3 opacity-80">{col.description}</p>
                  </div>
               </div>
             );
@@ -699,7 +687,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
          {/* Add New Button */}
          <button 
            onClick={() => { play('CLICK'); handleCreateCollection(); }}
-           className="w-full aspect-[4/3] border-2 border-dashed border-slate-700 rounded-xl flex flex-col items-center justify-center text-slate-500 hover:text-amber-500 hover:border-amber-500/50 hover:bg-slate-800/50 transition-all group"
+           className="w-full aspect-[4/3] border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-txt-dim hover:text-primary hover:border-primary/50 hover:bg-card/50 transition-all group"
          >
            <Plus size={24} className="mb-1 group-hover:scale-110 transition-transform" />
            <span className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-center">Criar Coleção</span>

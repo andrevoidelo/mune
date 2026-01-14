@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Tab, LogEntry, Character, Adventure, Collection, Thread, NpcEntry } from './types';
+import { Tab, LogEntry, Character, Adventure, Collection, Thread, NpcEntry, AppTheme } from './types';
 import OracleView from './components/OracleView';
 import ToolsView from './components/ToolsView';
 import DiceView from './components/DiceView';
@@ -13,11 +13,14 @@ import { MessageSquare, Wrench, Dices, ScrollText, HelpCircle, X, User, ChevronL
 import { generateUUID } from './utils';
 import { DEFAULT_COLLECTIONS } from './constants';
 import { SoundProvider } from './contexts/SoundContext';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { useGameSound } from './hooks/useGameSound';
+import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
 
 const AppContent: React.FC = () => {
   const { play } = useGameSound();
+  const { customThemes, addTheme, restoreThemes } = useTheme();
+  
   // Global State
   const [adventures, setAdventures] = useState<Adventure[]>([]);
   const [currentAdventureId, setCurrentAdventureId] = useState<string | null>(null);
@@ -36,7 +39,7 @@ const AppContent: React.FC = () => {
 
   // Backup State
   const [importStatus, setImportStatus] = useState<string | null>(null);
-  const [pendingImportData, setPendingImportData] = useState<{adventures: Adventure[], collections: Collection[]} | null>(null);
+  const [pendingImportData, setPendingImportData] = useState<{adventures: Adventure[], collections: Collection[], themes: AppTheme[]} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MANUAL_URL = "https://drive.google.com/file/d/1mJbHcCNscMfs_NPnqMMz2Y8KiD8gWrkZ/view";
@@ -111,7 +114,8 @@ const AppContent: React.FC = () => {
       version: 3,
       exportedAt: new Date().toISOString(),
       adventures: adventures,
-      collections: customCollections
+      collections: customCollections,
+      themes: customThemes
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -212,6 +216,11 @@ const AppContent: React.FC = () => {
     const mergedCollections = [...DEFAULT_COLLECTIONS, ...importedCustomCollections];
     
     setCollections(mergedCollections);
+
+    // 3. Restore Themes
+    if (pendingImportData.themes) {
+        restoreThemes(pendingImportData.themes);
+    }
     
     setPendingImportData(null);
     setImportStatus('Sucesso!');
@@ -346,7 +355,7 @@ const AppContent: React.FC = () => {
       return {
         title: "Minhas Aventuras",
         text: "Aqui você gerencia suas campanhas. Crie novas aventuras clicando em '+', ou selecione uma existente para jogar. Você pode editar o nome ou excluir aventuras antigas.",
-        icon: <ScrollText size={32} className="text-amber-500" />
+        icon: <ScrollText size={32} className="text-primary" />
       };
     }
 
@@ -355,31 +364,31 @@ const AppContent: React.FC = () => {
         return {
           title: "Oráculo",
           text: "O coração do sistema. Faça perguntas de 'Sim ou Não' e clique em Rolar para ver o resultado. A cada rolagem '6' (Sim, e...), você acumula 1 ponto. Com 3 pontos, há uma Intervenção do Oráculo na história. Use o botão 'Tramas & NPCs' para gerenciar pontos de enredo.",
-          icon: <MessageSquare size={32} className="text-amber-500" />
+          icon: <MessageSquare size={32} className="text-primary" />
         };
       case Tab.TOOLS:
         return {
           title: "Coleções",
           text: "Aqui você encontra tabelas aleatórias (como Presságio, Reação de NPC) e Baralhos de Cartas. Você pode criar suas próprias tabelas e baralhos personalizadas clicando em 'Criar Coleção'.",
-          icon: <Wrench size={32} className="text-amber-500" />
+          icon: <Wrench size={32} className="text-primary" />
         };
       case Tab.PERSONA:
         return {
           title: "Personagens",
           text: "Gerencie fichas de personagens. Adicione recursos (vida, mana, sorte, munição), atributos (força, agilidade, sabedoria), faça testes, gerencie inventário e adicione rolagens (dano, cura).",
-          icon: <User size={32} className="text-amber-500" />
+          icon: <User size={32} className="text-primary" />
         };
       case Tab.DICE:
         return {
           title: "Dados",
           text: "Clique no botão ou digite fórmulas (ex: 2d20+5). 'KH' (Keep Highest) mantém os maiores dados (Vantagem). 'KL' (Keep Lowest) mantém os menores. Clique neles repetidamente para ajustar a quantidade (ex: kh1, kh2).",
-          icon: <Dices size={32} className="text-amber-500" />
+          icon: <Dices size={32} className="text-primary" />
         };
       case Tab.LOG:
         return {
           title: "Registro (Log)",
           text: "Histórico automático. Você pode exportar como PDF (Impressora) ou Markdown (.md) para usar em Obsidian/Notion. Use o botão flutuante de Lápis para adicionar notas manuais e imagens.",
-          icon: <ScrollText size={32} className="text-amber-500" />
+          icon: <ScrollText size={32} className="text-primary" />
         };
       default:
         return { title: "Ajuda", text: "Selecione uma aba.", icon: <HelpCircle /> };
@@ -662,8 +671,6 @@ const AppContent: React.FC = () => {
               fileInputRef={fileInputRef}
               importStatus={importStatus}
               onRestoreAction={handleGlobalRestore}
-              currentTheme={theme}
-              setTheme={setTheme}
             />
           ) : !currentAdventureId ? (
             // View: Adventure List

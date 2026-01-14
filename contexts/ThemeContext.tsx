@@ -9,8 +9,9 @@ interface ThemeContextType {
   allThemes: AppTheme[];
   setActiveTheme: (id: string) => void;
   addTheme: (theme: Omit<AppTheme, 'id' | 'isBuiltIn'>) => void;
-  updateTheme: (id: string, updates: Partial<AppTheme['colors'] | { name: string }>) => void;
+  updateTheme: (id: string, updates: Partial<AppTheme>) => void;
   deleteTheme: (id: string) => void;
+  restoreThemes: (themes: AppTheme[]) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -95,39 +96,60 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: generateUUID(),
       isBuiltIn: false
     };
-    setCustomThemes(prev => [...prev, newTheme]);
+    setCustomThemes(prev => {
+        const updated = [...prev, newTheme];
+        // Ensure persistence happens
+        try {
+            localStorage.setItem('mune_custom_themes', JSON.stringify(updated));
+        } catch(e) {
+            console.error("Failed to save themes", e);
+        }
+        return updated;
+    });
     setActiveThemeId(newTheme.id);
   };
 
-  const updateTheme = (id: string, updates: Partial<AppTheme['colors'] | { name: string }>) => {
-    setCustomThemes(prev => prev.map(t => {
-      if (t.id !== id) return t;
-      // Handle nested updates safely
-      const newColors = 'appBg' in updates ? { ...t.colors, ...(updates as any) } : t.colors; // fallback if colors mixed in top level
+  const updateTheme = (id: string, updates: Partial<AppTheme>) => {
+    setCustomThemes(prev => {
+      const updated = prev.map(t => {
+        if (t.id !== id) return t;
+        
+        return {
+            ...t,
+            name: updates.name || t.name,
+            colors: updates.colors ? { ...t.colors, ...updates.colors } : t.colors
+        };
+      });
       
-      // Correct logic: updates might contain 'name' (top level) or color keys (nested)
-      // Actually, the interface allows partial updates. Let's simplify.
+      try {
+        localStorage.setItem('mune_custom_themes', JSON.stringify(updated));
+      } catch(e) { console.error(e); }
       
-      let updatedTheme = { ...t };
-      if ('name' in updates) {
-         updatedTheme.name = updates.name as string;
-         delete (updates as any).name;
-      }
-      
-      updatedTheme.colors = { ...t.colors, ...(updates as any) };
-      return updatedTheme;
-    }));
+      return updated;
+    });
   };
 
   const deleteTheme = (id: string) => {
-    setCustomThemes(prev => prev.filter(t => t.id !== id));
+    setCustomThemes(prev => {
+        const updated = prev.filter(t => t.id !== id);
+        try {
+            localStorage.setItem('mune_custom_themes', JSON.stringify(updated));
+        } catch(e) { console.error(e); }
+        return updated;
+    });
     if (activeThemeId === id) {
       setActiveThemeId('default');
     }
   };
 
+  const restoreThemes = (themes: AppTheme[]) => {
+    // Filter out potential built-in duplicates if user modified them manually in JSON
+    const validCustom = themes.filter(t => !t.isBuiltIn);
+    setCustomThemes(validCustom);
+  };
+
   return (
-    <ThemeContext.Provider value={{ activeThemeId, customThemes, allThemes, setActiveTheme: setActiveThemeId, addTheme, updateTheme, deleteTheme }}>
+    <ThemeContext.Provider value={{ activeThemeId, customThemes, allThemes, setActiveTheme: setActiveThemeId, addTheme, updateTheme, deleteTheme, restoreThemes }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -38,10 +38,18 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Lazy load the icon manifest
-    fetch('/icons.json')
-      .then(res => res.json())
+    // Lazy load the icon manifest with cache busting
+    fetch(`/icons.json?t=${new Date().getTime()}`)
+      .then(res => {
+        if (!res.ok) {
+            throw new Error(`Failed to load icons: ${res.status} ${res.statusText}`);
+        }
+        return res.json();
+      })
       .then((filenames: string[]) => {
+        if (!Array.isArray(filenames)) {
+            throw new Error('Invalid icon data: expected an array');
+        }
         const loadedIcons = filenames.map(filename => {
           // Convert "air-balloon" -> "Air Balloon"
           const name = filename
@@ -93,39 +101,39 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
 
   return (
     <div className="flex flex-col h-full max-h-[600px]">
-      <div className="flex items-center gap-2 p-4 border-b border-slate-700">
+      <div className="flex items-center gap-2 p-4 border-b border-border">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" size={18} />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Procurar ícones..."
-            className="w-full bg-slate-800 border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500"
+            className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2 text-txt-main placeholder-txt-dim focus:outline-none focus:border-primary"
             autoFocus
           />
         </div>
         <button 
           onClick={onClose}
-          className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-100"
+          className="p-2 hover:bg-card-hover rounded-full text-txt-muted hover:text-txt-main"
         >
           <X size={20} />
         </button>
       </div>
 
-      <div className="p-4 border-b border-slate-700 bg-slate-900/50">
-        <label className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-2 block">Cor do Ícone</label>
+      <div className="p-4 border-b border-border bg-app/50">
+        <label className="text-xs text-txt-muted uppercase font-bold tracking-wider mb-2 block">Cor do Ícone</label>
         <div className="flex flex-wrap gap-2 items-center">
           {PRESET_COLORS.map((c) => (
             <button
               key={c}
               onClick={() => handleColorChange(c)}
-              className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-white scale-110' : 'border-transparent'}`}
+              className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-txt-main scale-110' : 'border-transparent'}`}
               style={{ backgroundColor: c }}
               title={c}
             />
           ))}
-          <div className="w-px h-8 bg-slate-700 mx-2"></div>
+          <div className="w-px h-8 bg-border mx-2"></div>
           <input
             type="color"
             value={color}
@@ -136,16 +144,16 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 bg-slate-900">
+      <div className="flex-1 overflow-y-auto p-4 bg-app">
         {loading ? (
-            <div className="text-center py-8 text-slate-500">Carregando ícones...</div>
+            <div className="text-center py-8 text-txt-dim">Carregando ícones...</div>
         ) : (
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                 <button
-                    onClick={() => handleIconSelect('')} // Empty string or special handler for 'None'
-                    className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-1 border border-slate-700 hover:bg-slate-800 transition-colors ${!selectedIcon ? 'bg-slate-800 border-amber-500 ring-1 ring-amber-500' : 'bg-slate-900'}`}
+                    onClick={() => onSelect(undefined, undefined)} 
+                    className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-1 border border-border hover:bg-card-hover transition-colors ${!selectedIcon ? 'bg-card border-primary ring-1 ring-primary' : 'bg-app'}`}
                 >
-                    <span className="text-xs text-slate-400">Nenhum</span>
+                    <span className="text-xs text-txt-muted">Nenhum</span>
                 </button>
             
             {filteredIcons.map((icon) => {
@@ -154,14 +162,14 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
                 <button
                     key={icon.filename}
                     onClick={() => handleIconSelect(icon.filename)}
-                    className={`relative aspect-square rounded-lg flex flex-col items-center justify-center p-2 border transition-all ${isSelected ? 'bg-slate-800 border-amber-500 ring-1 ring-amber-500' : 'bg-slate-900 border-slate-800 hover:border-slate-600 hover:bg-slate-800'}`}
+                    className={`relative aspect-square rounded-lg flex flex-col items-center justify-center p-2 border transition-all ${isSelected ? 'bg-card border-primary ring-1 ring-primary' : 'bg-app border-border hover:border-txt-muted hover:bg-card-hover'}`}
                     title={icon.name}
                 >
                     {/* We use mask to color the icon */}
                     <div 
                         className="w-full h-full"
                         style={{
-                            backgroundColor: isSelected ? color : '#94a3b8',
+                            backgroundColor: isSelected ? color : 'rgb(var(--text-dim))',
                             maskImage: `url("${icon.url}")`,
                             maskRepeat: 'no-repeat',
                             maskPosition: 'center',
@@ -173,8 +181,8 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
                         }}
                     />
                     {isSelected && (
-                        <div className="absolute top-1 right-1 bg-amber-500 rounded-full p-0.5">
-                            <Check size={10} className="text-black" />
+                        <div className="absolute top-1 right-1 bg-primary rounded-full p-0.5">
+                            <Check size={10} className="text-on-primary" />
                         </div>
                     )}
                 </button>
@@ -184,8 +192,8 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
         )}
         
         {!loading && filteredIcons.length === 0 && (
-            <div className="text-center py-8 text-slate-500">
-                No icons found for "{search}"
+            <div className="text-center py-8 text-txt-dim">
+                Nenhum ícone encontrado para "{search}"
             </div>
         )}
       </div>

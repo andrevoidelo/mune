@@ -1,9 +1,12 @@
 
-import React from 'react';
-import { Database, Download, Upload, Check, CloudCog, Sun, Moon, Volume2, VolumeX, Palette } from 'lucide-react';
+import React, { useState } from 'react';
+import { Database, Download, Upload, Check, CloudCog, Sun, Moon, Volume2, VolumeX, Palette, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useSoundSettings } from '../contexts/SoundContext';
 import { useGameSound } from '../hooks/useGameSound';
 import { useTheme } from '../contexts/ThemeContext';
+import { ThemeEditor } from './ThemeEditor';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { AppTheme } from '../types';
 
 interface SettingsViewProps {
   onBackup: () => void;
@@ -21,8 +24,56 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   onRestoreAction
 }) => {
   const { isSoundEnabled, toggleSound } = useSoundSettings();
-  const { activeThemeId, setActiveTheme, allThemes } = useTheme();
+  const { activeThemeId, setActiveTheme, allThemes, addTheme, updateTheme, deleteTheme } = useTheme();
   const { play } = useGameSound();
+  
+  const [showThemeEditor, setShowThemeEditor] = useState(false);
+  const [themeToEdit, setThemeToEdit] = useState<AppTheme | undefined>(undefined);
+  const [themeToDelete, setThemeToDelete] = useState<AppTheme | null>(null);
+
+  const activeTheme = allThemes.find(t => t.id === activeThemeId);
+
+  const handleNewTheme = () => {
+    // Clone colors from active theme (or default if none) to serve as a template
+    const templateTheme = activeTheme ? { 
+        name: '', 
+        colors: { ...activeTheme.colors },
+        id: '', // Placeholder
+        isBuiltIn: false
+    } : undefined;
+    
+    setThemeToEdit(templateTheme as AppTheme);
+    setShowThemeEditor(true);
+  };
+
+  const handleEditTheme = () => {
+    if (activeTheme && !activeTheme.isBuiltIn) {
+      setThemeToEdit(activeTheme);
+      setShowThemeEditor(true);
+    }
+  };
+
+  const handleDeleteTheme = () => {
+    if (activeTheme && !activeTheme.isBuiltIn) {
+      setThemeToDelete(activeTheme);
+    }
+  };
+
+  const confirmDeleteTheme = () => {
+    if (themeToDelete) {
+      deleteTheme(themeToDelete.id);
+      setThemeToDelete(null);
+    }
+  };
+
+  const handleSaveTheme = (themeData: Omit<AppTheme, 'id' | 'isBuiltIn'>) => {
+    if (themeToEdit && themeToEdit.id) {
+      updateTheme(themeToEdit.id, themeData);
+    } else {
+      addTheme(themeData);
+    }
+    setShowThemeEditor(false);
+  };
 
   return (
     <div className="flex flex-col h-full bg-app p-4 overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
@@ -56,7 +107,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                 </button>
              </div>
 
-             {/* Theme Selector */}
+             {/* Theme Selector (New UI) */}
              <div className="pt-4">
                 <div className="flex items-center gap-3 mb-3">
                    <div className="p-2 rounded-xl bg-card-hover text-txt-muted">
@@ -64,24 +115,66 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                    </div>
                    <div>
                       <h4 className="text-base font-bold text-txt-main">Tema Visual</h4>
-                      <p className="text-xs text-txt-muted">Personalize a aparência.</p>
+                      <p className="text-xs text-txt-muted">Personalize a aparência do app.</p>
                    </div>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-2">
-                   {allThemes.map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => { play('CLICK'); setActiveTheme(t.id); }}
-                        className={`p-3 rounded-lg border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 ${activeThemeId === t.id ? 'bg-primary/20 border-primary text-primary ring-1 ring-primary' : 'bg-app border-border text-txt-muted hover:bg-card hover:text-txt-main'}`}
-                      >
-                         <div 
-                           className="w-6 h-6 rounded-full border shadow-sm" 
-                           style={{ backgroundColor: t.colors.appBg, borderColor: t.colors.border }} 
-                         />
-                         <span className="text-[10px] font-bold uppercase tracking-wider">{t.name}</span>
-                      </button>
-                   ))}
+                <div className="flex gap-2">
+                   <div className="relative flex-1">
+                     <select 
+                        value={activeThemeId}
+                        onChange={(e) => { play('CLICK'); setActiveTheme(e.target.value); }}
+                        className="w-full appearance-none bg-app border border-border rounded-xl px-4 py-3 text-sm font-bold text-txt-main outline-none focus:border-primary transition-colors"
+                     >
+                        <optgroup label="Padrão">
+                          {allThemes.filter(t => t.isBuiltIn).map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </optgroup>
+                        {allThemes.some(t => !t.isBuiltIn) && (
+                          <optgroup label="Customizados">
+                            {allThemes.filter(t => !t.isBuiltIn).map(t => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                     </select>
+                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-txt-muted">
+                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                     </div>
+                   </div>
+
+                   {/* Action Buttons */}
+                   {activeTheme && !activeTheme.isBuiltIn ? (
+                     <>
+                        <button 
+                          onClick={() => { play('CLICK'); handleEditTheme(); }}
+                          className="p-3 bg-card-hover hover:bg-border text-txt-main rounded-xl transition-colors border border-border"
+                          title="Editar Tema"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                        <button 
+                          onClick={() => { play('CLICK'); handleDeleteTheme(); }}
+                          className="p-3 bg-card-hover hover:bg-error/20 text-txt-muted hover:text-error rounded-xl transition-colors border border-border"
+                          title="Excluir Tema"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                     </>
+                   ) : (
+                     <div className="w-[100px] flex items-center justify-end px-2">
+                       <span className="text-[10px] uppercase font-bold text-txt-muted opacity-50">Sistema</span>
+                     </div>
+                   )}
+                   
+                   <button 
+                      onClick={() => { play('CLICK'); handleNewTheme(); }}
+                      className="p-3 bg-primary hover:bg-primary-hover text-on-primary rounded-xl shadow-lg transition-colors active:scale-95"
+                      title="Novo Tema"
+                   >
+                      <Plus size={18} />
+                   </button>
                 </div>
              </div>
           </div>
@@ -154,6 +247,29 @@ const SettingsView: React.FC<SettingsViewProps> = ({
           ref={fileInputRef as React.LegacyRef<HTMLInputElement>}
           onChange={onRestoreAction} 
           style={{ display: 'none' }}
+        />
+
+        {/* Theme Editor Modal */}
+        {showThemeEditor && (
+          <ThemeEditor 
+            initialTheme={themeToEdit}
+            onSave={handleSaveTheme}
+            onCancel={() => setShowThemeEditor(false)}
+          />
+        )}
+
+        <ConfirmDeleteModal 
+          isOpen={!!themeToDelete}
+          title="Excluir Tema"
+          description={
+            <>
+              Tem certeza que deseja excluir permanentemente o tema <strong>{themeToDelete?.name}</strong>?
+              <br/>
+              <span className="text-xs text-txt-dim mt-1 block">Esta ação não pode ser desfeita.</span>
+            </>
+          }
+          onConfirm={confirmDeleteTheme}
+          onCancel={() => setThemeToDelete(null)}
         />
 
       </div>
