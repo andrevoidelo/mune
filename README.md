@@ -16,8 +16,6 @@
 
 **Master Mune** is a Progressive Web App (PWA) developed to facilitate Solo RPG sessions. Based on the **M.U.N.E. (Madey Upy Namey Emulator)** system, the tool centralizes the oracle, character sheet management, dice rolling, and notes into a modern, responsive, and highly customizable interface.
 
-### ✨ Key Features
-
 #### 🔮 Automated Oracle
 - **Oracle Rolls:** Complete 6-answer system ("No, and...", "No", "No, but...", etc.) with "Normal", "Likely" (Advantage), and "Unlikely" (Disadvantage) options.
 - **Automatic Interventions:** The system tracks intervention points (generated when rolling a '6'). Upon reaching 3 points, an Intervention is automatically triggered (Optional).
@@ -39,13 +37,14 @@
 
 #### 📜 Session Journal (Log)
 - **Automatic History:** All actions (oracle rolls, attribute tests, item usage) are automatically logged.
-- **Manual Notes:** Add text notes or images to the log at any time. You can attach thematic icons to your notes.
-- **Export:** - **PDF:** Print your formatted session.
+- **Manual Notes:** Add text notes, icons or images to the log at any time.
+- **Export:**
+  - **PDF:** Print your formatted session.
   - **Markdown (.md)::** Export to use in Obsidian, Notion, or other text editors.
 
 #### 🎨 Customization & Performance
-- **Visual Themes:** Switch between themes like Default (Dark), Light (Paper/Journal), Fantasy, Sci-Fi, Cyberpunk, and Terminal.
-- **Sound Effects:** Auditory feedback for dice rolls, cards, and interactions (can be disabled).
+- **Visual Themes:** Choose between the Default (Dark Slate), Light, Fantasy, Sci-Fi, Cyberpunk, and Terminal themes, or craft your own Custom Theme.
+- **Sound Effects:** Just simple beeps and boops for dice rolls, cards, and interactions (can be disabled, don't worry).
 - **Backup & Restore:** Export all your data (Adventures and Collections) to a JSON file and restore on any device.
 - **Optimization:** Lazy loading of icons to ensure instant application startup.
 
@@ -69,7 +68,7 @@ This project uses **Vite** and **React**.
    npm run dev
    ```
 
-4. Access `http://localhost:5173` in your browser.
+4. Access `http://localhost:3000` in your browser.
 
 ### 🛠️ Tech Stack
 - **Core:** React 19, TypeScript
@@ -90,8 +89,6 @@ This project uses **Vite** and **React**.
 ## 🇧🇷 Português (Brasileiro)
 
 **Mestre Mune** é uma aplicação web progressiva (PWA) desenvolvida para facilitar sessões de RPG Solo. Baseada no sistema **M.U.N.E. (Madey Upy Namey Emulator)**, a ferramenta centraliza oráculo, gerenciamento de fichas, rolagens de dados e anotações em uma interface moderna, responsiva e altamente customizável.
-
-### ✨ Funcionalidades Principais
 
 #### 🔮 Oráculo Automatizado
 - **Rolagens de Oráculo:** Sistema completo de 6 respostas ("Não, e...", "Não", "Não, mas...", etc) com opções de rolagem "Normal", "Provável" (Vantagem) e "Improvável" (Desvantagem).
@@ -114,13 +111,13 @@ This project uses **Vite** and **React**.
 
 #### 📜 Diário de Sessão (Log)
 - **Histórico Automático:** Todas as ações (rolagens do oráculo, testes de atributo, uso de itens) são registradas automaticamente.
-- **Notas Manuais:** Adicione anotações de texto ou imagens ao log a qualquer momento. Você pode anexar ícones temáticos às suas notas.
+- **Notas Manuais:** Adicione anotações de texto ou ícones e imagens ao log a qualquer momento.
 - **Exportação:** 
   - **PDF:** Imprima sua sessão formatada.
   - **Markdown (.md):** Exporte para usar no Obsidian, Notion ou outros editores de texto.
 
 #### 🎨 Customização & Performance
-- **Temas Visuais:** Alterne entre temas como Padrão (Dark), Claro (Paper/Journal), Fantasia, Sci-Fi, Cyberpunk e Terminal.
+- **Temas Visuais:** Escolhe entre os temas Padrão (Azul Marinho), Claro, Fantasia, Sci-Fi, Cyberpunk e Terminal, ou crie seu Tema Customizado.
 - **Efeitos Sonoros:** Feedback auditivo para rolagens de dados, cartas e interações (pode ser desativado).
 - **Backup & Restore:** Exporte todos os seus dados (Aventuras e Coleções) para um arquivo JSON e restaure em qualquer dispositivo.
 - **Otimização:** Carregamento "Lazy" de ícones para garantir inicialização instantânea da aplicação.
@@ -147,7 +144,7 @@ Este projeto utiliza **Vite** e **React**.
    npm run dev
    ```
 
-4. Acesse `http://localhost:5173` no seu navegador.
+4. Acesse `http://localhost:3000` no seu navegador.
 
 ---
 
