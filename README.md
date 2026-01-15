@@ -120,7 +120,7 @@ This project uses **Vite** and **React**.
 
 #### 🎨 Customização & Performance
 - **Temas Visuais:** Escolha entre os temas Padrão (Azul Marinho), Claro, Fantasia, Sci-Fi, Cyberpunk e Terminal, ou **crie seu Tema Customizado**.
-- **Efeitos Sonoros:** *Bips* and *Bops* simples, limpos e opcionais para para rolagens de dados, cartas e interações.
+- **Efeitos Sonoros:** *Bips* and *Bops* simples, limpos e opcionais para rolagens de dados, cartas e interações.
 - **Backup & Restauração:** Exporte todos os seus dados (Aventuras, Coleções, Personagens, Histórico, Temas Customizados) para um arquivo ".MUNE" e restaure em qualquer dispositivo.
 
 
