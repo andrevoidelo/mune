@@ -216,6 +216,7 @@ export const CARD_THEMES: Record<string, string> = {
   yellow: 'bg-yellow-900/40 border-yellow-400/50 text-yellow-100',
   cyan:   'bg-cyan-900/40 border-cyan-500/50 text-cyan-100',
   pink:   'bg-pink-900/40 border-pink-500/50 text-pink-100',
+  gray:   'bg-gray-500/40 border-gray-400/50 text-gray-100',
 };
 
 export const BUILT_IN_THEMES = [

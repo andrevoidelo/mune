@@ -170,10 +170,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                    
                    <button 
                       onClick={() => { play('CLICK'); handleNewTheme(); }}
-                      className="p-3 bg-primary hover:bg-primary-hover text-on-primary rounded-xl shadow-lg transition-colors active:scale-95"
+                      className="w-11 h-11 flex items-center justify-center bg-primary hover:bg-primary-hover text-on-primary rounded-full shadow-lg transition-colors active:scale-95 flex-none"
                       title="Novo Tema"
                    >
-                      <Plus size={18} />
+                      <Plus size={24} />
                    </button>
                 </div>
              </div>

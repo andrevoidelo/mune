@@ -3,13 +3,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Character, Attribute, AttributeType, LogEntry, InventoryItem, Resource } from '../types';
 import { generateUUID, rollDiceNotation, getContrastColor } from '../utils';
 import { CARD_THEMES } from '../constants';
-import { User, Plus, Trash2, Edit2, X, ChevronLeft, Shield, Backpack, Image as ImageIcon, Upload, Minus, CheckSquare, Square, Dices, Activity, Zap, TrendingUp, TrendingDown, Target, Sword, FileText, PaintBucket } from 'lucide-react';
+import { User, Plus, Trash2, Edit2, X, ChevronLeft, Shield, Backpack, Image as ImageIcon, Upload, Minus, CheckSquare, Square, Dices, Activity, Zap, TrendingUp, TrendingDown, Target, Sword, FileText, PaintBucket, List, LayoutGrid, Sticker } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from './SortableItem';
 import { ColorPicker } from './ColorPicker';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import InventoryGridItem from './InventoryGridItem';
+import IconPicker from './IconPicker';
 
 const PREVIEW_COLORS: Record<string, string> = {
   slate:  '#64748b', 
@@ -31,7 +33,16 @@ interface PersonaViewProps {
 
 // Helper to resolve styles for themes vs custom hex
 const getCardStyle = (color?: string) => {
-  if (!color || color === 'slate') return { className: CARD_THEMES['slate'] };
+  // If no color is provided or 'slate' is selected, use theme semantic variables
+  if (!color || color === 'slate') {
+    return { 
+      className: 'border-border border shadow-sm transition-colors',
+      style: {
+        backgroundColor: 'rgb(var(--card-bg))',
+        color: 'rgb(var(--text-main))'
+      }
+    };
+  }
   
   // If it's a preset theme
   if (CARD_THEMES[color]) {
@@ -51,12 +62,18 @@ const getCardStyle = (color?: string) => {
     };
   }
   
-  return { className: CARD_THEMES['slate'] };
+  return { 
+    className: 'border-border border shadow-sm transition-colors',
+    style: {
+      backgroundColor: 'rgb(var(--card-bg))',
+      color: 'rgb(var(--text-main))'
+    }
+  };
 };
 
 // Helper for text elements inside custom cards
 const getTextStyle = (color?: string) => {
-  if (!color || color === 'slate') return 'text-slate-400';
+  if (!color || color === 'slate') return 'text-txt-muted';
   if (CARD_THEMES[color]) return 'text-white/90';
   
   // For custom hex, we rely on the container's inline style 'color', 
@@ -66,7 +83,7 @@ const getTextStyle = (color?: string) => {
 };
 
 const getLabelStyle = (color?: string) => {
-    if (!color || color === 'slate') return 'text-slate-500';
+    if (!color || color === 'slate') return 'text-txt-dim font-bold';
     if (CARD_THEMES[color]) return 'text-white/70';
     return 'opacity-70 font-bold'; 
 };
@@ -96,6 +113,7 @@ const getButtonStyle = (color?: string) => {
 
 type ViewMode = 'LIST' | 'DETAIL' | 'FORM';
 type RollMode = 'NORMAL' | 'ADVANTAGE' | 'DISADVANTAGE';
+type InventoryViewMode = 'LIST' | 'GRID';
 
 interface AttributeRollResult {
   charName: string;
@@ -151,12 +169,24 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   const [newItemName, setNewItemName] = useState('');
   const [newItemDice, setNewItemDice] = useState('');
   const [newItemIsPermanent, setNewItemIsPermanent] = useState(false);
+  const [newItemIcon, setNewItemIcon] = useState<string>('');
+  const [newItemIconColor, setNewItemIconColor] = useState<string>('');
+  const [showNewItemIconPicker, setShowNewItemIconPicker] = useState(false);
 
   // Auto-reduce quantity setting (persisted in localStorage)
   const [autoReduceOnUse, setAutoReduceOnUse] = useState<boolean>(() => {
     const saved = localStorage.getItem('mune_auto_reduce_on_use');
     return saved !== null ? saved === 'true' : true;
   });
+
+  // Inventory view mode (LIST or GRID) persisted in localStorage
+  const [inventoryViewMode, setInventoryViewMode] = useState<InventoryViewMode>(() => {
+    const saved = localStorage.getItem('mune_inventory_view');
+    return (saved as InventoryViewMode) || 'LIST';
+  });
+
+  // Icon picker state for editing inventory items
+  const [editingIconForItem, setEditingIconForItem] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { play } = useGameSound();
@@ -167,6 +197,11 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     localStorage.setItem('mune_auto_reduce_on_use', String(newValue));
     play('CLICK');
   };
+
+  // Persist inventory view mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('mune_inventory_view', inventoryViewMode);
+  }, [inventoryViewMode]);
 
   // --- Drag and Drop Handlers ---
   const sensors = useSensors(
@@ -238,6 +273,8 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     setNewItemName('');
     setNewItemDice('');
     setNewItemIsPermanent(false);
+    setNewItemIcon('');
+    setNewItemIconColor('');
     setValidationErrors(new Set());
     setMode('FORM');
   };
@@ -256,14 +293,16 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
       return item;
     });
 
-    setFormData({ 
-      ...char, 
+    setFormData({
+      ...char,
       inventory: migratedInventory,
       resources: char.resources || [] // Migration for resources
     });
     setNewItemName('');
     setNewItemDice('');
     setNewItemIsPermanent(false);
+    setNewItemIcon('');
+    setNewItemIconColor('');
     setValidationErrors(new Set());
     setMode('FORM');
   };
@@ -560,11 +599,11 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     play('CLICK');
     setCharacters(prev => prev.map(char => {
       if (char.id !== charId) return char;
-      
+
       const newInventory = char.inventory.map(item => {
         // Migration check just in case
         if (typeof item === 'string') return item;
-        
+
         if (item.id === itemId) {
            return { ...item, ...updates };
         }
@@ -573,6 +612,21 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
       return { ...char, inventory: newInventory };
     }));
+  };
+
+  // Update inventory item in form data (for edit mode)
+  const updateFormInventoryItem = (itemId: string, updates: Partial<InventoryItem>) => {
+    setFormData(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        inventory: prev.inventory.map(item => {
+          if (typeof item === 'string') return item;
+          if (item.id === itemId) return { ...item, ...updates };
+          return item;
+        })
+      };
+    });
   };
 
   const deleteInventoryItem = (charId: string, itemId: string) => {
@@ -886,6 +940,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     const itemName = typeof item === 'string' ? item : item.name;
     const isPermanent = typeof item === 'string' ? false : item.isPermanent;
     const itemId = typeof item === 'string' ? null : item.id;
+    const diceNotation = typeof item === 'string' ? null : item.dice;
 
     // Get current quantity from characters state to ensure it's always up-to-date
     const currentChar = characters.find((c: Character) => c.id === charId);
@@ -918,11 +973,16 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             Usar Item
           </h3>
 
-          <p className="text-txt-muted mb-4 text-sm leading-relaxed">
-            Deseja usar o item <span className="text-txt-main font-bold">"{itemName}"</span>?
-            <br />
-            <span className="text-xs text-txt-dim mt-1 block">Isso registrará a ação no log.</span>
-          </p>
+          <div className="text-txt-muted mb-4 text-sm leading-relaxed">
+            <p>Deseja usar o item <span className="text-txt-main font-bold">"{itemName}"</span>?</p>
+            {diceNotation && (
+              <span className="inline-flex items-center gap-1.5 mt-2 mb-1 px-2 py-1 bg-app rounded font-mono text-xs text-primary border border-border">
+                <Dices size={12} />
+                {diceNotation}
+              </span>
+            )}
+            <p className="text-xs text-txt-dim mt-1">Isso registrará a ação no log.</p>
+          </div>
 
           {/* Quantity Editor or Permanent Badge */}
           {isPermanent ? (
@@ -942,8 +1002,8 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                     autoReduceOnUse ? 'bg-primary border-primary' : 'bg-app border-border'
                   }`}
                 >
-                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-on-primary rounded-full shadow-sm transition-transform duration-300 ${
-                    autoReduceOnUse ? 'translate-x-5' : 'translate-x-0'
+                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow-sm transition-all duration-300 ${
+                    autoReduceOnUse ? 'translate-x-5 bg-on-primary' : 'translate-x-0 bg-txt-dim'
                   }`} />
                 </button>
               </div>
@@ -1044,7 +1104,37 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     if (!char) return null;
 
     return (
-      <div className="h-full bg-app relative flex flex-col landscape:flex-row overflow-y-auto landscape:overflow-hidden">
+      <div className="h-full flex flex-col relative bg-app">
+        
+        {/* Persistent Detail Header */}
+        <div className="absolute top-0 left-0 right-0 z-30 p-4 flex justify-between items-center pointer-events-none">
+            <button 
+              type="button"
+              onClick={() => { play('CLICK'); setMode('LIST'); }}
+              className="p-2 bg-black/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-black/60 shadow-lg pointer-events-auto transition-all active:scale-95"
+            >
+              <X size={24} />
+            </button>
+            
+            <div className="flex gap-2 pointer-events-auto">
+              <button 
+                type="button"
+                onClick={() => { play('CLICK'); handleDelete(char.id); }}
+                className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60 shadow-lg transition-all active:scale-95"
+              >
+                <Trash2 size={20} />
+              </button>
+              <button 
+                type="button"
+                onClick={() => { play('CLICK'); handleEdit(char); }}
+                className="p-2 bg-primary/40 backdrop-blur-md rounded-full text-on-primary hover:bg-primary/60 shadow-lg transition-all active:scale-95"
+              >
+                <Edit2 size={20} />
+              </button>
+            </div>
+        </div>
+
+        <div className="flex-1 flex flex-col landscape:flex-row overflow-y-auto landscape:overflow-hidden">
         
         {/* LEFT COLUMN: Identity & Resources */}
         {/* Landscape: Fixed sidebar. Portrait: Part of the main scroll flow */}
@@ -1061,41 +1151,6 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-app via-app/60 to-transparent" />
             
-            {/* Top Buttons */}
-            <button 
-              type="button"
-              onClick={() => {
-                setMode('LIST');
-                play('CLICK');
-              }}
-              className="absolute top-4 left-4 p-2 bg-black/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-black/60 z-10"
-            >
-              <ChevronLeft size={24} />
-            </button>
-            
-            <div className="absolute top-4 right-4 flex gap-2 z-10">
-              <button 
-                type="button"
-                onClick={() => {
-                  handleDelete(char.id);
-                  play('CLICK');
-                }}
-                className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60"
-              >
-                <Trash2 size={20} />
-              </button>
-              <button 
-                type="button"
-                onClick={() => {
-                  handleEdit(char);
-                  play('CLICK');
-                }}
-                className="p-2 bg-primary/40 backdrop-blur-md rounded-full text-on-primary hover:bg-primary/60"
-              >
-                <Edit2 size={20} />
-              </button>
-            </div>
-
             {/* Text Info Overlay */}
             <div className="absolute bottom-0 left-0 right-0 p-4 pt-12 bg-gradient-to-t from-app to-transparent">
               <h2 className="text-3xl font-black text-txt-main drop-shadow-md leading-none mb-1 line-clamp-2">{char.name}</h2>
@@ -1206,24 +1261,79 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
              {/* Inventory Block */}
              <div>
-                <h3 className="flex items-center gap-2 text-txt-muted uppercase font-bold text-xs tracking-wider mb-3">
-                  <Backpack size={14} /> Inventário ({char.inventory.length})
-                </h3>
-                <div className="space-y-2">
-                  {char.inventory.length === 0 ? (
-                    <p className="text-txt-dim text-sm italic col-span-full">Mochila vazia.</p>
-                  ) : (
-                    char.inventory.map((item: InventoryItem | string, idx) => {
-                      const displayName = typeof item === 'string' ? item : item.name;
-                      const displayId = typeof item === 'string' ? `idx-${idx}` : item.id;
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="flex items-center gap-2 text-txt-muted uppercase font-bold text-xs tracking-wider">
+                    <Backpack size={14} /> Inventário ({char.inventory.length})
+                  </h3>
+
+                  {/* View Mode Toggle */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => { play('CLICK'); setInventoryViewMode('LIST'); }}
+                      className={`p-2.5 rounded-lg transition-colors ${
+                        inventoryViewMode === 'LIST'
+                          ? 'bg-primary text-on-primary'
+                          : 'bg-card text-txt-muted hover:text-txt-main'
+                      }`}
+                      title="Visualização em Lista"
+                    >
+                      <List size={20} />
+                    </button>
+                    <button
+                      onClick={() => { play('CLICK'); setInventoryViewMode('GRID'); }}
+                      className={`p-2.5 rounded-lg transition-colors ${
+                        inventoryViewMode === 'GRID'
+                          ? 'bg-primary text-on-primary'
+                          : 'bg-card text-txt-muted hover:text-txt-main'
+                      }`}
+                      title="Visualização em Grade"
+                    >
+                      <LayoutGrid size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {char.inventory.length === 0 ? (
+                  <p className="text-txt-dim text-sm italic">Mochila vazia.</p>
+                ) : inventoryViewMode === 'GRID' ? (
+                  /* GRID VIEW */
+                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
+                    {char.inventory.map((item: InventoryItem | string, idx) => {
+                      if (typeof item === 'string') {
+                        // Legacy string items - show as simple grid item
+                        return (
+                          <button
+                            key={`str-${idx}`}
+                            onClick={() => handleUseItem(char.id, char.name, item)}
+                            className="relative aspect-square rounded-lg bg-card border border-border
+                                       flex flex-col items-center justify-center p-1
+                                       active:bg-card-hover transition-colors hover:border-primary/50"
+                            title={item}
+                          >
+                            <span className="text-xs text-txt-muted text-center truncate w-full px-1">{item}</span>
+                          </button>
+                        );
+                      }
+                      return (
+                        <InventoryGridItem
+                          key={item.id}
+                          item={item}
+                          onUse={() => handleUseItem(char.id, char.name, item)}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* LIST VIEW */
+                  <div className="space-y-2">
+                    {char.inventory.map((item: InventoryItem | string, idx) => {
                       const isPerm = typeof item === 'string' ? false : item.isPermanent;
                       const diceNotation = typeof item === 'string' ? undefined : item.dice;
-                      const quantity = typeof item === 'string' ? 1 : item.quantity;
 
                       if (typeof item === 'string') {
                         return (
-                          <div 
-                            key={idx} 
+                          <div
+                            key={idx}
                             onClick={() => handleUseItem(char.id, char.name, item)}
                             className="flex items-center gap-2 text-txt-muted text-sm p-3 bg-card/30 rounded border border-card cursor-pointer hover:bg-card hover:border-border transition-colors active:scale-[0.98]"
                           >
@@ -1234,7 +1344,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
                       return (
                         <div key={item.id} className="flex items-center justify-between p-3 bg-card rounded border border-border">
-                          <div 
+                          <div
                             onClick={() => handleUseItem(char.id, char.name, item)}
                             className="flex items-center gap-3 flex-1 overflow-hidden cursor-pointer group active:opacity-80 transition-opacity"
                           >
@@ -1247,30 +1357,30 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                               {item.name}
                             </span>
                             {diceNotation && (
-                               <span className="text-[10px] bg-app border border-border text-txt-muted px-1.5 py-0.5 rounded font-mono group-hover:border-primary/50 group-hover:text-primary">
+                               <span className="text-[10px] bg-app border border-border text-txt-muted px-1.5 py-0.5 rounded font-mono group-hover:border-primary/50 group-hover:text-primary max-w-[48px] truncate inline-block align-middle">
                                  {diceNotation}
                                </span>
                             )}
                           </div>
-                          
+
                           {item.isPermanent ? (
-                            <button 
+                            <button
                               type="button"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteInventoryItem(char.id, item.id); }} 
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteInventoryItem(char.id, item.id); }}
                               className="p-2 text-txt-muted hover:text-error bg-app rounded"
                             >
                               <Trash2 size={16} />
                             </button>
                           ) : (
                             <div className="flex items-center gap-1 bg-app rounded p-1">
-                              <button 
+                              <button
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateInventoryItem(char.id, item.id, { quantity: Math.max(0, item.quantity - 1) }); }}
                                 className="p-2 text-txt-muted hover:text-txt-main hover:bg-card-hover rounded transition-colors"
                               >
                                 <Minus size={14} />
                               </button>
-                              
+
                               {editingQtyId === item.id ? (
                                 <input
                                   autoFocus
@@ -1292,7 +1402,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                   }}
                                 />
                               ) : (
-                                <span 
+                                <span
                                   onClick={(e) => { e.stopPropagation(); setEditingQtyId(item.id); }}
                                   className="w-8 text-center text-primary font-black font-mono text-lg cursor-text"
                                 >
@@ -1300,19 +1410,19 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                 </span>
                               )}
 
-                              <button 
+                              <button
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateInventoryItem(char.id, item.id, { quantity: item.quantity + 1 }); }}
                                 className="p-2 text-txt-muted hover:text-txt-main hover:bg-card-hover rounded transition-colors"
                               >
                                 <Plus size={14} />
                               </button>
-                              
+
                               <div className="w-px h-6 bg-border mx-1"></div>
-                              
-                              <button 
+
+                              <button
                                 type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteInventoryItem(char.id, item.id); }} 
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteInventoryItem(char.id, item.id); }}
                                 className="p-2 text-txt-muted hover:text-error hover:bg-card rounded transition-colors"
                               >
                                 <Trash2 size={16} />
@@ -1321,12 +1431,13 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                           )}
                         </div>
                       );
-                    })
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
              </div>
           </div>
         </div>
+       </div>
 
       </div>
     );
@@ -1412,7 +1523,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
     const addNewItem = () => {
         if (!newItemName.trim()) return;
-        
+
         setFormData(prev => {
             if (!prev) return null;
             const newItem: InventoryItem = {
@@ -1420,17 +1531,35 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                 name: newItemName,
                 quantity: 1,
                 isPermanent: newItemIsPermanent,
-                dice: newItemDice
+                dice: newItemDice,
+                icon: newItemIcon || undefined,
+                iconColor: newItemIconColor || undefined
             };
             return {
                 ...prev,
                 inventory: [...prev.inventory, newItem]
             };
         });
-        
+
         setNewItemName('');
         setNewItemDice('');
         setNewItemIsPermanent(false);
+        setNewItemIcon('');
+        setNewItemIconColor('');
+    };
+
+    const updateInventoryItemForm = (id: string, updates: Partial<InventoryItem>) => {
+        setFormData(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                inventory: prev.inventory.map(item => {
+                    if (typeof item === 'string') return item;
+                    if (item.id === id) return { ...item, ...updates };
+                    return item;
+                })
+            };
+        });
     };
     
     const removeItem = (id: string) => {
@@ -1733,22 +1862,54 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
               {/* Add New Item Form */}
               <div className="bg-card/50 p-3 rounded-lg border border-border mb-4">
                   <div className="flex flex-col gap-2">
-                    <input 
-                      type="text" 
-                      value={newItemName}
-                      onChange={(e) => setNewItemName(e.target.value)}
-                      className="w-full bg-app border border-border rounded p-2 text-sm text-txt-main outline-none focus:border-primary placeholder-txt-dim"
-                      placeholder="Nome do Item (Ex: Corda, Espada...)"
-                    />
                     <div className="flex gap-2">
-                        <input 
-                          type="text" 
+                      {/* Icon Picker Button */}
+                      <button
+                        type="button"
+                        onClick={() => { play('CLICK'); setShowNewItemIconPicker(true); }}
+                        className={`p-3 rounded-xl border transition-colors flex-none ${
+                          newItemIcon
+                            ? 'bg-card-hover border-primary/50'
+                            : 'bg-card border-border hover:bg-card-hover text-txt-muted hover:text-txt-main'
+                        }`}
+                        title="Selecionar Ícone"
+                      >
+                        {newItemIcon ? (
+                          <div
+                            className="w-6 h-6"
+                            style={{
+                              backgroundColor: newItemIconColor || 'rgb(var(--text-main))',
+                              maskImage: `url("/icons/${newItemIcon}.svg")`,
+                              WebkitMaskImage: `url("/icons/${newItemIcon}.svg")`,
+                              maskRepeat: 'no-repeat',
+                              maskPosition: 'center',
+                              maskSize: 'contain',
+                              WebkitMaskRepeat: 'no-repeat',
+                              WebkitMaskPosition: 'center',
+                              WebkitMaskSize: 'contain',
+                            }}
+                          />
+                        ) : (
+                          <Sticker size={24} />
+                        )}
+                      </button>
+                      <input
+                        type="text"
+                        value={newItemName}
+                        onChange={(e) => setNewItemName(e.target.value)}
+                        className="flex-1 bg-app border border-border rounded p-2 text-sm text-txt-main outline-none focus:border-primary placeholder-txt-dim"
+                        placeholder="Nome do Item (Ex: Corda, Espada...)"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                        <input
+                          type="text"
                           value={newItemDice}
                           onChange={(e) => setNewItemDice(e.target.value)}
                           className="flex-1 bg-app border border-border rounded p-2 text-sm text-txt-main outline-none focus:border-primary placeholder-txt-dim font-mono"
                           placeholder="Dano/Efeito (Ex: 1d8)"
                         />
-                        <button 
+                        <button
                           type="button"
                           onClick={() => {
                             setNewItemIsPermanent(!newItemIsPermanent);
@@ -1759,7 +1920,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                         >
                           <Shield size={16} />
                         </button>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => {
                             addNewItem();
@@ -1768,7 +1929,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                           disabled={!newItemName.trim()}
                           className="px-4 bg-primary hover:bg-primary-hover text-on-primary rounded font-bold uppercase text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-<Plus size={16} />
+                          <Plus size={16} />
                         </button>
                     </div>
                   </div>
@@ -1792,19 +1953,53 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                       const quantity = isString ? 1 : item.quantity;
                       const isPerm = isString ? false : item.isPermanent;
                       const dice = isString ? undefined : item.dice;
+                      const icon = isString ? undefined : item.icon;
+                      const iconColor = isString ? undefined : item.iconColor;
 
                       return (
                         <SortableItem key={id} id={id}>
                           <div className="flex items-center justify-between p-2 bg-card rounded border border-border group">
                               <div className="flex items-center gap-2 overflow-hidden">
-                                {isPerm ? <Shield size={14} className="text-primary flex-none" /> : <div className="w-3.5" />}
+                                {/* Icon Preview Button */}
+                                {!isString && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { play('CLICK'); setEditingIconForItem(item.id); }}
+                                    className={`p-2 rounded-lg border transition-colors flex-none ${
+                                      icon
+                                        ? 'bg-card-hover border-primary/50'
+                                        : 'bg-card border-border hover:bg-card-hover text-txt-muted hover:text-txt-main'
+                                    }`}
+                                    title="Alterar Ícone"
+                                  >
+                                    {icon ? (
+                                      <div
+                                        className="w-5 h-5"
+                                        style={{
+                                          backgroundColor: iconColor || 'rgb(var(--text-main))',
+                                          maskImage: `url("/icons/${icon}.svg")`,
+                                          WebkitMaskImage: `url("/icons/${icon}.svg")`,
+                                          maskRepeat: 'no-repeat',
+                                          maskPosition: 'center',
+                                          maskSize: 'contain',
+                                          WebkitMaskRepeat: 'no-repeat',
+                                          WebkitMaskPosition: 'center',
+                                          WebkitMaskSize: 'contain',
+                                        }}
+                                      />
+                                    ) : (
+                                      <Sticker size={20} />
+                                    )}
+                                  </button>
+                                )}
+                                {isPerm ? <Shield size={14} className="text-primary flex-none" /> : !isString && <div className="w-0" />}
                                 <span className="text-sm font-bold text-txt-main truncate">{name}</span>
                                 {quantity > 1 && <span className="text-xs text-primary font-mono">x{quantity}</span>}
                                 {dice && <span className="text-[10px] text-txt-dim font-mono bg-app px-1 rounded">{dice}</span>}
                               </div>
-                              <button 
+                              <button
                                 type="button"
-                                onClick={() => { play('CLICK'); removeItem(isString ? name : item.id); }} // For string items we might have issues removing exact one if duplicates exist, but minimal impact for now
+                                onClick={() => { play('CLICK'); removeItem(isString ? name : item.id); }}
                                 className="text-txt-dim hover:text-error p-1"
                               >
                                 <Trash2 size={14} />
@@ -1849,18 +2044,18 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         onCancel={() => setCharToDelete(null)}
       />
 
-      <ColorPicker 
-        isOpen={!!colorPickerTargetId} 
+      <ColorPicker
+        isOpen={!!colorPickerTargetId}
         onClose={() => setColorPickerTargetId(null)}
         selectedColor={
-          colorPickerTargetId?.startsWith('resource:') 
-            ? formData?.resources.find(r => r.id === colorPickerTargetId.split(':')[1])?.color 
+          colorPickerTargetId?.startsWith('resource:')
+            ? formData?.resources.find(r => r.id === colorPickerTargetId.split(':')[1])?.color
             : formData?.attributes.find(a => a.id === colorPickerTargetId?.split(':')[1])?.color
         }
         onSelect={(color) => {
           if (!colorPickerTargetId || !formData) return;
           const [type, id] = colorPickerTargetId.split(':');
-          
+
           setFormData(prev => {
             if (!prev) return null;
             if (type === 'resource') {
@@ -1871,6 +2066,82 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           });
         }}
       />
+
+      {/* Icon Picker Modal for New Item */}
+      {showNewItemIconPicker && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => { play('CLICK'); setShowNewItemIconPicker(false); }}
+        >
+          <div
+            className="w-full max-w-2xl bg-app border border-border rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col h-[70vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <IconPicker
+                selectedIcon={newItemIcon}
+                selectedColor={newItemIconColor || '#ffffff'}
+                onSelect={(icon, color) => {
+                  setNewItemIcon(icon || '');
+                  setNewItemIconColor(color || '');
+                }}
+                onClose={() => setShowNewItemIconPicker(false)}
+              />
+            </div>
+            <div className="p-4 border-t border-border flex justify-end">
+              <button
+                onClick={() => { play('CLICK'); setShowNewItemIconPicker(false); }}
+                className="px-6 py-2 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Icon Picker Modal for Editing Existing Items */}
+      {editingIconForItem && formData && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => { play('CLICK'); setEditingIconForItem(null); }}
+        >
+          <div
+            className="w-full max-w-2xl bg-app border border-border rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col h-[70vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <IconPicker
+                selectedIcon={
+                  formData.inventory.find(
+                    (item): item is InventoryItem => typeof item !== 'string' && item.id === editingIconForItem
+                  )?.icon
+                }
+                selectedColor={
+                  formData.inventory.find(
+                    (item): item is InventoryItem => typeof item !== 'string' && item.id === editingIconForItem
+                  )?.iconColor || '#ffffff'
+                }
+                onSelect={(icon, color) => {
+                  updateFormInventoryItem(editingIconForItem, {
+                    icon: icon || undefined,
+                    iconColor: color || undefined
+                  });
+                }}
+                onClose={() => setEditingIconForItem(null)}
+              />
+            </div>
+            <div className="p-4 border-t border-border flex justify-end">
+              <button
+                onClick={() => { play('CLICK'); setEditingIconForItem(null); }}
+                className="px-6 py-2 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

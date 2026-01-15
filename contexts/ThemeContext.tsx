@@ -17,23 +17,21 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [activeThemeId, setActiveThemeId] = useState<string>('default');
-  const [customThemes, setCustomThemes] = useState<AppTheme[]>([]);
+  // Initialize state directly from localStorage to prevent overwriting on mount
+  const [activeThemeId, setActiveThemeId] = useState<string>(() => {
+    const saved = localStorage.getItem('mune_active_theme_id');
+    return saved || 'default';
+  });
 
-  // Load from Storage
-  useEffect(() => {
-    const savedActive = localStorage.getItem('mune_active_theme_id');
-    const savedCustom = localStorage.getItem('mune_custom_themes');
-
-    if (savedActive) setActiveThemeId(savedActive);
-    if (savedCustom) {
-      try {
-        setCustomThemes(JSON.parse(savedCustom));
-      } catch (e) {
-        console.error("Failed to parse custom themes", e);
-      }
+  const [customThemes, setCustomThemes] = useState<AppTheme[]>(() => {
+    try {
+      const saved = localStorage.getItem('mune_custom_themes');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to parse custom themes on init", e);
+      return [];
     }
-  }, []);
+  });
 
   // Save to Storage
   useEffect(() => {
@@ -96,22 +94,13 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: generateUUID(),
       isBuiltIn: false
     };
-    setCustomThemes(prev => {
-        const updated = [...prev, newTheme];
-        // Ensure persistence happens
-        try {
-            localStorage.setItem('mune_custom_themes', JSON.stringify(updated));
-        } catch(e) {
-            console.error("Failed to save themes", e);
-        }
-        return updated;
-    });
+    setCustomThemes(prev => [...prev, newTheme]);
     setActiveThemeId(newTheme.id);
   };
 
   const updateTheme = (id: string, updates: Partial<AppTheme>) => {
     setCustomThemes(prev => {
-      const updated = prev.map(t => {
+      return prev.map(t => {
         if (t.id !== id) return t;
         
         return {
@@ -120,23 +109,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             colors: updates.colors ? { ...t.colors, ...updates.colors } : t.colors
         };
       });
-      
-      try {
-        localStorage.setItem('mune_custom_themes', JSON.stringify(updated));
-      } catch(e) { console.error(e); }
-      
-      return updated;
     });
   };
 
   const deleteTheme = (id: string) => {
-    setCustomThemes(prev => {
-        const updated = prev.filter(t => t.id !== id);
-        try {
-            localStorage.setItem('mune_custom_themes', JSON.stringify(updated));
-        } catch(e) { console.error(e); }
-        return updated;
-    });
+    setCustomThemes(prev => prev.filter(t => t.id !== id));
     if (activeThemeId === id) {
       setActiveThemeId('default');
     }

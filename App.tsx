@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Howler } from 'howler';
 import { Tab, LogEntry, Character, Adventure, Collection, Thread, NpcEntry, AppTheme } from './types';
 import OracleView from './components/OracleView';
 import ToolsView from './components/ToolsView';
@@ -20,6 +21,29 @@ import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
 const AppContent: React.FC = () => {
   const { play } = useGameSound();
   const { customThemes, addTheme, restoreThemes } = useTheme();
+  
+  // Audio Context Unlocker
+  useEffect(() => {
+    const unlockAudio = () => {
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        Howler.ctx.resume();
+      }
+      // Remove listeners once we've attempted to unlock
+      ['click', 'touchstart', 'keydown'].forEach(event => 
+        document.removeEventListener(event, unlockAudio)
+      );
+    };
+
+    ['click', 'touchstart', 'keydown'].forEach(event => 
+      document.addEventListener(event, unlockAudio)
+    );
+
+    return () => {
+      ['click', 'touchstart', 'keydown'].forEach(event => 
+        document.removeEventListener(event, unlockAudio)
+      );
+    };
+  }, []);
   
   // Global State
   const [adventures, setAdventures] = useState<Adventure[]>([]);
@@ -154,11 +178,13 @@ const AppContent: React.FC = () => {
         const data = JSON.parse(content);
         let validAdventures: Adventure[] = [];
         let validCollections: Collection[] = [];
+        let validThemes: AppTheme[] = [];
 
         // CASE 1: Backup Padrão Moderno (v3)
         if (data && typeof data === 'object' && Array.isArray(data.adventures)) {
            validAdventures = data.adventures;
            validCollections = data.collections || [];
+           validThemes = data.themes || [];
         } 
         // CASE 2: Backup Legado (Formato de Objeto Único com logs/characters na raiz)
         // Correção específica para o erro da screenshot: "Chaves encontradas: version, date, characters, logs"
@@ -180,7 +206,8 @@ const AppContent: React.FC = () => {
         if (validAdventures.length > 0) {
            setPendingImportData({
              adventures: validAdventures,
-             collections: validCollections
+             collections: validCollections,
+             themes: validThemes
            });
         } else {
            // Debug info for user
@@ -545,7 +572,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-app text-txt-main overflow-hidden relative">
       {/* Header */}
-      <header className="flex-none h-14 bg-app flex items-center justify-between px-4 border-b border-border shadow-md z-20 relative">
+      <header className="flex-none h-14 bg-card flex items-center justify-between px-4 border-b border-border shadow-md z-20 relative">
         <div className="flex items-center gap-3 min-w-0">
           {showSettings ? (
              <div className="flex items-center gap-2 animate-in slide-in-from-left duration-200 min-w-0">
@@ -623,7 +650,7 @@ const AppContent: React.FC = () => {
         
         {/* Side Navigation (Landscape Only) */}
         {currentAdventureId && !showSettings && (
-          <nav className="hidden landscape:flex flex-col w-16 bg-app border-r border-border h-full py-4 items-center gap-4 z-30">
+          <nav className="hidden landscape:flex flex-col w-16 bg-card border-r border-border h-full py-4 items-center gap-4 z-30">
             <NavButton 
               active={activeTab === Tab.ORACLE} 
               onClick={() => setActiveTab(Tab.ORACLE)}
@@ -793,7 +820,7 @@ const AppContent: React.FC = () => {
 
       {/* Bottom Navigation (Portrait Only) */}
       {currentAdventureId && !showSettings && (
-        <nav className="flex-none h-16 bg-app border-t border-border grid grid-cols-5 pb-safe z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden">
+        <nav className="flex-none h-16 bg-card border-t border-border grid grid-cols-5 pb-safe z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden">
           <NavButton 
             active={activeTab === Tab.ORACLE} 
             onClick={() => setActiveTab(Tab.ORACLE)}

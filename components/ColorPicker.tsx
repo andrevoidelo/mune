@@ -19,6 +19,7 @@ const PREVIEW_COLORS: Record<string, string> = {
   yellow: '#eab308',
   cyan:   '#06b6d4',
   pink:   '#ec4899',
+  gray:   '#9ca3af',
 };
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({ isOpen, onClose, selectedColor, onSelect }) => {
@@ -99,15 +100,20 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ isOpen, onClose, selec
                 <div className="grid grid-cols-5 gap-4">
                     {Object.keys(CARD_THEMES).map(themeKey => {
                         const isActive = tempSelection === themeKey || (themeKey === 'slate' && !tempSelection);
+                        // For slate (default), use the theme's card background color
+                        const backgroundColor = themeKey === 'slate' 
+                            ? 'rgb(var(--card-bg))' 
+                            : PREVIEW_COLORS[themeKey];
+
                         return (
                             <button
                                 key={themeKey}
                                 onClick={() => setTempSelection(themeKey)}
-                                className={`aspect-square rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center relative ${isActive ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-app' : 'hover:scale-105 opacity-80 hover:opacity-100'}`}
-                                style={{ backgroundColor: PREVIEW_COLORS[themeKey] }}
-                                title={themeKey}
+                                className={`aspect-square rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center relative border border-border/50 ${isActive ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-app' : 'hover:scale-105 opacity-80 hover:opacity-100'}`}
+                                style={{ backgroundColor }}
+                                title={themeKey === 'slate' ? 'Padrão do Tema' : themeKey}
                             >
-                                {isActive && <Check size={16} className="text-white drop-shadow-md" strokeWidth={3} />}
+                                {isActive && <Check size={16} className={`${themeKey === 'slate' ? 'text-primary' : 'text-white'} drop-shadow-md`} strokeWidth={3} />}
                             </button>
                         );
                     })}

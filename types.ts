@@ -47,6 +47,8 @@ export interface InventoryItem {
   quantity: number;
   isPermanent: boolean;
   dice?: string;
+  icon?: string;       // Icon filename (e.g., "sword")
+  iconColor?: string;  // Hex color (e.g., "#ef4444")
 }
 
 export interface Character {
