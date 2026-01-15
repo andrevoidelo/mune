@@ -549,8 +549,8 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             id: generateUUID(),
             timestamp: Date.now(),
             type: 'ITEM',
-            title: `${charName} usou item`,
-            result: itemName,
+            title: `${charName} usou ${itemName}`,
+            result: '', // Empty result since it's already in the title
             details: getLogDetails(),
             highlight: false
         });
@@ -1107,29 +1107,51 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
       <div className="h-full flex flex-col relative bg-app">
         
         {/* Persistent Detail Header */}
-        <div className="absolute top-0 left-0 right-0 z-30 p-4 flex justify-between items-center pointer-events-none">
-            <button 
-              type="button"
-              onClick={() => { play('CLICK'); setMode('LIST'); }}
-              className="p-2 bg-black/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-black/60 shadow-lg pointer-events-auto transition-all active:scale-95"
-            >
-              <X size={24} />
-            </button>
+        <div className="absolute top-0 left-0 right-0 z-30 flex justify-between items-center pointer-events-none">
+            {/* Left Section Container: Always contains X, contains Edit/Delete only in Landscape */}
+            <div className="flex items-center justify-between w-full landscape:w-[45%] p-4 pointer-events-auto">
+              <button 
+                type="button"
+                onClick={() => { play('CLICK'); setMode('LIST'); }}
+                className="p-2 bg-black/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-black/60 shadow-lg transition-all active:scale-95"
+              >
+                <X size={24} />
+              </button>
+              
+              {/* Edit/Delete grouped here ONLY on landscape, aligned to the right of the 45% column */}
+              <div className="hidden landscape:flex gap-2">
+                <button 
+                  type="button"
+                  onClick={() => { play('CLICK'); handleDelete(char.id); }}
+                  className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60 shadow-lg transition-all active:scale-95"
+                >
+                  <Trash2 size={24} />
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => { play('CLICK'); handleEdit(char); }}
+                  className="p-2 bg-primary/40 backdrop-blur-md rounded-full text-on-primary hover:bg-primary/60 shadow-lg transition-all active:scale-95"
+                >
+                  <Edit2 size={24} />
+                </button>
+              </div>
+            </div>
             
-            <div className="flex gap-2 pointer-events-auto">
+            {/* Edit/Delete grouped here ONLY on portrait, aligned to the far right of the screen */}
+            <div className="flex landscape:hidden gap-2 p-4 pointer-events-auto">
               <button 
                 type="button"
                 onClick={() => { play('CLICK'); handleDelete(char.id); }}
                 className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60 shadow-lg transition-all active:scale-95"
               >
-                <Trash2 size={20} />
+                <Trash2 size={24} />
               </button>
               <button 
                 type="button"
                 onClick={() => { play('CLICK'); handleEdit(char); }}
                 className="p-2 bg-primary/40 backdrop-blur-md rounded-full text-on-primary hover:bg-primary/60 shadow-lg transition-all active:scale-95"
               >
-                <Edit2 size={20} />
+                <Edit2 size={24} />
               </button>
             </div>
         </div>

@@ -17,6 +17,9 @@ dist-ssr
 build
 *.local
 
+# Android Build
+android
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

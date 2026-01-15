@@ -179,14 +179,14 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
       </div>
 
       {/* SECTION 2: Input & Modifiers */}
-      <div className="flex-none landscape:w-1/2 landscape:h-full landscape:overflow-y-auto bg-app p-3 pt-4 pb-6 border-t landscape:border-t-0 border-border shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-10 rounded-t-2xl landscape:rounded-none flex flex-col justify-center">
-        <div className="flex flex-col gap-2 max-w-md mx-auto w-full">
+      <div className="flex-none landscape:w-1/2 landscape:h-full landscape:overflow-y-auto bg-app p-3 landscape:p-2 pt-4 pb-6 landscape:pb-2 border-t landscape:border-t-0 border-border shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-10 rounded-t-2xl landscape:rounded-none flex flex-col justify-center landscape:justify-start">
+        <div className="flex flex-col gap-2 landscape:gap-1 max-w-md mx-auto w-full">
            
            {/* Input Row */}
            <div className="flex items-center gap-2 w-full">
               <button 
                 onClick={() => addModifier(-1)}
-                className="w-12 h-12 flex-none flex items-center justify-center bg-error/20 border border-error/50 rounded-xl text-error font-bold transition-all active:scale-95 shadow-sm text-lg"
+                className="w-12 h-12 landscape:h-9 flex-none flex items-center justify-center bg-error/20 border border-error/50 rounded-xl text-error font-bold transition-all active:scale-95 shadow-sm text-lg"
               >
                 -1
               </button>
@@ -199,7 +199,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
                   onChange={(e) => setExpression(e.target.value)}
                   onKeyDown={(e) => { if(e.key === 'Enter') handleRoll(); }}
                   placeholder="Ex: 2d20kh1+5"
-                  className="w-full h-12 bg-app border-2 border-border focus:border-primary rounded-xl pl-9 pr-2 text-center text-lg font-mono text-txt-main outline-none transition-colors placeholder-txt-dim shadow-inner"
+                  className="w-full h-12 landscape:h-9 bg-app border-2 border-border focus:border-primary rounded-xl pl-9 pr-2 text-center text-lg landscape:text-base font-mono text-txt-main outline-none transition-colors placeholder-txt-dim shadow-inner"
                 />
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-dim pointer-events-none">
                   <Dices size={18} />
@@ -208,7 +208,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
 
               <button 
                 onClick={() => addModifier(1)}
-                className="w-12 h-12 flex-none flex items-center justify-center bg-success/20 border border-success/50 rounded-xl text-success font-bold transition-all active:scale-95 shadow-sm text-lg"
+                className="w-12 h-12 landscape:h-9 flex-none flex items-center justify-center bg-success/20 border border-success/50 rounded-xl text-success font-bold transition-all active:scale-95 shadow-sm text-lg"
               >
                 +1
               </button>
@@ -218,14 +218,14 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
            <div className="grid grid-cols-4 gap-2 w-full">
                <button 
                  onClick={() => handleKeep('kh')}
-                 className="bg-card border border-border rounded-lg py-2 text-sm font-bold text-txt-muted hover:text-txt-main uppercase tracking-wider flex items-center justify-center active:bg-card-hover font-mono"
+                 className="bg-card border border-border rounded-lg py-2 landscape:py-1.5 text-sm font-bold text-txt-muted hover:text-txt-main uppercase tracking-wider flex items-center justify-center active:bg-card-hover font-mono"
                  title="Manter Maior (Keep Highest)"
                >
                  KH
                </button>
                <button 
                  onClick={() => handleKeep('kl')}
-                 className="bg-card border border-border rounded-lg py-2 text-sm font-bold text-txt-muted hover:text-txt-main uppercase tracking-wider flex items-center justify-center active:bg-card-hover font-mono"
+                 className="bg-card border border-border rounded-lg py-2 landscape:py-1.5 text-sm font-bold text-txt-muted hover:text-txt-main uppercase tracking-wider flex items-center justify-center active:bg-card-hover font-mono"
                  title="Manter Menor (Keep Lowest)"
                >
                  KL
@@ -233,13 +233,13 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
                
               <button 
                 onClick={() => { play('CLICK'); setExpression(prev => prev.slice(0, -1)); }}
-                className="bg-card hover:bg-card-hover border border-border rounded-lg py-2 flex items-center justify-center text-txt-muted hover:text-txt-main active:scale-95 transition-colors"
+                className="bg-card hover:bg-card-hover border border-border rounded-lg py-2 landscape:py-1.5 flex items-center justify-center text-txt-muted hover:text-txt-main active:scale-95 transition-colors"
               >
                 <Delete size={18} />
               </button>
               <button 
                 onClick={handleClear}
-                className="bg-error/20 hover:bg-error/40 border border-error/50 rounded-lg py-2 text-[10px] sm:text-xs font-bold text-error hover:text-error uppercase tracking-wider active:scale-95 transition-colors"
+                className="bg-error/20 hover:bg-error/40 border border-error/50 rounded-lg py-2 landscape:py-1.5 text-[10px] sm:text-xs font-bold text-error hover:text-error uppercase tracking-wider active:scale-95 transition-colors"
               >
                 Limpar
               </button>
@@ -264,9 +264,9 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
            <button
              onClick={() => handleRoll()}
              disabled={!expression.trim()}
-             className="w-full mt-1 bg-primary hover:bg-primary-hover disabled:bg-card disabled:text-txt-dim disabled:cursor-not-allowed text-on-primary font-black text-xl uppercase tracking-wider py-3.5 rounded-xl enabled:shadow-lg enabled:shadow-primary/20 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2"
+             className="w-full mt-1 bg-primary hover:bg-primary-hover disabled:bg-card disabled:text-txt-dim disabled:cursor-not-allowed text-on-primary font-black text-xl landscape:text-lg uppercase tracking-wider py-3.5 landscape:py-2.5 rounded-xl enabled:shadow-lg enabled:shadow-primary/20 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2"
            >
-             <Play size={22} fill="currentColor" /> Rolar
+             <Dices size={22} /> Rolar
            </button>
         </div>
       </div>

@@ -452,8 +452,8 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
         {/* Header */}
         <div className="flex-none p-4 flex items-center justify-between gap-3 border-b border-border bg-app z-10">
            <div className="flex items-center gap-3">
-              <button onClick={handleCloseCollection} className="p-2 bg-card rounded-full text-txt-muted hover:text-txt-main">
-                <ChevronLeft size={24} />
+              <button onClick={handleCloseCollection} className="p-2 bg-black/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-black/60 shadow-lg transition-all active:scale-95">
+                <X size={24} />
               </button>
               <div>
                 <h2 className="text-lg font-bold text-txt-main leading-none">{activeCollection.title}</h2>

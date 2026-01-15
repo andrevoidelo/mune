@@ -66,8 +66,8 @@ const DraggableFab: React.FC<DraggableFabProps> = ({ onClick }) => {
     const deltaX = clientX - dragStartPos.current.x;
     const deltaY = clientY - dragStartPos.current.y;
 
-    // Threshold check to distinguish click from drag (5px buffer)
-    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+    // Threshold check to distinguish click from drag (Increased to 10px for better touch tolerance)
+    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
       hasMoved.current = true;
     }
 
@@ -88,11 +88,16 @@ const DraggableFab: React.FC<DraggableFabProps> = ({ onClick }) => {
 
   const handleEnd = () => {
     setIsDragging(false);
-    if (!hasMoved.current) {
-      onClick();
-    } else {
+    if (hasMoved.current) {
       // Save position if moved
       localStorage.setItem('mune_fab_pos', JSON.stringify(position));
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Only trigger if it wasn't a drag interaction
+    if (!hasMoved.current) {
+      onClick();
     }
   };
 
@@ -129,6 +134,7 @@ const DraggableFab: React.FC<DraggableFabProps> = ({ onClick }) => {
       onTouchMove={onTouchMove}
       onTouchEnd={handleEnd}
       onMouseDown={onMouseDown}
+      onClick={handleClick}
       title="Diário (Clique para abrir, Segure para mover)"
     >
       <PenTool size={24} />

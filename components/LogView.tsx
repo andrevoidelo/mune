@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { LogEntry } from '../types';
-import { Trash2, Clock, X, StickyNote, Printer, Calendar, FileDown } from 'lucide-react';
+import { Trash2, Clock, X, StickyNote, Printer, Calendar, FileDown, ArrowDown } from 'lucide-react';
 import { exportLogsToMarkdown } from '../utils';
 import { useGameSound } from '../hooks/useGameSound';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
@@ -27,19 +27,47 @@ const TYPE_LABELS: Record<string, string> = {
 
 const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, removeLog, isActive }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const prevLogsLength = useRef(logs.length);
   const { play } = useGameSound();
 
   useEffect(() => {
-    // Only scroll if the tab is active
-    if (isActive) {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsAtBottom(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    if (bottomRef.current) {
+      observer.observe(bottomRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    // Scroll only if tab became active OR if logs increased (new entry)
+    // This prevents scrolling when deleting (length decreases)
+    const shouldScroll = isActive && (logs.length > prevLogsLength.current || prevLogsLength.current === 0);
+
+    if (shouldScroll) {
       // Use a small timeout to ensure DOM is rendered after visibility change
       const timeoutId = setTimeout(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 50);
       return () => clearTimeout(timeoutId);
     }
-  }, [logs, isActive]);
+    
+    // Update ref for next render
+    prevLogsLength.current = logs.length;
+  }, [logs.length, isActive]);
+
+  const scrollToBottom = () => {
+    play('CLICK');
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const confirmClearLogs = () => {
     clearLogs();
@@ -125,7 +153,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
   };
 
   return (
-    <div className="flex flex-col h-full bg-app">
+    <div className="flex flex-col h-full bg-app relative">
       <div className="flex justify-between items-center p-4 border-b border-border bg-app/95 sticky top-0 z-10 backdrop-blur-sm h-16 no-print">
         <h2 className="text-lg font-bold text-txt-main">Registro da Sessão</h2>
         {logs.length > 0 && (
@@ -297,8 +325,19 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
             );
           })
         )}
-        <div ref={bottomRef} className="no-print" />
+        <div ref={bottomRef} className="h-px w-full no-print" />
       </div>
+
+      {/* Floating Scroll to Bottom Button */}
+      {logs.length > 3 && !isAtBottom && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 p-3 bg-card/50 hover:bg-card/80 text-txt-main rounded-full shadow-lg transition-all active:scale-95 no-print z-20 backdrop-blur-sm"
+          title="Ir para o final"
+        >
+          <ArrowDown size={24} />
+        </button>
+      )}
 
       <ConfirmDeleteModal 
         isOpen={showDeleteModal}

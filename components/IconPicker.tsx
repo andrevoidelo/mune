@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, X, Check } from 'lucide-react';
+import { Search, X, Check, PaintBucket } from 'lucide-react';
 
 interface IconData {
   name: string;
@@ -17,6 +17,7 @@ interface IconPickerProps {
 export const PRESET_COLORS = [
   '#f8fafc', // Slate 50
   '#94a3b8', // Slate 400
+  '#475569', // Slate 600
   '#ef4444', // Red 500
   '#f97316', // Orange 500
   '#f59e0b', // Amber 500
@@ -100,60 +101,88 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[600px]">
-      <div className="flex items-center gap-2 p-4 border-b border-border">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" size={18} />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Procurar ícones..."
-            className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2 text-txt-main placeholder-txt-dim focus:outline-none focus:border-primary"
-            autoFocus
-          />
-        </div>
-        <button 
-          onClick={onClose}
-          className="p-2 hover:bg-card-hover rounded-full text-txt-muted hover:text-txt-main"
-        >
-          <X size={20} />
-        </button>
-      </div>
-
-      <div className="p-4 border-b border-border bg-app/50">
-        <label className="text-xs text-txt-muted uppercase font-bold tracking-wider mb-2 block">Cor do Ícone</label>
-        <div className="flex flex-wrap gap-2 items-center">
-          {PRESET_COLORS.map((c) => (
-            <button
-              key={c}
-              onClick={() => handleColorChange(c)}
-              className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-txt-main scale-110' : 'border-transparent'}`}
-              style={{ backgroundColor: c }}
-              title={c}
+    <div className="flex flex-col landscape:flex-row h-full max-h-[600px] overflow-hidden">
+      
+      {/* Sidebar (Search + Color) */}
+      <div className="flex-none w-full landscape:w-72 flex flex-col border-b landscape:border-b-0 landscape:border-r border-border landscape:bg-app/50 landscape:backdrop-blur-sm z-10">
+        
+        {/* Search Header */}
+        <div className="flex items-center gap-2 p-4 border-b border-border landscape:border-b-0">
+            <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" size={18} />
+            <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Procurar ícones..."
+                className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2 text-txt-main placeholder-txt-dim focus:outline-none focus:border-primary"
+                autoFocus
             />
-          ))}
-          <div className="w-px h-8 bg-border mx-2"></div>
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => handleColorChange(e.target.value)}
-            className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
-            title="Custom Color"
-          />
+            </div>
+            {/* Close button visible only on portrait, typically modal handles close on landscape or via outside click, but let's keep it consistent or hide if modal header exists */}
+            <button 
+                onClick={onClose}
+                className="p-2 hover:bg-card-hover rounded-full text-txt-muted hover:text-txt-main landscape:hidden"
+            >
+            <X size={20} />
+            </button>
+        </div>
+
+        {/* Color Picker Section */}
+        <div className="p-4 border-b landscape:border-b-0 border-border landscape:overflow-y-auto landscape:flex-1">
+            <label className="text-xs text-txt-muted uppercase font-bold tracking-wider mb-3 block">Cor do Ícone</label>
+            <div className="flex flex-wrap gap-2 landscape:gap-1.5 items-center landscape:content-start">
+            {PRESET_COLORS.map((c) => (
+                <button
+                key={c}
+                onClick={() => handleColorChange(c)}
+                className={`w-8 h-8 landscape:w-7 landscape:h-7 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-txt-main scale-110' : 'border-transparent shadow-sm'}`}
+                style={{ backgroundColor: c }}
+                title={c}
+                />
+            ))}
+            
+            {/* Custom Color Button - Inline */}
+            <div className="flex items-center gap-2">
+                <div 
+                    className="relative w-8 h-8 landscape:w-7 landscape:h-7 rounded-full border-2 border-primary overflow-hidden flex items-center justify-center transition-all hover:scale-105 active:scale-95 group shadow-lg"
+                    style={{ backgroundColor: color }}
+                >
+                    <PaintBucket 
+                        size={16} 
+                        className="pointer-events-none mix-blend-difference text-white opacity-90" 
+                    />
+                    <input
+                        type="color"
+                        value={color}
+                        onChange={(e) => handleColorChange(e.target.value)}
+                        className="absolute inset-0 w-[200%] h-[200%] -top-1/2 -left-1/2 cursor-pointer opacity-0"
+                        title="Cor Personalizada"
+                    />
+                </div>
+                {/* Hex code visible only in landscape to keep portrait compact */}
+                <span className="hidden landscape:block text-[10px] text-txt-dim font-mono uppercase tracking-tighter">{color}</span>
+            </div>
+            </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 bg-app">
+      {/* Main Content (Icon Grid) */}
+      <div className="flex-1 overflow-y-auto p-4 bg-app landscape:bg-app/30">
         {loading ? (
-            <div className="text-center py-8 text-txt-dim">Carregando ícones...</div>
+            <div className="h-full flex flex-col items-center justify-center text-txt-dim gap-2">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <p>Carregando biblioteca...</p>
+            </div>
         ) : (
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 landscape:grid-cols-6 lg:landscape:grid-cols-8 gap-2">
                 <button
                     onClick={() => onSelect(undefined, undefined)} 
-                    className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-1 border border-border hover:bg-card-hover transition-colors ${!selectedIcon ? 'bg-card border-primary ring-1 ring-primary' : 'bg-app'}`}
+                    className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-1 border border-border hover:bg-card-hover transition-colors ${!selectedIcon ? 'bg-card border-primary ring-1 ring-primary' : 'bg-card/50'}`}
+                    title="Remover ícone"
                 >
-                    <span className="text-xs text-txt-muted">Nenhum</span>
+                    <X size={24} className="text-txt-muted" />
+                    <span className="text-[10px] text-txt-muted uppercase font-bold">Nenhum</span>
                 </button>
             
             {filteredIcons.map((icon) => {
@@ -162,12 +191,12 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
                 <button
                     key={icon.filename}
                     onClick={() => handleIconSelect(icon.filename)}
-                    className={`relative aspect-square rounded-lg flex flex-col items-center justify-center p-2 border transition-all ${isSelected ? 'bg-card border-primary ring-1 ring-primary' : 'bg-app border-border hover:border-txt-muted hover:bg-card-hover'}`}
+                    className={`relative aspect-square rounded-lg flex flex-col items-center justify-center p-2 border transition-all group ${isSelected ? 'bg-card border-primary ring-1 ring-primary shadow-md' : 'bg-card/50 border-border hover:border-txt-muted hover:bg-card hover:shadow-sm'}`}
                     title={icon.name}
                 >
                     {/* We use mask to color the icon */}
                     <div 
-                        className="w-full h-full"
+                        className="w-full h-full transition-transform group-hover:scale-110 duration-200"
                         style={{
                             backgroundColor: isSelected ? color : 'rgb(var(--text-dim))',
                             maskImage: `url("${icon.url}")`,
@@ -180,11 +209,6 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
                             WebkitMaskSize: 'contain'
                         }}
                     />
-                    {isSelected && (
-                        <div className="absolute top-1 right-1 bg-primary rounded-full p-0.5">
-                            <Check size={10} className="text-on-primary" />
-                        </div>
-                    )}
                 </button>
                 );
             })}
@@ -192,8 +216,10 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
         )}
         
         {!loading && filteredIcons.length === 0 && (
-            <div className="text-center py-8 text-txt-dim">
-                Nenhum ícone encontrado para "{search}"
+            <div className="h-full flex flex-col items-center justify-center text-txt-dim opacity-60">
+                <Search size={48} className="mb-4 opacity-50" />
+                <p className="text-lg font-bold">Nenhum ícone encontrado</p>
+                <p className="text-sm">Tente buscar por outro termo</p>
             </div>
         )}
       </div>
