@@ -116,6 +116,7 @@ interface ItemRollResult {
 }
 
 interface ItemToUse {
+  charId: string;
   charName: string;
   item: InventoryItem | string;
 }
@@ -151,8 +152,21 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   const [newItemDice, setNewItemDice] = useState('');
   const [newItemIsPermanent, setNewItemIsPermanent] = useState(false);
 
+  // Auto-reduce quantity setting (persisted in localStorage)
+  const [autoReduceOnUse, setAutoReduceOnUse] = useState<boolean>(() => {
+    const saved = localStorage.getItem('mune_auto_reduce_on_use');
+    return saved !== null ? saved === 'true' : true;
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { play } = useGameSound();
+
+  const toggleAutoReduce = () => {
+    const newValue = !autoReduceOnUse;
+    setAutoReduceOnUse(newValue);
+    localStorage.setItem('mune_auto_reduce_on_use', String(newValue));
+    play('CLICK');
+  };
 
   // --- Drag and Drop Handlers ---
   const sensors = useSensors(
@@ -414,25 +428,54 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     }, 600); // 600ms suspense
   };
 
-  const handleUseItem = (charName: string, item: InventoryItem | string) => {
+  const handleUseItem = (charId: string, charName: string, item: InventoryItem | string) => {
     play('CLICK');
     // Always ask for confirmation first
-    setItemToUse({ charName, item });
+    setItemToUse({ charId, charName, item });
   };
 
   const confirmUseItem = () => {
     if (!itemToUse) return;
 
-    const { charName, item } = itemToUse;
+    const { charId, charName, item } = itemToUse;
     const itemName = typeof item === 'string' ? item : item.name;
     const isPermanent = typeof item === 'string' ? false : item.isPermanent;
     const diceNotation = typeof item === 'string' ? undefined : item.dice;
+    const itemId = typeof item === 'string' ? null : item.id;
+
+    // Get current quantity from characters state (not stale itemToUse)
+    const currentChar = characters.find((c: Character) => c.id === charId);
+    const currentItem = currentChar?.inventory.find(
+      (i: InventoryItem | string): i is InventoryItem => typeof i !== 'string' && i.id === itemId
+    );
+    const currentQty = currentItem?.quantity ?? (typeof item === 'string' ? 1 : item.quantity);
+
+    // GUARD: Prevent using non-permanent items with 0 quantity
+    if (!isPermanent && currentQty === 0) {
+      return;
+    }
+
+    // AUTO-REDUCE: Decrement quantity if toggle is ON and item is consumable
+    if (!isPermanent && autoReduceOnUse && currentQty > 0 && itemId) {
+      updateInventoryItem(charId, itemId, { quantity: currentQty - 1 });
+    }
+
+    // Build details string with remaining quantity info
+    const getLogDetails = (diceDetail?: string) => {
+      if (isPermanent) return '(Item Permanente)';
+      if (autoReduceOnUse && currentQty > 0) {
+        return diceDetail
+          ? `${diceDetail} (Restam: ${currentQty - 1})`
+          : `(Consumível - Restam: ${currentQty - 1})`;
+      }
+      return diceDetail || '(Consumível)';
+    };
 
     // If item has dice, roll it AFTER confirmation
     if (diceNotation && diceNotation.trim() !== '') {
         play('ROLL');
         const diceResult = rollDiceNotation(diceNotation);
-        
+
         setTimeout(() => {
            play('DICE_RESULT');
         }, 600);
@@ -443,10 +486,10 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           type: 'ITEM',
           title: `${charName} usou ${itemName}`,
           result: diceResult.total.toString(),
-          details: `${diceNotation} -> ${diceResult.detail}`,
+          details: getLogDetails(`${diceNotation} -> ${diceResult.detail}`),
           highlight: false
         });
-  
+
         setItemRollResult({
           itemName: itemName,
           roll: diceResult.total,
@@ -458,7 +501,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         setIsItemRevealing(true);
         setTimeout(() => {
           setIsItemRevealing(false);
-        }, 600); 
+        }, 600);
 
     } else {
         // Standard usage logic (no dice)
@@ -469,7 +512,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             type: 'ITEM',
             title: `${charName} usou item`,
             result: itemName,
-            details: isPermanent ? '(Item Permanente)' : '(Consumível)',
+            details: getLogDetails(),
             highlight: false
         });
     }
@@ -839,36 +882,99 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   const renderUseItemModal = () => {
     if (!itemToUse) return null;
 
-    const itemName = typeof itemToUse.item === 'string' ? itemToUse.item : itemToUse.item.name;
+    const { charId, item } = itemToUse;
+    const itemName = typeof item === 'string' ? item : item.name;
+    const isPermanent = typeof item === 'string' ? false : item.isPermanent;
+    const itemId = typeof item === 'string' ? null : item.id;
+
+    // Get current quantity from characters state to ensure it's always up-to-date
+    const currentChar = characters.find((c: Character) => c.id === charId);
+    const currentItem = currentChar?.inventory.find(
+      (i: InventoryItem | string): i is InventoryItem => typeof i !== 'string' && i.id === itemId
+    );
+    const quantity = currentItem?.quantity ?? (typeof item === 'string' ? 1 : item.quantity);
+
+    const isButtonDisabled = !isPermanent && quantity === 0;
 
     return (
-      <div 
+      <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
         onClick={() => { play('CLICK'); setItemToUse(null); }}
       >
-        <div 
+        <div
           className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
           onClick={e => e.stopPropagation()}
         >
-          <button 
+          <button
             type="button"
             onClick={() => { play('CLICK'); setItemToUse(null); }}
             className="absolute top-4 right-4 text-txt-muted hover:text-txt-main"
           >
             <X size={20} />
           </button>
-          
+
           <h3 className="text-lg font-bold text-txt-main mb-3 flex items-center gap-2">
             <Backpack size={20} className="text-primary" />
             Usar Item
           </h3>
-          
-          <p className="text-txt-muted mb-6 text-sm leading-relaxed">
+
+          <p className="text-txt-muted mb-4 text-sm leading-relaxed">
             Deseja usar o item <span className="text-txt-main font-bold">"{itemName}"</span>?
             <br />
             <span className="text-xs text-txt-dim mt-1 block">Isso registrará a ação no log.</span>
           </p>
-          
+
+          {/* Quantity Editor or Permanent Badge */}
+          {isPermanent ? (
+            <div className="flex items-center justify-center gap-2 bg-app rounded-lg p-3 mb-4">
+              <Shield size={16} className="text-primary" />
+              <span className="text-txt-muted text-sm">Item Permanente</span>
+            </div>
+          ) : (
+            <>
+              {/* Auto-Reduce Toggle */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-txt-muted text-sm">Reduzir quantidade ao usar</span>
+                <button
+                  type="button"
+                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleAutoReduce(); }}
+                  className={`w-12 h-7 rounded-full relative transition-colors duration-300 ease-in-out border ${
+                    autoReduceOnUse ? 'bg-primary border-primary' : 'bg-app border-border'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-on-primary rounded-full shadow-sm transition-transform duration-300 ${
+                    autoReduceOnUse ? 'translate-x-5' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+
+              {/* Quantity Editor Section - matches inventory list styling */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-txt-muted text-sm">Quantidade:</span>
+                <div className="flex items-center gap-1 bg-app rounded p-1">
+                  <button
+                    type="button"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (itemId) updateInventoryItem(charId, itemId, { quantity: Math.max(0, quantity - 1) }); }}
+                    disabled={quantity <= 0}
+                    className="p-2 text-txt-muted hover:text-txt-main hover:bg-card-hover rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className={`w-8 text-center font-black font-mono text-lg ${quantity === 0 ? 'text-error' : 'text-primary'}`}>
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (itemId) updateInventoryItem(charId, itemId, { quantity: quantity + 1 }); }}
+                    className="p-2 text-txt-muted hover:text-txt-main hover:bg-card-hover rounded transition-colors"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="flex gap-3">
             <button
               onClick={() => { play('CLICK'); setItemToUse(null); }}
@@ -878,9 +984,14 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             </button>
             <button
               onClick={confirmUseItem}
-              className="flex-1 px-4 py-3 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold text-sm transition-colors shadow-lg shadow-primary/20"
+              disabled={isButtonDisabled}
+              className={`flex-1 px-4 py-3 rounded-lg font-bold text-sm transition-colors ${
+                isButtonDisabled
+                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                  : 'bg-primary hover:bg-primary-hover text-on-primary shadow-lg shadow-primary/20'
+              }`}
             >
-              Sim, usar
+              {isButtonDisabled ? 'Sem Estoque' : 'Sim, usar'}
             </button>
           </div>
         </div>
@@ -1113,7 +1224,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                         return (
                           <div 
                             key={idx} 
-                            onClick={() => handleUseItem(char.name, item)}
+                            onClick={() => handleUseItem(char.id, char.name, item)}
                             className="flex items-center gap-2 text-txt-muted text-sm p-3 bg-card/30 rounded border border-card cursor-pointer hover:bg-card hover:border-border transition-colors active:scale-[0.98]"
                           >
                             <span className="text-primary">•</span> {item} (Antigo)
@@ -1124,7 +1235,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                       return (
                         <div key={item.id} className="flex items-center justify-between p-3 bg-card rounded border border-border">
                           <div 
-                            onClick={() => handleUseItem(char.name, item)}
+                            onClick={() => handleUseItem(char.id, char.name, item)}
                             className="flex items-center gap-3 flex-1 overflow-hidden cursor-pointer group active:opacity-80 transition-opacity"
                           >
                             {isPerm ? (
