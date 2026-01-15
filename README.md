@@ -54,8 +54,8 @@ This project uses **Vite** and **React**.
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/your-username/mestre-mune.git](https://github.com/your-username/mestre-mune.git)
-   cd mestre-mune
+   git clone https://github.com/andrevoidelo/mune.git
+   cd mune
    ```
 
 2. **Install dependencies:**
