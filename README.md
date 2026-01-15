@@ -130,8 +130,8 @@ Este projeto utiliza **Vite** e **React**.
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/seu-usuario/mestre-mune.git
-   cd mestre-mune
+   git clone https://github.com/andrevoidelo/mune.git
+   cd mune
    ```
 
 2. **Instale as dependências:**
