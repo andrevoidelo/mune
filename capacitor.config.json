@@ -1,6 +1,6 @@
 {
   "appId": "com.mune.app",
-  "appName": "mune",
+  "appName": "Mestre Mune",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
