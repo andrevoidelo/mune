@@ -10,10 +10,14 @@ const DraggableFab: React.FC<DraggableFabProps> = ({ onClick }) => {
   // Default position: Bottom Right (approximate safe area)
   const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 100 });
   const [isDragging, setIsDragging] = useState(false);
-  
+
   const dragStartPos = useRef({ x: 0, y: 0 });
   const initialBtnPos = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
+
+  // Store the "full" screen height (without keyboard) to prevent FAB moving when keyboard appears
+  const stableScreenHeight = useRef(window.innerHeight);
+  const lastWidth = useRef(window.innerWidth);
 
   // Load saved position on mount AND Setup Resize Listener (Orientation Change)
   useEffect(() => {
@@ -28,13 +32,33 @@ const DraggableFab: React.FC<DraggableFabProps> = ({ onClick }) => {
       } catch (e) {}
     }
 
-    // 2. Ensure it stays on screen (Clamp)
+    // 2. Ensure it stays on screen (Clamp) - only for real orientation/resize changes
     const clampPosition = () => {
+      const currentWidth = window.innerWidth;
+      const currentHeight = window.innerHeight;
+
+      // Detect if this is a keyboard event vs real resize/orientation change:
+      // - Keyboard: width stays same, height shrinks significantly
+      // - Orientation: width changes
+      // - Real resize: both change proportionally
+      const widthChanged = Math.abs(currentWidth - lastWidth.current) > 50;
+
+      if (widthChanged) {
+        // This is likely an orientation change or real resize - update stable height
+        stableScreenHeight.current = currentHeight;
+        lastWidth.current = currentWidth;
+      } else if (currentHeight > stableScreenHeight.current) {
+        // Keyboard closed, height restored - update stable height
+        stableScreenHeight.current = currentHeight;
+      }
+      // If height shrunk but width didn't change much = keyboard opened, don't update stable height
+
       setPosition(prev => {
         const BUTTON_SIZE = 70; // 56px button + margin
-        const maxX = window.innerWidth - BUTTON_SIZE;
-        const maxY = window.innerHeight - BUTTON_SIZE;
-        
+        const maxX = currentWidth - BUTTON_SIZE;
+        // Use stable height for Y constraint to prevent keyboard-triggered repositioning
+        const maxY = stableScreenHeight.current - BUTTON_SIZE;
+
         // If out of bounds, bring it back
         if (prev.x > maxX || prev.y > maxY) {
            return {
@@ -49,7 +73,7 @@ const DraggableFab: React.FC<DraggableFabProps> = ({ onClick }) => {
     // Run check immediately (fixes invalid loaded state) and whenever window resizes
     clampPosition();
     window.addEventListener('resize', clampPosition);
-    
+
     return () => window.removeEventListener('resize', clampPosition);
   }, []);
 
@@ -78,9 +102,10 @@ const DraggableFab: React.FC<DraggableFabProps> = ({ onClick }) => {
         // Boundary constraints (Button size approx 64px)
         const BUTTON_SIZE = 64;
         const SAFE_MARGIN = 10;
-        
+
         newX = Math.max(SAFE_MARGIN, Math.min(window.innerWidth - BUTTON_SIZE - SAFE_MARGIN, newX));
-        newY = Math.max(SAFE_MARGIN, Math.min(window.innerHeight - BUTTON_SIZE - SAFE_MARGIN, newY));
+        // Use stable height to prevent issues when keyboard is open
+        newY = Math.max(SAFE_MARGIN, Math.min(stableScreenHeight.current - BUTTON_SIZE - SAFE_MARGIN, newY));
 
         setPosition({ x: newX, y: newY });
     }

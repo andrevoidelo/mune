@@ -17,6 +17,7 @@ import { SoundProvider } from './contexts/SoundContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { useGameSound } from './hooks/useGameSound';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
+import { initCapacitor } from './capacitorInit';
 
 const AppContent: React.FC = () => {
   const { play } = useGameSound();
@@ -44,7 +45,12 @@ const AppContent: React.FC = () => {
       );
     };
   }, []);
-  
+
+  // Initialize Capacitor native settings (safe area, status bar)
+  useEffect(() => {
+    initCapacitor();
+  }, []);
+
   // Global State
   const [adventures, setAdventures] = useState<Adventure[]>([]);
   const [currentAdventureId, setCurrentAdventureId] = useState<string | null>(null);
@@ -570,7 +576,7 @@ const AppContent: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-app text-txt-main overflow-hidden relative">
+    <div className="flex flex-col h-screen bg-app text-txt-main overflow-hidden relative pt-safe">
       {/* Header */}
       <header className="flex-none h-14 bg-card flex items-center justify-between px-4 border-b border-border shadow-md z-20 relative">
         <div className="flex items-center gap-3 min-w-0">
@@ -820,7 +826,7 @@ const AppContent: React.FC = () => {
 
       {/* Bottom Navigation (Portrait Only) */}
       {currentAdventureId && !showSettings && (
-        <nav className="flex-none h-16 bg-card border-t border-border grid grid-cols-5 pb-safe z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden">
+        <nav className="flex-none h-20 bg-card border-t border-border grid grid-cols-5 pb-safe-area z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden">
           <NavButton 
             active={activeTab === Tab.ORACLE} 
             onClick={() => setActiveTab(Tab.ORACLE)}
