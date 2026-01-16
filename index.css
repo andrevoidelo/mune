@@ -171,3 +171,36 @@
     animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
   }
 }
+
+/* ========== SAFE AREA SUPPORT ========== */
+
+/* Fallback variables for when env() is not available */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --android-nav-bar-height: 48px;
+}
+
+/* Utility classes for safe area padding */
+.pt-safe {
+  padding-top: var(--safe-area-inset-top);
+}
+
+.pb-safe-area {
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+/* Android-specific: ensure minimum padding for 3-button navigation */
+.platform-android .pb-safe-area {
+  padding-bottom: max(var(--safe-area-inset-bottom), var(--android-nav-bar-height));
+}
+
+.pl-safe {
+  padding-left: var(--safe-area-inset-left);
+}
+
+.pr-safe {
+  padding-right: var(--safe-area-inset-right);
+}
