@@ -76,7 +76,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-app p-4 overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
+    <div className="flex flex-col h-full bg-app p-4 pb-safe-area overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
       
       {/* Conteúdo Principal */}
       <div className="flex-1 max-w-lg mx-auto w-full space-y-6 mt-2">
@@ -275,13 +275,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* Rodapé com Créditos */}
-      <div className="mt-auto pt-6 pb-4 flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-opacity space-y-2 flex-none">
+      <div className="pt-4 pb-8 flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-opacity space-y-2 flex-none">
         <div className="w-12 h-1 bg-card rounded-full mb-1"></div>
         <span className="px-2 py-0.5 rounded bg-card border border-border text-[10px] font-mono text-txt-muted">
-          v1.0.6
+          v0.9.6
         </span>
         <p className="text-[10px] font-medium text-txt-muted font-mono uppercase tracking-widest">
-          Conjurado por André Ricardo Voidelo
+          André Ricardo Voidelo
         </p>
       </div>
     </div>

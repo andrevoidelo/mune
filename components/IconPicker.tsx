@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, X, Check, PaintBucket } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 
 interface IconData {
   name: string;
@@ -34,9 +36,31 @@ export const PRESET_COLORS = [
 
 const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '#ffffff', onSelect, onClose }) => {
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [color, setColor] = useState(selectedColor);
   const [icons, setIcons] = useState<IconData[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Debounce Search: Wait 500ms after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // EXCLUSIVE: Disable keyboard resizing for this modal
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      Keyboard.setResizeMode({ mode: KeyboardResize.None }).catch(console.error);
+    }
+    return () => {
+      if (Capacitor.isNativePlatform()) {
+        Keyboard.setResizeMode({ mode: KeyboardResize.Native }).catch(console.error);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Lazy load the icon manifest with cache busting
@@ -73,16 +97,23 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
       });
   }, []);
   
-  // Filter icons based on search
+  // Filter icons based on debouncedSearch
   const filteredIcons = useMemo(() => {
     if (loading) return [];
-    if (!search.trim()) return icons.slice(0, 100); // Show first 100 if no search
-    const lowerSearch = search.toLowerCase();
-    return icons.filter(icon => 
+    
+    // If empty, show simplified list
+    if (!debouncedSearch.trim()) return icons.slice(0, 99); 
+    
+    const lowerSearch = debouncedSearch.toLowerCase();
+    const results = icons.filter(icon => 
       icon.name.toLowerCase().includes(lowerSearch) || 
       icon.filename.toLowerCase().includes(lowerSearch)
     );
-  }, [search, icons, loading]);
+
+    // PERFORMANCE LIMIT: Only render top 200 matches. 
+    // Rendering 2000+ icons for a query like "a" freezes the UI even with debouncing.
+    return results.slice(0, 200);
+  }, [debouncedSearch, icons, loading]);
 
   const handleIconSelect = (iconFilename: string) => {
     // If clicking the already selected icon, deselect it
@@ -116,7 +147,6 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Procurar ícones..."
                 className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2 text-txt-main placeholder-txt-dim focus:outline-none focus:border-primary"
-                autoFocus
             />
             </div>
             {/* Close button visible only on portrait, typically modal handles close on landscape or via outside click, but let's keep it consistent or hide if modal header exists */}

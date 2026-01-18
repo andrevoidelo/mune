@@ -1,5 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { SafeArea } from '@capacitor-community/safe-area';
+import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 
 /**
  * Initializes native Capacitor settings.
@@ -11,6 +13,7 @@ export const initCapacitor = async (): Promise<void> => {
   // Add platform class to body for CSS targeting
   if (platform === 'android') {
     document.body.classList.add('platform-android');
+    // REMOVED: detectAndroidNavigationMode (caused keyboard layout issues)
   } else if (platform === 'ios') {
     document.body.classList.add('platform-ios');
   }
@@ -27,10 +30,38 @@ export const initCapacitor = async (): Promise<void> => {
     // Set status bar style (light icons for dark background - default)
     await StatusBar.setStyle({ style: Style.Dark });
 
-    // Make status bar transparent
-    await StatusBar.setBackgroundColor({ color: '#00000000' });
+    // Make status bar match the card background color (--card-bg: 30 41 59 -> #1e293b)
+    await StatusBar.setBackgroundColor({ color: '#1e293b' });
 
     console.log('[Capacitor] Status bar configured successfully');
+
+    // Configure Keyboard to use Native resize (WebView shrinks) but allow scrolling
+    try {
+      await Keyboard.setResizeMode({ mode: KeyboardResize.Native });
+      
+      // CRITICAL: Disable WebView scrolling!
+      // This prevents the entire app view from being pushed up/panned.
+      // We handle scrolling internally in our scrollable divs.
+      await Keyboard.setScroll({ isDisabled: true }); 
+
+      console.log('[Capacitor] Keyboard configured: Native Resize + Scroll Disabled');
+    } catch (e) {
+      console.warn('[Capacitor] Error configuring keyboard:', e);
+    }
+    
+    // Update safe area insets using the plugin
+    await updateSafeAreaInsets();
+
+    // Listen for safe area changes (orientation, etc)
+    SafeArea.addListener('safeAreaChanged', (data) => {
+      const { insets } = data;
+      document.documentElement.style.setProperty('--safe-area-inset-top', `${insets.top}px`);
+      document.documentElement.style.setProperty('--safe-area-inset-bottom', `${insets.bottom}px`);
+      document.documentElement.style.setProperty('--safe-area-inset-left', `${insets.left}px`);
+      document.documentElement.style.setProperty('--safe-area-inset-right', `${insets.right}px`);
+      console.log('[Capacitor] Safe area changed:', insets);
+    });
+    
   } catch (error) {
     console.warn('[Capacitor] Error configuring status bar:', error);
   }
@@ -51,6 +82,22 @@ export const updateStatusBarStyle = async (isDarkTheme: boolean): Promise<void> 
     await StatusBar.setStyle({ style: isDarkTheme ? Style.Dark : Style.Light });
   } catch (error) {
     console.warn('[Capacitor] Error updating status bar style:', error);
+  }
+};
+
+/**
+ * Updates the status bar background color.
+ * @param color - The hex color to set (e.g. #1e293b)
+ */
+export const updateStatusBarColor = async (color: string): Promise<void> => {
+  if (!Capacitor.isNativePlatform()) {
+    return;
+  }
+
+  try {
+    await StatusBar.setBackgroundColor({ color });
+  } catch (error) {
+    console.warn('[Capacitor] Error updating status bar color:', error);
   }
 };
 

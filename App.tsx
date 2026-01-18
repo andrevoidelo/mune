@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Howler } from 'howler';
 import { Tab, LogEntry, Character, Adventure, Collection, Thread, NpcEntry, AppTheme } from './types';
@@ -137,7 +136,6 @@ const AppContent: React.FC = () => {
   // --- Global Data Management (Backup/Restore) ---
 
   const handleGlobalBackup = () => {
-    // Fix: Filter out built-in collections to avoid redundancy and version conflicts
     const customCollections = collections.filter(c => !c.isBuiltIn);
 
     const data = {
@@ -160,7 +158,6 @@ const AppContent: React.FC = () => {
   };
 
   const handleImportTrigger = () => {
-    // Safety check for ref
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
@@ -186,14 +183,11 @@ const AppContent: React.FC = () => {
         let validCollections: Collection[] = [];
         let validThemes: AppTheme[] = [];
 
-        // CASE 1: Backup Padrão Moderno (v3)
         if (data && typeof data === 'object' && Array.isArray(data.adventures)) {
            validAdventures = data.adventures;
            validCollections = data.collections || [];
            validThemes = data.themes || [];
         } 
-        // CASE 2: Backup Legado (Formato de Objeto Único com logs/characters na raiz)
-        // Correção específica para o erro da screenshot: "Chaves encontradas: version, date, characters, logs"
         else if (data && typeof data === 'object' && (data.logs || data.characters)) {
            const legacyAdv: Adventure = {
               id: generateUUID(),
@@ -216,7 +210,6 @@ const AppContent: React.FC = () => {
              themes: validThemes
            });
         } else {
-           // Debug info for user
            const foundKeys = data ? Object.keys(data).join(', ') : 'null';
            alert(`Formato de arquivo não reconhecido.\nChaves encontradas: ${foundKeys}\n\nO sistema tentou detectar backups antigos mas falhou. Verifique se o arquivo está corrompido.`);
         }
@@ -226,7 +219,6 @@ const AppContent: React.FC = () => {
       }
     };
 
-    // Reset input AFTER read is complete (or failed) to allow selecting same file again
     reader.onloadend = () => {
        if (event.target) {
           event.target.value = '';
@@ -239,18 +231,11 @@ const AppContent: React.FC = () => {
   const confirmImport = () => {
     if (!pendingImportData) return;
 
-    // 1. Restore Adventures (Replace)
     setAdventures(pendingImportData.adventures);
-
-    // 2. Restore Collections (Merge Default + Custom)
     const importedCustomCollections = (pendingImportData.collections || []).filter(c => !c.isBuiltIn);
-    
-    // Combine built-ins (latest version from code) with user's custom collections
     const mergedCollections = [...DEFAULT_COLLECTIONS, ...importedCustomCollections];
-    
     setCollections(mergedCollections);
 
-    // 3. Restore Themes
     if (pendingImportData.themes) {
         restoreThemes(pendingImportData.themes);
     }
@@ -281,14 +266,12 @@ const AppContent: React.FC = () => {
     if (!advFormData.name.trim()) return;
 
     if (advFormData.id) {
-      // Edit existing
       setAdventures(prev => prev.map(a => a.id === advFormData.id ? {
         ...a,
         name: advFormData.name,
         description: advFormData.description
       } : a));
     } else {
-      // Create new
       const newAdv: Adventure = {
         id: generateUUID(),
         name: advFormData.name,
@@ -318,10 +301,9 @@ const AppContent: React.FC = () => {
   };
 
   const handleSelectAdventure = (id: string) => {
-    // Update last played
     setAdventures(prev => prev.map(a => a.id === id ? { ...a, lastPlayedAt: Date.now() } : a));
     setCurrentAdventureId(id);
-    setActiveTab(Tab.ORACLE); // Default tab on enter
+    setActiveTab(Tab.ORACLE);
   };
 
   // --- Wrappers for Child Components to update the Active Adventure ---
@@ -434,71 +416,60 @@ const AppContent: React.FC = () => {
 
   const renderAdventureList = () => (
     <div className="flex flex-col h-full bg-app text-txt-main p-4 overflow-y-auto">
-      <div className="flex justify-between items-center mb-6 mt-2">
-        <h2 className="text-xl font-bold text-txt-main uppercase tracking-wide flex items-center gap-2">
-          <ScrollText className="text-primary" /> Minhas Aventuras
-        </h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-4">
+        
+        {/* New Adventure Card */}
         <button 
           onClick={() => { play('CLICK'); handleCreateAdventure(); }}
-          className="bg-primary hover:bg-primary-hover text-on-primary p-2 rounded-full shadow-lg active:scale-95 transition-all"
-          title="Nova Aventura"
+          className="aspect-[3/4] rounded-xl border-2 border-dashed border-border hover:border-primary bg-card/30 hover:bg-card/50 flex flex-col items-center justify-center gap-2 text-txt-dim hover:text-primary transition-all active:scale-[0.98] group"
         >
-          <Plus size={24} />
-        </button>
-      </div>
-
-      <div className="grid gap-4 pb-20">
-        {adventures.length === 0 ? (
-          <div className="text-center py-20 opacity-50 flex flex-col items-center">
-            <Dices size={64} className="mb-4 text-txt-dim" />
-            <p className="text-lg font-bold">Nenhuma aventura encontrada.</p>
-            <p className="text-sm">Clique no botão "+" para começar sua jornada.</p>
+          <div className="bg-card p-3 rounded-full group-hover:bg-primary/10 transition-colors shadow-sm border border-border/50 group-hover:border-primary/20">
+            <Plus size={32} />
           </div>
-        ) : (
-          adventures.map(adv => (
+          <span className="font-bold uppercase text-xs tracking-wider text-center">Nova Aventura</span>
+        </button>
+
+        {/* Adventure Cards */}
+        {adventures.map((adv, index) => {
+            const isLastPlayed = index === 0;
+            return (
             <div 
               key={adv.id}
               onClick={() => { play('CLICK'); handleSelectAdventure(adv.id); }}
-              className="bg-card border border-border rounded-xl p-4 shadow-lg hover:border-primary/50 transition-all active:scale-[0.98] group cursor-pointer relative overflow-hidden"
+              className={`bg-card border rounded-xl shadow-lg transition-all active:scale-[0.98] group cursor-pointer relative flex flex-col overflow-hidden aspect-[3/4] ${isLastPlayed ? 'border-primary ring-1 ring-primary shadow-primary/20' : 'border-border hover:border-primary/50'}`}
             >
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="text-lg font-bold text-txt-main group-hover:text-primary transition-colors line-clamp-1">{adv.name}</h3>
-                  <div className="flex items-center gap-4 text-[10px] text-txt-muted font-mono mt-1">
-                    <span className="flex items-center gap-1"><Calendar size={10} /> {new Date(adv.lastPlayedAt).toLocaleDateString()}</span>
-                    <span className="flex items-center gap-1"><User size={10} /> {adv.characters.length} Personas</span>
-                    <span className="flex items-center gap-1"><ScrollText size={10} /> {adv.logs.length} Logs</span>
-                  </div>
-                </div>
-              </div>
-              
-              <p className="text-sm text-txt-muted mb-4 line-clamp-2 min-h-[1.25rem]">
-                {adv.description || <span className="italic opacity-50">Sem descrição...</span>}
-              </p>
-
-              <div className="flex justify-between items-center border-t border-border/50 pt-3 mt-2">
-                 <span className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1">
-                   <Play size={12} fill="currentColor" /> Jogar
-                 </span>
-                 
-                 <div className="flex gap-2">
-                    <button 
-                      onClick={(e) => { play('CLICK'); handleEditAdventure(adv, e); }}
-                      className="p-2 text-txt-muted hover:text-txt-main hover:bg-card-hover rounded-lg transition-colors"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      onClick={(e) => { play('CLICK'); handleDeleteAdventure(adv.id, e); }}
-                      className="p-2 text-txt-muted hover:text-error hover:bg-card-hover rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+              {isLastPlayed && (
+                 <div className="absolute bottom-0 left-0 bg-primary text-on-primary text-[9px] font-bold px-2 py-1 rounded-tr-lg shadow-sm z-10 uppercase tracking-wider">
+                    Último Jogo
                  </div>
+              )}
+
+              <div className="flex-1 p-3 flex flex-col">
+                <h3 className="text-sm font-bold text-txt-main group-hover:text-primary transition-colors line-clamp-2 leading-tight mb-2">
+                  {adv.name}
+                </h3>
+                
+                <p className="text-xs text-txt-muted line-clamp-4 leading-relaxed flex-1">
+                  {adv.description || <span className="italic opacity-50">Sem descrição...</span>}
+                </p>
+              </div>
+
+              <div className="absolute bottom-2 right-2 flex gap-2 z-20">
+                 <button 
+                   onClick={(e) => { e.stopPropagation(); play('CLICK'); handleEditAdventure(adv, e); }}
+                   className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-md text-txt-muted hover:text-txt-main transition-all"
+                 >
+                   <Edit2 size={14} />
+                 </button>
+                 <button 
+                   onClick={(e) => { e.stopPropagation(); play('CLICK'); handleDeleteAdventure(adv.id, e); }}
+                   className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-md text-txt-muted hover:text-error transition-all"
+                 >
+                   <Trash2 size={14} />
+                 </button>
               </div>
             </div>
-          ))
-        )}
+          )})}
       </div>
 
       {/* Modal: Create/Edit Adventure */}
@@ -576,7 +547,7 @@ const AppContent: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-app text-txt-main overflow-hidden relative pt-safe">
+    <div className="flex flex-col h-full bg-app text-txt-main overflow-hidden relative pt-safe">
       {/* Header */}
       <header className="flex-none h-14 bg-card flex items-center justify-between px-4 border-b border-border shadow-md z-20 relative">
         <div className="flex items-center gap-3 min-w-0">
@@ -652,7 +623,7 @@ const AppContent: React.FC = () => {
       </header>
 
       {/* Main Content Area + SideNav Wrapper */}
-      <div className="flex-1 flex overflow-hidden flex-col landscape:flex-row">
+      <div className="flex-1 flex overflow-hidden flex-col landscape:flex-row min-h-0">
         
         {/* Side Navigation (Landscape Only) */}
         {currentAdventureId && !showSettings && (
@@ -696,7 +667,7 @@ const AppContent: React.FC = () => {
           </nav>
         )}
 
-        <main className="flex-1 overflow-hidden relative w-full h-full">
+        <main className="flex-1 overflow-hidden relative w-full h-full min-h-0">
           {showSettings ? (
             <SettingsView 
               onBackup={handleGlobalBackup}
@@ -807,10 +778,10 @@ const AppContent: React.FC = () => {
               </a>
 
               {/* SMALL TEXT */}
-              <p className="text-[10px] text-txt-dim mb-2 max-w-[200px] leading-tight mx-auto">
+              <p className="text-[10px] text-txt-dim mb-2 leading-tight mx-auto">
                  Este app foi baseado no sistema M.U.N.E. disponível no botão acima.
               </p>
-              <p className="text-[10px] text-txt-dim mb-2 max-w-[200px] leading-tight mx-auto">
+              <p className="text-[10px] text-txt-dim mb-2 leading-tight mx-auto">
                  Ícones por <a href="https://game-icons.net/" target="_blank" rel="noopener noreferrer" className="text-txt-dim hover:text-primary underline">Game-Icons.Net</a> sob licença CC BY 3.0.
               </p>
 
@@ -826,38 +797,40 @@ const AppContent: React.FC = () => {
 
       {/* Bottom Navigation (Portrait Only) */}
       {currentAdventureId && !showSettings && (
-        <nav className="flex-none h-20 bg-card border-t border-border grid grid-cols-5 pb-safe-area z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden">
-          <NavButton 
-            active={activeTab === Tab.ORACLE} 
-            onClick={() => setActiveTab(Tab.ORACLE)}
-            icon={<MessageSquare size={20} />}
-            label="Oráculo"
-          />
-          <NavButton 
-            active={activeTab === Tab.TOOLS} 
-            onClick={() => setActiveTab(Tab.TOOLS)}
-            icon={<Wrench size={20} />}
-            label="Coleções"
-          />
-          <NavButton 
-            active={activeTab === Tab.PERSONA} 
-            onClick={() => setActiveTab(Tab.PERSONA)}
-            icon={<User size={20} />}
-            label="Persona"
-          />
-          <NavButton 
-            active={activeTab === Tab.DICE} 
-            onClick={() => setActiveTab(Tab.DICE)}
-            icon={<Dices size={20} />}
-            label="Dados"
-          />
-          <NavButton 
-            active={activeTab === Tab.LOG} 
-            onClick={() => setActiveTab(Tab.LOG)}
-            icon={<ScrollText size={20} />}
-            label="Log"
-            badge={activeAdventure?.logs.length || 0}
-          />
+        <nav className="flex-none bg-card border-t border-border z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden pb-safe-area">
+          <div className="grid grid-cols-5 h-16">
+            <NavButton 
+              active={activeTab === Tab.ORACLE} 
+              onClick={() => setActiveTab(Tab.ORACLE)}
+              icon={<MessageSquare size={20} />}
+              label="Oráculo"
+            />
+            <NavButton 
+              active={activeTab === Tab.TOOLS} 
+              onClick={() => setActiveTab(Tab.TOOLS)}
+              icon={<Wrench size={20} />}
+              label="Coleções"
+            />
+            <NavButton 
+              active={activeTab === Tab.PERSONA} 
+              onClick={() => setActiveTab(Tab.PERSONA)}
+              icon={<User size={20} />}
+              label="Persona"
+            />
+            <NavButton 
+              active={activeTab === Tab.DICE} 
+              onClick={() => setActiveTab(Tab.DICE)}
+              icon={<Dices size={20} />}
+              label="Dados"
+            />
+            <NavButton 
+              active={activeTab === Tab.LOG} 
+              onClick={() => setActiveTab(Tab.LOG)}
+              icon={<ScrollText size={20} />}
+              label="Log"
+              badge={activeAdventure?.logs.length || 0}
+            />
+          </div>
         </nav>
       )}
 
@@ -925,7 +898,7 @@ const AppContent: React.FC = () => {
   );
 };
 
-const NavButton: React.FC<{
+const NavButton: React.FC <{
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
@@ -939,11 +912,11 @@ const NavButton: React.FC<{
   <button
     onClick={() => { play('CLICK'); onClick(); }}
     title={label}
-    className={`relative flex items-center justify-center transition-colors ${
+    className={`relative flex items-center justify-center transition-colors ${ 
       vertical 
         ? 'flex-col p-2 w-full rounded-lg hover:bg-card-hover' 
         : 'flex-col gap-1'
-    } ${
+    } ${ 
       active ? 'text-primary bg-app/50' : 'text-txt-muted hover:text-txt-main'
     }`}
   >
