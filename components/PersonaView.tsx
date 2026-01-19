@@ -1922,8 +1922,8 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                     onChange={(e) => updateAttribute(attr.id, 'rollType', e.target.value)}
                                     className={`w-full rounded px-2 text-xs outline-none border appearance-none h-10 ${getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
                                   >
-                                      <option value="UNDER" className="text-black">≤ (Menor Atrib.)</option>
-                                      <option value="OVER" className="text-black">≥ (Maior Atrib.)</option>
+                                      <option value="UNDER" className="text-black">Menor ou Igual</option>
+                                      <option value="OVER" className="text-black">Maior ou Igual</option>
                                       <option value="NONE" className="text-black">Apenas Rolar</option>
                                   </select>
                                 </div>
