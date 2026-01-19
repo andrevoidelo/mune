@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppTheme } from '../types';
-import { X, Save, RotateCcw } from 'lucide-react';
+import { X, Save, Dices, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { BUILT_IN_THEMES } from '../constants';
 import { ColorPicker } from './ColorPicker';
 
@@ -11,6 +11,104 @@ interface ThemeEditorProps {
 }
 
 const DEFAULT_TEMPLATE = BUILT_IN_THEMES[0].colors;
+
+interface ThemePreviewProps {
+  colors: AppTheme['colors'];
+}
+
+const ThemePreview: React.FC<ThemePreviewProps> = ({ colors }) => {
+  return (
+    <div 
+      className="w-full rounded-xl p-4 border shadow-inner transition-colors duration-200 flex flex-col gap-4"
+      style={{ 
+        backgroundColor: colors.appBg,
+        borderColor: colors.border
+      }}
+    >
+      <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: colors.border }}>
+        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.textMuted }}>Exemplo</span>
+        <Dices size={18} style={{ color: colors.textAccent }} />
+      </div>
+
+      {/* Cards Row */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Standard Card */}
+        <div 
+          className="rounded-lg p-3 border shadow-sm flex flex-col gap-2"
+          style={{ 
+            backgroundColor: colors.cardBg,
+            borderColor: colors.border
+          }}
+        >
+          <div className="flex items-start justify-between">
+            <div>
+               <h4 className="text-sm font-bold leading-tight" style={{ color: colors.textMain }}>Card Normal</h4>
+               <p className="text-[10px] mt-1" style={{ color: colors.textMuted }}>Texto secundário aqui.</p>
+            </div>
+          </div>
+          <div className="mt-auto pt-2 border-t" style={{ borderColor: colors.border }}>
+             <span className="text-[9px] font-mono" style={{ color: colors.textDim }}>META INFO</span>
+          </div>
+        </div>
+
+        {/* Hover Card Simulation */}
+        <div 
+          className="rounded-lg p-3 border shadow-sm flex flex-col gap-2 relative overflow-hidden"
+          style={{ 
+            backgroundColor: colors.cardHover,
+            borderColor: colors.border
+          }}
+        >
+          <div className="absolute top-0 right-0 px-1.5 py-0.5 text-[8px] font-bold uppercase rounded-bl-md" style={{ backgroundColor: colors.primary, color: colors.onPrimary }}>
+            Hover State
+          </div>
+          <div>
+             <h4 className="text-sm font-bold leading-tight" style={{ color: colors.textMain }}>Card Hover</h4>
+             <p className="text-[10px] mt-1" style={{ color: colors.textMuted }}>Simulação do efeito de tocar/segurar.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Buttons Row */}
+      <div className="space-y-2">
+        <label className="text-[9px] font-bold uppercase tracking-wider" style={{ color: colors.textDim }}>Botões Primários</label>
+        <div className="flex gap-2">
+            <button 
+                className="flex-1 py-1.5 rounded-md text-[10px] font-bold shadow-sm"
+                style={{ backgroundColor: colors.primary, color: colors.onPrimary }}
+            >
+                Normal
+            </button>
+            <button 
+                className="flex-1 py-1.5 rounded-md text-[10px] font-bold shadow-sm"
+                style={{ backgroundColor: colors.primaryHover, color: colors.onPrimary }}
+            >
+                Hover
+            </button>
+            <button 
+                className="flex-1 py-1.5 rounded-md text-[10px] font-bold shadow-sm ring-2 ring-offset-1 ring-offset-transparent opacity-90"
+                style={{ backgroundColor: colors.primaryActive, color: colors.onPrimary, ringColor: colors.primary }}
+            >
+                Ativo
+            </button>
+        </div>
+      </div>
+
+      {/* Status Row */}
+      <div className="grid grid-cols-2 gap-3">
+         <div className="flex items-center gap-2 p-2 rounded-lg border" style={{ backgroundColor: colors.cardBg, borderColor: colors.success + '40' }}>
+            <CheckCircle2 size={16} style={{ color: colors.success }} />
+            <span className="text-[10px] font-bold" style={{ color: colors.success }}>Sucesso!</span>
+         </div>
+         <div className="flex items-center gap-2 p-2 rounded-lg border" style={{ backgroundColor: colors.cardBg, borderColor: colors.error + '40' }}>
+            <AlertCircle size={16} style={{ color: colors.error }} />
+            <span className="text-[10px] font-bold" style={{ color: colors.error }}>Falha/Erro</span>
+         </div>
+      </div>
+
+    </div>
+  );
+};
 
 export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initialTheme, onSave, onCancel }) => {
   const [name, setName] = useState(initialTheme?.name || '');
@@ -49,6 +147,11 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initialTheme, onSave, 
           </button>
         </div>
 
+        {/* Fixed Preview Section */}
+        <div className="p-4 border-b border-border bg-app/50 backdrop-blur-sm shrink-0">
+          <ThemePreview colors={colors} />
+        </div>
+
         {/* Scrollable Content */}
         <div className="overflow-y-auto p-4 space-y-6 flex-1">
           
@@ -60,7 +163,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initialTheme, onSave, 
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full bg-app border border-border rounded-lg p-3 text-txt-main outline-none focus:border-primary font-bold"
-              placeholder="Ex: Meu Tema Épico"
+              placeholder="Ex: Meu Tema"
             />
           </div>
 
@@ -129,6 +232,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initialTheme, onSave, 
         isOpen={!!activeField}
         onClose={() => setActiveField(null)}
         selectedColor={activeField ? colors[activeField] : undefined}
+        forceCustom={true}
         onSelect={(val) => {
             if (activeField) {
                 handleColorChange(activeField, val);

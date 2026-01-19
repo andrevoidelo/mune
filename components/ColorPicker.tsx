@@ -7,6 +7,7 @@ interface ColorPickerProps {
   onClose: () => void;
   selectedColor?: string;
   onSelect: (color: string) => void;
+  forceCustom?: boolean;
 }
 
 const PREVIEW_COLORS: Record<string, string> = {
@@ -22,7 +23,7 @@ const PREVIEW_COLORS: Record<string, string> = {
   gray:   '#9ca3af',
 };
 
-export const ColorPicker: React.FC<ColorPickerProps> = ({ isOpen, onClose, selectedColor, onSelect }) => {
+export const ColorPicker: React.FC<ColorPickerProps> = ({ isOpen, onClose, selectedColor, onSelect, forceCustom }) => {
   // We use a temporary state to track selection before applying
   const [tempSelection, setTempSelection] = useState<string>('');
   const [customHex, setCustomHex] = useState('');
@@ -33,16 +34,16 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ isOpen, onClose, selec
       const initial = selectedColor || 'slate';
       setTempSelection(initial);
       
-      // If the incoming color is a custom hex (and not a preset name), switch to custom mode
-      if (initial.startsWith('#') && !CARD_THEMES[initial]) {
-        setCustomHex(initial);
+      // If forceCustom is true, or if the incoming color is a custom hex (and not a preset name), switch to custom mode
+      if (forceCustom || (initial.startsWith('#') && !CARD_THEMES[initial])) {
+        setCustomHex(initial.startsWith('#') ? initial : '#ffffff');
         setMode('CUSTOM');
       } else {
         setCustomHex('#ffffff');
         setMode('PRESET');
       }
     }
-  }, [isOpen, selectedColor]);
+  }, [isOpen, selectedColor, forceCustom]);
 
   if (!isOpen) return null;
 
@@ -79,20 +80,22 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ isOpen, onClose, selec
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-card p-1 rounded-lg mb-6">
-            <button 
-                onClick={() => setMode('PRESET')}
-                className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${mode === 'PRESET' ? 'bg-card-hover text-txt-main shadow-sm' : 'text-txt-muted hover:text-txt-main'}`}
-            >
-                Padrão
-            </button>
-            <button 
-                onClick={() => setMode('CUSTOM')}
-                className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${mode === 'CUSTOM' ? 'bg-card-hover text-txt-main shadow-sm' : 'text-txt-muted hover:text-txt-main'}`}
-            >
-                Personalizado
-            </button>
-        </div>
+        {!forceCustom && (
+            <div className="flex bg-card p-1 rounded-lg mb-6">
+                <button 
+                    onClick={() => setMode('PRESET')}
+                    className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${mode === 'PRESET' ? 'bg-card-hover text-txt-main shadow-sm' : 'text-txt-muted hover:text-txt-main'}`}
+                >
+                    Padrão
+                </button>
+                <button 
+                    onClick={() => setMode('CUSTOM')}
+                    className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${mode === 'CUSTOM' ? 'bg-card-hover text-txt-main shadow-sm' : 'text-txt-muted hover:text-txt-main'}`}
+                >
+                    Personalizado
+                </button>
+            </div>
+        )}
 
         {/* Content */}
         <div className="min-h-[180px]">
