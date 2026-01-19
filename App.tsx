@@ -9,19 +9,70 @@ import PersonaView from './components/PersonaView';
 import SettingsView from './components/SettingsView';
 import NoteModal from './components/NoteModal';
 import DraggableFab from './components/DraggableFab';
-import { MessageSquare, Wrench, Dices, ScrollText, HelpCircle, X, User, ChevronLeft, Plus, Calendar, Trash2, Edit2, Play, Save, Settings, BookOpen, UploadCloud } from 'lucide-react';
+import ImageEditorModal from './components/ImageEditorModal';
+import { MessageSquare, Wrench, Dices, ScrollText, HelpCircle, X, User, ChevronLeft, Plus, Calendar, Trash2, Edit2, Play, Save, Settings, BookOpen, UploadCloud, Image as ImageIcon, Upload } from 'lucide-react';
 import { generateUUID } from './utils';
 import { DEFAULT_COLLECTIONS } from './constants';
 import { SoundProvider } from './contexts/SoundContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { useGameSound } from './hooks/useGameSound';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
+import { useBackButton } from './hooks/useBackButton';
+import { App as CapacitorApp } from '@capacitor/app';
+
 import { initCapacitor } from './capacitorInit';
 
 const AppContent: React.FC = () => {
   const { play } = useGameSound();
   const { customThemes, addTheme, restoreThemes } = useTheme();
   
+  // --- Back Button Handling ---
+  useBackButton(() => {
+    // 1. Priority: Global Modals
+    if (showNoteModal) {
+      setShowNoteModal(false);
+      return true;
+    }
+    if (showSettings) {
+      setShowSettings(false);
+      return true;
+    }
+    if (showHelp) {
+      setShowHelp(false);
+      return true;
+    }
+    if (isEditingAdv) {
+      setIsEditingAdv(false);
+      return true;
+    }
+    if (advToDelete) {
+      setAdvToDelete(null);
+      return true;
+    }
+    if (pendingImportData) {
+      setPendingImportData(null);
+      return true;
+    }
+
+    // 2. Priority: Navigation (Adventure -> Home)
+    if (currentAdventureId) {
+      setCurrentAdventureId(null);
+      return true;
+    }
+
+    // 3. Fallback: Exit App (Home Screen)
+    // We return false to let the master listener handle the exit or do it explicitly here.
+    // If we return true, we block exit. 
+    // The master listener exits if stack is empty, but we are in the stack.
+    // So we should call exit here.
+    if (!currentAdventureId && !showSettings) {
+        CapacitorApp.exitApp();
+        return true;
+    }
+
+    return false;
+  });
+
   // Audio Context Unlocker
   useEffect(() => {
     const unlockAudio = () => {
@@ -63,13 +114,17 @@ const AppContent: React.FC = () => {
 
   // Adventure Management State
   const [isEditingAdv, setIsEditingAdv] = useState(false);
-  const [advFormData, setAdvFormData] = useState<{id?: string, name: string, description: string}>({ name: '', description: '' });
+  const [advFormData, setAdvFormData] = useState<{id?: string, name: string, description: string, coverUrl?: string}>({ name: '', description: '' });
   const [advToDelete, setAdvToDelete] = useState<string | null>(null);
 
   // Backup State
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [pendingImportData, setPendingImportData] = useState<{adventures: Adventure[], collections: Collection[], themes: AppTheme[]} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // Image Editor State
+  const [tempCoverImage, setTempCoverImage] = useState<string | null>(null);
 
   const MANUAL_URL = "https://drive.google.com/file/d/1mJbHcCNscMfs_NPnqMMz2Y8KiD8gWrkZ/view";
 
@@ -123,14 +178,17 @@ const AppContent: React.FC = () => {
 
   // Persist State
   useEffect(() => {
-    if (adventures.length > 0) {
-      localStorage.setItem('mune_adventures', JSON.stringify(adventures));
-    }
+    localStorage.setItem('mune_adventures', JSON.stringify(adventures));
   }, [adventures]);
 
   useEffect(() => {
     localStorage.setItem('mune_collections', JSON.stringify(collections));
   }, [collections]);
+
+  // Derived State: Sorted Adventures
+  const sortedAdventures = React.useMemo(() => {
+    return [...adventures].sort((a, b) => b.lastPlayedAt - a.lastPlayedAt);
+  }, [adventures]);
 
 
   // --- Global Data Management (Backup/Restore) ---
@@ -252,30 +310,46 @@ const AppContent: React.FC = () => {
   // --- Adventure CRUD Helpers ---
 
   const handleCreateAdventure = () => {
-    setAdvFormData({ name: '', description: '' });
+    setAdvFormData({ name: '', description: '', coverUrl: '' });
     setIsEditingAdv(true);
   };
 
   const handleEditAdventure = (adv: Adventure, e: React.MouseEvent) => {
     e.stopPropagation();
-    setAdvFormData({ id: adv.id, name: adv.name, description: adv.description });
+    setAdvFormData({ id: adv.id, name: adv.name, description: adv.description, coverUrl: adv.coverUrl });
     setIsEditingAdv(true);
+  };
+
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTempCoverImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = '';
   };
 
   const handleSaveAdventure = () => {
     if (!advFormData.name.trim()) return;
 
     if (advFormData.id) {
+      // Edit existing
       setAdventures(prev => prev.map(a => a.id === advFormData.id ? {
         ...a,
         name: advFormData.name,
-        description: advFormData.description
+        description: advFormData.description,
+        coverUrl: advFormData.coverUrl
       } : a));
     } else {
+      // Create new
       const newAdv: Adventure = {
         id: generateUUID(),
         name: advFormData.name,
         description: advFormData.description,
+        coverUrl: advFormData.coverUrl,
         createdAt: Date.now(),
         lastPlayedAt: Date.now(),
         logs: [],
@@ -421,16 +495,16 @@ const AppContent: React.FC = () => {
         {/* New Adventure Card */}
         <button 
           onClick={() => { play('CLICK'); handleCreateAdventure(); }}
-          className="aspect-[3/4] rounded-xl border-2 border-dashed border-border hover:border-primary bg-card/30 hover:bg-card/50 flex flex-col items-center justify-center gap-2 text-txt-dim hover:text-primary transition-all active:scale-[0.98] group"
+          className="aspect-[3/4] rounded-xl border-2 border-dashed border-border hover:border-primary bg-card/50 flex flex-col items-center justify-center gap-2 text-txt-dim hover:text-primary transition-all active:scale-[0.98] group"
         >
-          <div className="bg-card p-3 rounded-full group-hover:bg-primary/10 transition-colors shadow-sm border border-border/50 group-hover:border-primary/20">
+          <div className="bg-card p-3 rounded-full group-hover:bg-primary/10 transition-colors">
             <Plus size={32} />
           </div>
           <span className="font-bold uppercase text-xs tracking-wider text-center">Nova Aventura</span>
         </button>
 
         {/* Adventure Cards */}
-        {adventures.map((adv, index) => {
+        {sortedAdventures.map((adv, index) => {
             const isLastPlayed = index === 0;
             return (
             <div 
@@ -438,19 +512,26 @@ const AppContent: React.FC = () => {
               onClick={() => { play('CLICK'); handleSelectAdventure(adv.id); }}
               className={`bg-card border rounded-xl shadow-lg transition-all active:scale-[0.98] group cursor-pointer relative flex flex-col overflow-hidden aspect-[3/4] ${isLastPlayed ? 'border-primary ring-1 ring-primary shadow-primary/20' : 'border-border hover:border-primary/50'}`}
             >
+              {adv.coverUrl && (
+                <div className="absolute inset-0 z-0">
+                  <img src={adv.coverUrl} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-card/50" />
+                </div>
+              )}
+
               {isLastPlayed && (
                  <div className="absolute bottom-0 left-0 bg-primary text-on-primary text-[9px] font-bold px-2 py-1 rounded-tr-lg shadow-sm z-10 uppercase tracking-wider">
                     Último Jogo
                  </div>
               )}
 
-              <div className="flex-1 p-3 flex flex-col">
-                <h3 className="text-sm font-bold text-txt-main group-hover:text-primary transition-colors line-clamp-2 leading-tight mb-2">
+              <div className="flex-1 p-3 flex flex-col relative z-10">
+                <h3 className="text-sm font-bold text-txt-main group-hover:text-primary transition-colors line-clamp-2 leading-tight mb-2 drop-shadow-md">
                   {adv.name}
                 </h3>
                 
                 <p className="text-xs text-txt-muted line-clamp-4 leading-relaxed flex-1">
-                  {adv.description || <span className="italic opacity-50">Sem descrição...</span>}
+                  {adv.description || <span className="italic opacity-50"></span>}
                 </p>
               </div>
 
@@ -484,10 +565,36 @@ const AppContent: React.FC = () => {
              </div>
              
              <div className="space-y-4">
+               {/* Cover Image Upload Area */}
+               <div 
+                 onClick={() => coverInputRef.current?.click()}
+                 className="relative h-40 bg-app border border-dashed border-border rounded-lg overflow-hidden group cursor-pointer flex flex-col items-center justify-center gap-2"
+               >
+                 {advFormData.coverUrl ? (
+                   <>
+                    <img src={advFormData.coverUrl} alt="Cover" className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" />
+                    <div className="relative z-10 bg-black/60 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg border border-white/10">
+                      <Upload size={16} /> Alterar Capa
+                    </div>
+                   </>
+                 ) : (
+                   <>
+                    <ImageIcon className="text-txt-dim group-hover:text-primary transition-colors" size={40} />
+                    <span className="text-sm font-bold text-txt-dim uppercase tracking-wider group-hover:text-primary transition-colors">Adicionar Capa</span>
+                   </>
+                 )}
+                 <input 
+                   type="file" 
+                   accept="image/*" 
+                   className="hidden" 
+                   ref={coverInputRef}
+                   onChange={handleCoverUpload}
+                 />
+               </div>
+
                <div>
                  <label className="text-xs uppercase font-bold text-txt-muted block mb-1">Título</label>
                  <input 
-                   autoFocus
                    type="text" 
                    value={advFormData.name}
                    onChange={e => setAdvFormData({...advFormData, name: e.target.value})}
@@ -892,6 +999,18 @@ const AppContent: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {tempCoverImage && (
+        <ImageEditorModal 
+          imageSrc={tempCoverImage}
+          aspectRatio={3/4}
+          onCancel={() => setTempCoverImage(null)}
+          onSave={(cropped) => {
+            setAdvFormData(prev => ({ ...prev, coverUrl: cropped }));
+            setTempCoverImage(null);
+          }}
+        />
       )}
 
     </div>

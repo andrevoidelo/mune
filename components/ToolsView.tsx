@@ -687,10 +687,12 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
          {/* Add New Button */}
          <button 
            onClick={() => { play('CLICK'); handleCreateCollection(); }}
-           className="w-full aspect-[4/3] border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-txt-dim hover:text-primary hover:border-primary/50 hover:bg-card/50 transition-all group"
+           className="w-full aspect-[4/3] border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 text-txt-dim hover:text-primary hover:border-primary/50 bg-card/50 transition-all group"
          >
-           <Plus size={24} className="mb-1 group-hover:scale-110 transition-transform" />
-           <span className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-center">Criar Coleção</span>
+           <div className="bg-card p-3 rounded-full group-hover:bg-primary/10 transition-colors">
+             <Plus size={32} />
+           </div>
+           <span className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-center">Nova Coleção</span>
          </button>
       </div>
     </div>

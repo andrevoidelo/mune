@@ -3,6 +3,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { X, Image as ImageIcon, Save, Trash2, PenTool, Sticker } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 import IconPicker from './IconPicker';
+import ImageEditorModal from './ImageEditorModal';
 
 interface NoteModalProps {
   onClose: () => void;
@@ -15,6 +16,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
   const [icon, setIcon] = useState<string | undefined>(undefined);
   const [iconColor, setIconColor] = useState<string>('#ffffff');
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [tempImage, setTempImage] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { play } = useGameSound();
@@ -26,10 +28,11 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImage(reader.result as string);
+        setTempImage(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
+    e.target.value = '';
   };
 
   const handleSave = () => {
@@ -76,7 +79,13 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
   return (
     <div 
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-      onClick={() => { play('CLICK'); onClose(); }}
+      onClick={() => { 
+        // Prevent closing if image editor is open (though it should be on top)
+        if (!tempImage) {
+           play('CLICK'); 
+           onClose(); 
+        }
+      }}
     >
       <div 
         className="w-full max-w-lg bg-card border border-border rounded-2xl p-4 shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] sm:max-h-[85vh]"
@@ -97,7 +106,6 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
 
         <div className="flex-1 overflow-y-auto min-h-0">
           <textarea
-            autoFocus
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Descreva a cena, diálogos ou pensamentos..."
@@ -167,6 +175,17 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
           </button>
         </div>
       </div>
+
+      {tempImage && (
+        <ImageEditorModal 
+          imageSrc={tempImage}
+          onCancel={() => setTempImage(null)}
+          onSave={(cropped) => {
+            setImage(cropped);
+            setTempImage(null);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -125,6 +125,7 @@ export interface Adventure {
   id: string;
   name: string;
   description: string;
+  coverUrl?: string; // New optional field
   createdAt: number;
   lastPlayedAt: number;
   logs: LogEntry[];

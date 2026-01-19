@@ -12,6 +12,8 @@ import { ColorPicker } from './ColorPicker';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import InventoryGridItem from './InventoryGridItem';
 import IconPicker from './IconPicker';
+import ImageEditorModal from './ImageEditorModal';
+import { useBackButton } from '../hooks/useBackButton';
 
 const PREVIEW_COLORS: Record<string, string> = {
   slate:  '#64748b', 
@@ -189,8 +191,58 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   // Icon picker state for editing inventory items
   const [editingIconForItem, setEditingIconForItem] = useState<string | null>(null);
 
+  // Image Editor State
+  const [tempImage, setTempImage] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { play } = useGameSound();
+
+  // --- Back Button Handling ---
+  useBackButton(() => {
+    // 1. Local Modals
+    if (rollResult) {
+      setRollResult(null);
+      return true;
+    }
+    if (itemRollResult) {
+      setItemRollResult(null);
+      return true;
+    }
+    if (pendingRoll) {
+      setPendingRoll(null);
+      return true;
+    }
+    if (itemToUse) {
+      setItemToUse(null);
+      return true;
+    }
+    if (charToDelete) {
+      setCharToDelete(null);
+      return true;
+    }
+    if (tempImage) {
+      setTempImage(null);
+      return true;
+    }
+    if (showNewItemIconPicker) {
+      setShowNewItemIconPicker(false);
+      return true;
+    }
+    if (editingIconForItem) {
+      setEditingIconForItem(null);
+      return true;
+    }
+
+    // 2. Navigation (Detail/Form -> List)
+    if (mode !== 'LIST') {
+      setMode('LIST');
+      setSelectedCharId(null);
+      return true;
+    }
+
+    // 3. Fallthrough (Let App.tsx handle "Back to Adventure")
+    return false;
+  });
 
   const toggleAutoReduce = () => {
     const newValue = !autoReduceOnUse;
@@ -569,10 +621,12 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => prev ? ({ ...prev, imageUrl: reader.result as string }) : null);
+        setTempImage(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
+    // Clear value to allow selecting same file again
+    e.target.value = '';
   };
 
   const triggerFileUpload = () => {
@@ -1862,7 +1916,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                   />
                                 </div>
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>Tipo</label>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>Tipo de Rolagem</label>
                                   <select 
                                     value={attr.rollType}
                                     onChange={(e) => updateAttribute(attr.id, 'rollType', e.target.value)}
@@ -2187,6 +2241,18 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             </div>
           </div>
         </div>
+      )}
+
+      {tempImage && (
+        <ImageEditorModal 
+          imageSrc={tempImage}
+          aspectRatio={1}
+          onCancel={() => setTempImage(null)}
+          onSave={(cropped) => {
+            setFormData(prev => prev ? ({ ...prev, imageUrl: cropped }) : null);
+            setTempImage(null);
+          }}
+        />
       )}
     </div>
   );

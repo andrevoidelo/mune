@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, X, Check, PaintBucket } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
+import { useBackButton } from '../hooks/useBackButton';
 
 interface IconData {
   name: string;
@@ -40,6 +41,7 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
   const [color, setColor] = useState(selectedColor);
   const [icons, setIcons] = useState<IconData[]>([]);
   const [loading, setLoading] = useState(true);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Debounce Search: Wait 500ms after user stops typing
   useEffect(() => {
@@ -49,6 +51,12 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
 
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Handle Back Button
+  useBackButton(() => {
+    onClose();
+    return true;
+  });
 
   // EXCLUSIVE: Disable keyboard resizing for this modal
   useEffect(() => {
