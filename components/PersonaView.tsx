@@ -12,6 +12,8 @@ import { ColorPicker } from './ColorPicker';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import InventoryGridItem from './InventoryGridItem';
 import IconPicker from './IconPicker';
+import ImageEditorModal from './ImageEditorModal';
+import { useBackButton } from '../hooks/useBackButton';
 
 const PREVIEW_COLORS: Record<string, string> = {
   slate:  '#64748b', 
@@ -119,6 +121,7 @@ interface AttributeRollResult {
   charName: string;
   attrName: string;
   roll: number;
+  otherRoll?: number; // The discarded roll in Adv/Disadv
   target: number;
   isSuccess: boolean;
   rollType: AttributeType;
@@ -188,8 +191,58 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   // Icon picker state for editing inventory items
   const [editingIconForItem, setEditingIconForItem] = useState<string | null>(null);
 
+  // Image Editor State
+  const [tempImage, setTempImage] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { play } = useGameSound();
+
+  // --- Back Button Handling ---
+  useBackButton(() => {
+    // 1. Local Modals
+    if (rollResult) {
+      setRollResult(null);
+      return true;
+    }
+    if (itemRollResult) {
+      setItemRollResult(null);
+      return true;
+    }
+    if (pendingRoll) {
+      setPendingRoll(null);
+      return true;
+    }
+    if (itemToUse) {
+      setItemToUse(null);
+      return true;
+    }
+    if (charToDelete) {
+      setCharToDelete(null);
+      return true;
+    }
+    if (tempImage) {
+      setTempImage(null);
+      return true;
+    }
+    if (showNewItemIconPicker) {
+      setShowNewItemIconPicker(false);
+      return true;
+    }
+    if (editingIconForItem) {
+      setEditingIconForItem(null);
+      return true;
+    }
+
+    // 2. Navigation (Detail/Form -> List)
+    if (mode !== 'LIST') {
+      setMode('LIST');
+      setSelectedCharId(null);
+      return true;
+    }
+
+    // 3. Fallthrough (Let App.tsx handle "Back to Adventure")
+    return false;
+  });
 
   const toggleAutoReduce = () => {
     const newValue = !autoReduceOnUse;
@@ -385,6 +438,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     let logDetail = val1.detail; // e.g. "3d6 [1+2+3]"
 
     // Handle Advantage/Disadvantage Logic
+    let discardedRoll: number | undefined = undefined;
     if (rollConfig.mode !== 'NORMAL') {
       const isUnder = attr.rollType === 'UNDER';
       const isAdv = rollConfig.mode === 'ADVANTAGE';
@@ -396,8 +450,10 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
       if (takeLowest) {
          finalRoll = Math.min(val1.total, val2.total);
+         discardedRoll = Math.max(val1.total, val2.total);
       } else {
          finalRoll = Math.max(val1.total, val2.total);
+         discardedRoll = Math.min(val1.total, val2.total);
       }
       // Re-format log detail for Adv/Disadv
       logDetail = `[${val1.total}, ${val2.total}] ➔ **${finalRoll}** (${rollConfig.mode === 'ADVANTAGE' ? 'Vant.' : 'Desv.'})`;
@@ -453,6 +509,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
       charName,
       attrName: attr.name,
       roll: finalRoll,
+      otherRoll: discardedRoll,
       target: modifiedTarget,
       isSuccess: success,
       rollType: attr.rollType,
@@ -564,10 +621,12 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => prev ? ({ ...prev, imageUrl: reader.result as string }) : null);
+        setTempImage(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
+    // Clear value to allow selecting same file again
+    e.target.value = '';
   };
 
   const triggerFileUpload = () => {
@@ -817,10 +876,15 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                     <Dices className="text-txt-dim animate-spin" size={40} />
                   </div>
                 ) : (
-                  <div className="animate-in zoom-in spin-in-180 duration-500">
+                  <div className="flex items-baseline gap-2 animate-in zoom-in spin-in-180 duration-500">
                     <span className={`text-6xl font-black ${!isNone && rollResult.isSuccess ? 'text-txt-main' : (isNone ? 'text-primary' : 'text-txt-main')}`}>
                       {rollResult.roll}
                     </span>
+                    {rollResult.otherRoll !== undefined && (
+                      <span className="text-3xl font-bold text-txt-dim/30">
+                        {rollResult.otherRoll}
+                      </span>
+                    )}
                   </div>
                 )}
                 
@@ -1654,7 +1718,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                      value={formData.name}
                      onChange={e => setFormData({...formData, name: e.target.value})}
                      className="w-full bg-card border border-border rounded-lg p-3 text-txt-main font-bold text-lg focus:border-primary outline-none"
-                     placeholder="Ex: Gandalf, o Cinzento"
+                     placeholder="Ex: Mya Presafina"
                    />
                  </div>
                  
@@ -1665,7 +1729,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                      value={formData.profession}
                      onChange={e => setFormData({...formData, profession: e.target.value})}
                      className="w-full bg-card border border-border rounded-lg p-3 text-txt-main focus:border-primary outline-none"
-                     placeholder="Ex: Mago, Guerreiro, Detetive..."
+                     placeholder="Ex: Guerreiro, Mago, Detetive..."
                    />
                  </div>
 
@@ -1732,22 +1796,33 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                             
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(res.color)}`}>Atual</label>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(res.color)}`}>
+                                    Atual
+                                  </label>
                                   <input 
                                     type="number" 
                                     value={res.current}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => updateResource(res.id, 'current', parseInt(e.target.value) || 0)}
                                     className={`w-full rounded p-2 font-mono text-center outline-none border ${getInputStyle(res.color).replace('bg-transparent', 'bg-black/10')}`}
                                   />
                                 </div>
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(res.color)}`}>Máximo</label>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${!res.max ? 'text-error' : getLabelStyle(res.color)}`}>
+                                    Máximo {!res.max && '*'}
+                                  </label>
                                   <input 
                                     type="number" 
                                     value={res.max}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
+                                      // Only update MAX, do not clamp current yet
                                       const newMax = parseInt(e.target.value) || 0;
-                                      setFormData(prev => {
+                                      updateResource(res.id, 'max', newMax);
+                                    }}
+                                    onBlur={() => {
+                                       // Clamp current on blur
+                                       setFormData(prev => {
                                         if (!prev) return null;
                                         return {
                                           ...prev,
@@ -1755,9 +1830,8 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                             if (r.id === res.id) {
                                               return { 
                                                 ...r, 
-                                                max: newMax, 
                                                 // Enforce logical constraint: Current cannot be > Max
-                                                current: r.current > newMax ? newMax : r.current 
+                                                current: r.current > r.max ? r.max : r.current 
                                               };
                                             }
                                             return r;
@@ -1765,7 +1839,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                         };
                                       });
                                     }}
-                                    className={`w-full rounded p-2 font-mono text-center outline-none border ${getInputStyle(res.color).replace('bg-transparent', 'bg-black/10')}`}
+                                    className={`w-full rounded p-2 font-mono text-center outline-none border ${!res.max ? 'border-error' : getInputStyle(res.color).replace('bg-transparent', 'bg-black/10')}`}
                                   />
                                 </div>
                             </div>
@@ -1830,33 +1904,37 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                               
                               <div className="grid grid-cols-3 gap-2">
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>Valor</label>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${!attr.value ? 'text-error' : getLabelStyle(attr.color)}`}>
+                                    Valor {!attr.value && '*'}
+                                  </label>
                                   <input 
                                     type="number" 
                                     value={attr.value}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => updateAttribute(attr.id, 'value', parseInt(e.target.value) || 0)}
-                                    className={`w-full rounded p-2 font-mono text-center outline-none border h-10 ${getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
+                                    className={`w-full rounded p-2 font-mono text-center outline-none border h-10 ${!attr.value ? 'border-error' : getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
                                   />
                                 </div>
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>Tipo</label>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>Tipo de Rolagem</label>
                                   <select 
                                     value={attr.rollType}
                                     onChange={(e) => updateAttribute(attr.id, 'rollType', e.target.value)}
                                     className={`w-full rounded px-2 text-xs outline-none border appearance-none h-10 ${getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
                                   >
-                                      <option value="UNDER" className="text-black">≤ (Menor)</option>
-                                      <option value="OVER" className="text-black">≥ (Maior)</option>
-                                      <option value="NONE" className="text-black">Rolar</option>
+                                      <option value="UNDER" className="text-black">≤ (Menor Atrib.)</option>
+                                      <option value="OVER" className="text-black">≥ (Maior Atrib.)</option>
+                                      <option value="NONE" className="text-black">Apenas Rolar</option>
                                   </select>
                                 </div>
                                 <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${isDiceEmpty ? 'text-red-400' : getLabelStyle(attr.color)} ${validationErrors.has(attr.id) ? 'animate-pulse' : ''}`}>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${isDiceEmpty ? 'text-error' : getLabelStyle(attr.color)} ${validationErrors.has(attr.id) ? 'animate-pulse' : ''}`}>
                                       Dado {isDiceEmpty && '*'}
                                   </label>
                                   <input 
                                     type="text" 
                                     value={attr.dice || ''}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => updateAttribute(attr.id, 'dice', e.target.value)}
                                     className={`w-full rounded p-2 font-mono text-center text-xs outline-none border h-10 ${isDiceEmpty ? 'border-red-500/60 focus:border-red-500' : getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
                                     placeholder="Ex: 1d20"
@@ -2163,6 +2241,18 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             </div>
           </div>
         </div>
+      )}
+
+      {tempImage && (
+        <ImageEditorModal 
+          imageSrc={tempImage}
+          aspectRatio={1}
+          onCancel={() => setTempImage(null)}
+          onSave={(cropped) => {
+            setFormData(prev => prev ? ({ ...prev, imageUrl: cropped }) : null);
+            setTempImage(null);
+          }}
+        />
       )}
     </div>
   );

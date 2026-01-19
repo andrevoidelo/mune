@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { AppTheme } from '../types';
 import { BUILT_IN_THEMES } from '../constants';
 import { generateUUID } from '../utils';
-import { updateStatusBarStyle, isColorDark } from '../capacitorInit';
+import { updateStatusBarStyle, updateStatusBarColor, isColorDark } from '../capacitorInit';
 
 interface ThemeContextType {
   activeThemeId: string;
@@ -90,6 +90,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Update status bar style based on theme brightness (Android)
     const isDark = isColorDark(theme.colors.appBg);
     updateStatusBarStyle(isDark);
+    
+    // Update status bar background color to match the theme's card color
+    updateStatusBarColor(theme.colors.cardBg);
 
   }, [activeThemeId, customThemes]);
 

@@ -146,9 +146,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ isOpen, onClose, selec
              </button>
              <button 
                 onClick={handleApply}
-                className="flex-1 py-3 rounded-xl font-bold text-sm bg-primary hover:bg-primary-hover text-on-primary shadow-lg shadow-primary/20 active:translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl font-bold text-sm bg-primary hover:bg-primary-hover text-on-primary shadow-lg shadow-primary/20 active:translate-y-0.5 transition-all flex items-center justify-center"
              >
-                <CheckCircle2 size={18} />
                 Aplicar
              </button>
         </div>
