@@ -1,10 +1,11 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { LogEntry } from '../types';
-import { Trash2, Clock, X, StickyNote, Printer, Calendar, FileDown, ArrowDown } from 'lucide-react';
+import { Trash2, Clock, X, StickyNote, Printer, Calendar, FileDown, ArrowDown, Download } from 'lucide-react';
 import { exportLogsToMarkdown } from '../utils';
 import { useGameSound } from '../hooks/useGameSound';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { exportTextFile, isNativePlatform, exportPdfFile } from '../utils/exportUtils';
+import { downloadLogPdf, generateLogPdfBase64 } from '../utils/pdfGenerator';
 
 interface LogViewProps {
   logs: LogEntry[];
@@ -48,19 +49,15 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
   }, []);
 
   useEffect(() => {
-    // Scroll only if tab became active OR if logs increased (new entry)
-    // This prevents scrolling when deleting (length decreases)
     const shouldScroll = isActive && (logs.length > prevLogsLength.current || prevLogsLength.current === 0);
 
     if (shouldScroll) {
-      // Use a small timeout to ensure DOM is rendered after visibility change
       const timeoutId = setTimeout(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 50);
       return () => clearTimeout(timeoutId);
     }
     
-    // Update ref for next render
     prevLogsLength.current = logs.length;
   }, [logs.length, isActive]);
 
@@ -74,21 +71,36 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
     setShowDeleteModal(false);
   };
 
-  const handlePrint = () => {
-    window.print();
+  // Exportação Markdown (Cross-Platform)
+  const handleMarkdownExport = async () => {
+    const md = exportLogsToMarkdown(logs, adventureName || 'Aventura');
+    const fileName = `${(adventureName || 'aventura').replace(/[^a-z0-9]/gi, '_').toLowerCase()}_log.md`;
+    await exportTextFile(md, fileName, 'text/markdown');
   };
 
-  const handleMarkdownExport = () => {
-    const md = exportLogsToMarkdown(logs, adventureName || 'Aventura');
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${adventureName || 'aventura'}_log.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  // Exportação PDF (Cross-Platform)
+  const handlePdfExport = async () => {
+    const safeName = (adventureName || 'Aventura').replace(/[^a-z0-9]/gi, '_');
+    const fileName = `${safeName.toLowerCase()}_log.pdf`;
+
+    if (isNativePlatform()) {
+      // Android: gera base64 e compartilha
+      try {
+        const pdfBase64 = await generateLogPdfBase64(logs, adventureName || 'Aventura');
+        await exportPdfFile(pdfBase64, fileName);
+      } catch (e) {
+        console.error("PDF Export failed", e);
+        alert("Falha ao gerar PDF.");
+      }
+    } else {
+      // Browser: download direto
+      try {
+        await downloadLogPdf(logs, adventureName || 'Aventura');
+      } catch (e) {
+        console.error("PDF Export failed", e);
+        alert("Falha ao gerar PDF.");
+      }
+    }
   };
 
   const formatDateTime = (ts: number) => {
@@ -100,47 +112,29 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
   };
 
   const getEntryStyle = (entry: LogEntry) => {
-    // Base styles (Screen)
-    // Print styles overwrite these using 'print:' prefix
-    
-    // 0. Notas de Diário (Estilo Distinto)
     if (entry.type === 'NOTE') return 'border-primary/50 bg-card/80 print:bg-transparent print:border-gray-300';
-
-    // 1. Intervenções (Crítico/Urgente)
     if (entry.type === 'INTERVENTION') return 'border-error bg-error/20 print:bg-red-50 print:border-red-600 print:text-red-900';
     
-    // 2. Ferramentas Geradoras (Cores específicas para cada ferramenta - Keeping absolute for identity or mapping to theme?)
-    // Let's map loosely to theme concepts where possible, but keep specific colors if they are distinct from success/error
     if (entry.type === 'GENERATOR') {
       if (entry.title.includes('Presságio')) return 'border-purple-500 bg-purple-900/20 print:bg-transparent print:border-purple-400';
       if (entry.title.includes('NPC')) return 'border-yellow-500 bg-yellow-900/20 print:bg-transparent print:border-yellow-600';
       if (entry.title.includes('TWENE') || entry.title.includes('Inesperado')) return 'border-orange-500 bg-orange-900/20 print:bg-transparent print:border-orange-400';
     }
 
-    // 3. Testes de Atributo (Sucesso vs Falha)
     if (entry.type === 'ATTRIBUTE') {
        const res = entry.result.toLowerCase();
        if (res.includes('sucesso')) return 'border-success bg-success/20 print:bg-transparent print:border-green-600';
        if (res.includes('falha')) return 'border-error bg-error/20 print:bg-transparent print:border-red-400';
     }
 
-    // 4. Itens (Inventário)
     if (entry.type === 'ITEM') return 'border-indigo-500 bg-indigo-900/20 print:bg-transparent print:border-indigo-400';
-
-    // 5. Oráculo (Padrão Azul - Use Primary?)
     if (entry.type === 'ORACLE') return 'border-blue-500 bg-card print:bg-transparent print:border-blue-400';
-
-    // 6. Baralho
     if (entry.type === 'DRAW') return 'border-purple-500 bg-card print:bg-transparent print:border-purple-400';
-    
-    // 7. Highlight genérico ou fallback
     if (entry.highlight) return 'border-primary bg-primary/10 print:bg-transparent print:border-amber-400';
     
-    // Padrão (Dados genéricos, etc)
     return 'border-border bg-card print:bg-transparent print:border-gray-300';
   };
 
-  // Helper to render bold text marked with **text**
   const renderFormattedText = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -166,9 +160,9 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
                 .md
             </button>
             <button 
-                onClick={() => { play('CLICK'); handlePrint(); }}
+                onClick={() => { play('CLICK'); handlePdfExport(); }}
                 className="text-txt-muted hover:text-primary p-2 rounded-full hover:bg-card-hover transition-colors active:scale-95"
-                title="Exportar PDF (Imprimir)"
+                title="Exportar PDF"
               >
                 <Printer size={20} />
             </button>
@@ -185,10 +179,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
         )}
       </div>
 
-      {/* Main Container - The class 'print-container' makes this visible in PDF */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-24 print-container print:space-y-4">
-        
-        {/* Header visible ONLY when printing */}
         <div className="hidden print:block mb-8 border-b-2 border-black pb-4">
            <h1 className="text-3xl font-bold text-black font-serif mb-1">{adventureName || "Relatório de Aventura MUNE"}</h1>
            <p className="text-sm text-gray-600">Exportado em {new Date().toLocaleString()}</p>
@@ -237,7 +228,6 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
                 </div>
 
                 <div className="flex gap-3">
-                    {/* ICON RENDERING */}
                     {iconUrl && (
                        <div className="flex-none pt-1 print:hidden">
                           <div 
@@ -258,9 +248,7 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
                     )}
 
                     <div className="flex-1 min-w-0">
-                        {/* Título e Texto principal */}
                         {entry.type === 'NOTE' ? (
-                          // Layout específico para as Notas (Diário)
                           <div className="mt-1">
                             {entry.title && entry.title !== 'Nota' && (
                               <h3 className="font-bold text-primary/80 print:text-black text-sm mb-1">{entry.title}</h3>
@@ -270,28 +258,24 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
                             </p>
                           </div>
                         ) : (
-                          // Layout Padrão para Mecânicas
                           <div className="mt-1">
                             <h3 className="font-bold text-txt-main print:text-black text-sm">{entry.title}</h3>
                             <p className="text-lg text-txt-main print:text-black font-medium mt-0.5 leading-snug">{entry.result}</p>
                           </div>
                         )}
 
-                        {/* Detalhes Técnicos */}
                         {entry.details && (
                           <p className="text-xs text-txt-muted print:text-gray-600 mt-2 border-t border-border/50 print:border-gray-300 pt-2 font-mono break-words">
                             {renderFormattedText(entry.details)}
                           </p>
                         )}
 
-                        {/* Imagem Anexada */}
                         {entry.imageUrl && (
                           <div className="mt-3 rounded-lg overflow-hidden border border-border/50 print:border-none">
                             <img src={entry.imageUrl} alt="Anexo do Log" className="w-full h-auto object-cover max-h-80 print:max-h-[8cm]" />
                           </div>
                         )}
 
-                        {/* Presságio Visual Icons */}
                         {entry.visualIcons && (
                           <div className="mt-3 flex gap-2 flex-wrap">
                             {entry.visualIcons.map((v, i) => (
@@ -328,7 +312,6 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
         <div ref={bottomRef} className="h-px w-full no-print" />
       </div>
 
-      {/* Floating Scroll to Bottom Button */}
       {logs.length > 3 && !isAtBottom && (
         <button
           onClick={scrollToBottom}
