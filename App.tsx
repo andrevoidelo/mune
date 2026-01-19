@@ -13,6 +13,7 @@ import ImageEditorModal from './components/ImageEditorModal';
 import { MessageSquare, Wrench, Dices, ScrollText, HelpCircle, X, User, ChevronLeft, Plus, Calendar, Trash2, Edit2, Play, Save, Settings, BookOpen, UploadCloud, Image as ImageIcon, Upload } from 'lucide-react';
 import { generateUUID } from './utils';
 import { DEFAULT_COLLECTIONS } from './constants';
+import { exportTextFile } from './utils/exportUtils';
 import { SoundProvider } from './contexts/SoundContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { useGameSound } from './hooks/useGameSound';
@@ -193,7 +194,8 @@ const AppContent: React.FC = () => {
 
   // --- Global Data Management (Backup/Restore) ---
 
-  const handleGlobalBackup = () => {
+  const handleGlobalBackup = async () => {
+    // Fix: Filter out built-in collections to avoid redundancy and version conflicts
     const customCollections = collections.filter(c => !c.isBuiltIn);
 
     const data = {
@@ -204,15 +206,10 @@ const AppContent: React.FC = () => {
       themes: customThemes
     };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `MUNE_FullBackup_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const fileName = `MUNE_Backup_${new Date().toISOString().slice(0, 10)}.mune`;
+    const content = JSON.stringify(data, null, 2);
+    
+    await exportTextFile(content, fileName, 'application/json');
   };
 
   const handleImportTrigger = () => {

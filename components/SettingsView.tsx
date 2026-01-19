@@ -211,7 +211,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
                 <div className="text-center">
                   <span className="block font-bold text-txt-main text-sm">Backup</span>
-                  <span className="text-[10px] uppercase font-bold text-txt-muted tracking-wider">Exportar JSON</span>
+                  <span className="text-[10px] uppercase font-bold text-txt-muted tracking-wider">Exportar .mune</span>
                 </div>
               </button>
 
@@ -231,7 +231,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                     <div className="text-center">
                       <span className="block font-bold text-txt-main text-sm">Restaurar</span>
-                      <span className="text-[10px] uppercase font-bold text-txt-muted tracking-wider">Importar JSON</span>
+                      <span className="text-[10px] uppercase font-bold text-txt-muted tracking-wider">Importar .mune</span>
                     </div>
                   </>
                 )}
@@ -243,7 +243,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         {/* Input Oculto para Importação */}
         <input 
           type="file" 
-          accept="application/json, .json" 
+          accept=".mune, .json, application/json, application/octet-stream, *.*" 
           ref={fileInputRef as React.LegacyRef<HTMLInputElement>}
           onChange={onRestoreAction} 
           style={{ display: 'none' }}
