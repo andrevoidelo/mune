@@ -1186,17 +1186,17 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
               <div className="hidden landscape:flex gap-2">
                 <button 
                   type="button"
-                  onClick={() => { play('CLICK'); handleDelete(char.id); }}
-                  className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60 shadow-lg transition-all active:scale-95"
-                >
-                  <Trash2 size={24} />
-                </button>
-                <button 
-                  type="button"
                   onClick={() => { play('CLICK'); handleEdit(char); }}
                   className="p-2 bg-primary/40 backdrop-blur-md rounded-full text-on-primary hover:bg-primary/60 shadow-lg transition-all active:scale-95"
                 >
                   <Edit2 size={24} />
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => { play('CLICK'); handleDelete(char.id); }}
+                  className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60 shadow-lg transition-all active:scale-95"
+                >
+                  <Trash2 size={24} />
                 </button>
               </div>
             </div>
@@ -1205,17 +1205,17 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             <div className="flex landscape:hidden gap-2 p-4 pointer-events-auto">
               <button 
                 type="button"
-                onClick={() => { play('CLICK'); handleDelete(char.id); }}
-                className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60 shadow-lg transition-all active:scale-95"
-              >
-                <Trash2 size={24} />
-              </button>
-              <button 
-                type="button"
                 onClick={() => { play('CLICK'); handleEdit(char); }}
                 className="p-2 bg-primary/40 backdrop-blur-md rounded-full text-on-primary hover:bg-primary/60 shadow-lg transition-all active:scale-95"
               >
                 <Edit2 size={24} />
+              </button>
+              <button 
+                type="button"
+                onClick={() => { play('CLICK'); handleDelete(char.id); }}
+                className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60 shadow-lg transition-all active:scale-95"
+              >
+                <Trash2 size={24} />
               </button>
             </div>
         </div>

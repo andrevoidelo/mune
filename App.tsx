@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Howler } from 'howler';
-import { Tab, LogEntry, Character, Adventure, Collection, Thread, NpcEntry, AppTheme } from './types';
+import { Tab, LogEntry, Character, Adventure, Collection, Thread, NpcEntry, AppTheme, WikiEntry, CustomCategory } from './types';
 import OracleView from './components/OracleView';
 import ToolsView from './components/ToolsView';
+import WikiView from './components/WikiView';
 import DiceView from './components/DiceView';
 import LogView from './components/LogView';
 import PersonaView from './components/PersonaView';
@@ -11,7 +12,7 @@ import NoteModal from './components/NoteModal';
 import DraggableFab from './components/DraggableFab';
 import ImageEditorModal from './components/ImageEditorModal';
 import { MessageSquare, Wrench, Dices, ScrollText, HelpCircle, X, User, ChevronLeft, Plus, Calendar, Trash2, Edit2, Play, Save, Settings, BookOpen, UploadCloud, Image as ImageIcon, Upload } from 'lucide-react';
-import { generateUUID } from './utils';
+import { generateUUID, generateSlug } from './utils';
 import { DEFAULT_COLLECTIONS } from './constants';
 import { exportTextFile } from './utils/exportUtils';
 import { SoundProvider } from './contexts/SoundContext';
@@ -117,6 +118,85 @@ const AppContent: React.FC = () => {
   const [isEditingAdv, setIsEditingAdv] = useState(false);
   const [advFormData, setAdvFormData] = useState<{id?: string, name: string, description: string, coverUrl?: string}>({ name: '', description: '' });
   const [advToDelete, setAdvToDelete] = useState<string | null>(null);
+  
+  // Wiki Navigation State
+  const [wikiTargetId, setWikiTargetId] = useState<string | null>(null);
+
+  const handleNavigateToWiki = (entryId: string | null, createSlug?: string) => {
+      if (entryId) {
+          setWikiTargetId(entryId);
+      } else if (createSlug) {
+          setWikiTargetId(`CREATE:${createSlug}`);
+      }
+      setActiveTab(Tab.WIKI);
+  };
+
+  const handleUpdateReferences = (oldSlug: string, newSlug: string) => {
+    if (!activeAdventure) return;
+
+    // We need to update both @mentions and #tags
+    // Regex matches the slug as a whole word
+    const mentionRegex = new RegExp(`@${oldSlug}\\b`, 'gi');
+    const mentionReplacement = `@${newSlug}`;
+
+    const tagRegex = new RegExp(`#${oldSlug}\\b`, 'gi');
+    const tagReplacement = `#${newSlug}`;
+
+    // Update Logs
+    const updatedLogs = activeAdventure.logs.map(log => {
+      let changed = false;
+      let newResult = log.result;
+      let newDetails = log.details;
+
+      if (newResult) {
+        if (mentionRegex.test(newResult)) {
+          newResult = newResult.replace(mentionRegex, mentionReplacement);
+          changed = true;
+        }
+        if (tagRegex.test(newResult)) {
+          newResult = newResult.replace(tagRegex, tagReplacement);
+          changed = true;
+        }
+      }
+      
+      if (newDetails) {
+        if (mentionRegex.test(newDetails)) {
+          newDetails = newDetails.replace(mentionRegex, mentionReplacement);
+          changed = true;
+        }
+        if (tagRegex.test(newDetails)) {
+          newDetails = newDetails.replace(tagRegex, tagReplacement);
+          changed = true;
+        }
+      }
+
+      return changed ? { ...log, result: newResult, details: newDetails } : log;
+    });
+
+    // Update Wiki Entries (Backlinks)
+    const updatedWiki = (activeAdventure.wiki || []).map(entry => {
+      if (entry.content) {
+        let newContent = entry.content;
+        let changed = false;
+
+        if (mentionRegex.test(newContent)) {
+          newContent = newContent.replace(mentionRegex, mentionReplacement);
+          changed = true;
+        }
+        if (tagRegex.test(newContent)) {
+          newContent = newContent.replace(tagRegex, tagReplacement);
+          changed = true;
+        }
+
+        if (changed) {
+            return { ...entry, content: newContent, updatedAt: Date.now() };
+        }
+      }
+      return entry;
+    });
+
+    updateActiveAdventureData({ logs: updatedLogs, wiki: updatedWiki });
+  };
 
   // Backup State
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -142,12 +222,58 @@ const AppContent: React.FC = () => {
     if (savedAdventures) {
       try {
         const parsed = JSON.parse(savedAdventures);
-        // Ensure new fields exist on old records
-        const migrated = parsed.map((adv: any) => ({
-          ...adv,
-          threads: adv.threads || [],
-          npcs: adv.npcs || []
-        }));
+        const migrated = parsed.map((adv: any) => {
+          const wiki = adv.wiki || [];
+          const customCategories = adv.customCategories || [];
+
+          // Migration: NPCs -> Wiki (Personagens)
+          if (adv.npcs && adv.npcs.length > 0) {
+             adv.npcs.forEach((npc: any) => {
+                 const exists = wiki.some((e: any) => e.title === npc.name);
+                 if (!exists) {
+                     wiki.push({
+                         id: generateUUID(),
+                         title: npc.name,
+                         slug: generateSlug(npc.name),
+                         content: npc.notes || '',
+                         category: 'PERSONAGENS',
+                         tags: [],
+                         createdAt: Date.now(),
+                         updatedAt: Date.now(),
+                         isAutoCreated: false
+                     });
+                 }
+             });
+          }
+
+          // Migration: Threads -> Wiki (Eventos)
+          if (adv.threads && adv.threads.length > 0) {
+             adv.threads.forEach((thread: any) => {
+                 const exists = wiki.some((e: any) => e.title === thread.name);
+                 if (!exists) {
+                     wiki.push({
+                         id: generateUUID(),
+                         title: thread.name,
+                         slug: generateSlug(thread.name),
+                         content: `Status: ${thread.status === 'OPEN' ? 'Em andamento' : 'Concluída'}`,
+                         category: 'EVENTOS',
+                         tags: [thread.status.toLowerCase()],
+                         createdAt: Date.now(),
+                         updatedAt: Date.now(),
+                         isAutoCreated: false
+                     });
+                 }
+             });
+          }
+
+          return {
+            ...adv,
+            threads: adv.threads || [],
+            npcs: adv.npcs || [],
+            wiki: wiki,
+            customCategories: customCategories
+          };
+        });
         setAdventures(migrated.sort((a: Adventure, b: Adventure) => b.lastPlayedAt - a.lastPlayedAt));
       } catch (e) {
         console.error("Failed to parse adventures", e);
@@ -167,7 +293,9 @@ const AppContent: React.FC = () => {
           logs: legacyLogs ? JSON.parse(legacyLogs) : [],
           characters: legacyChars ? JSON.parse(legacyChars) : [],
           threads: [],
-          npcs: []
+          npcs: [],
+          wiki: [],
+          customCategories: []
         };
         setAdventures([newAdv]);
         
@@ -253,7 +381,9 @@ const AppContent: React.FC = () => {
               logs: Array.isArray(data.logs) ? data.logs : [],
               characters: Array.isArray(data.characters) ? data.characters : [],
               threads: Array.isArray(data.threads) ? data.threads : [],
-              npcs: Array.isArray(data.npcs) ? data.npcs : []
+              npcs: Array.isArray(data.npcs) ? data.npcs : [],
+              wiki: [],
+              customCategories: []
            };
            validAdventures = [legacyAdv];
         }
@@ -352,7 +482,9 @@ const AppContent: React.FC = () => {
         logs: [],
         characters: [],
         threads: [],
-        npcs: []
+        npcs: [],
+        wiki: [],
+        customCategories: []
       };
       setAdventures(prev => [newAdv, ...prev]);
     }
@@ -418,7 +550,20 @@ const AppContent: React.FC = () => {
     updateActiveAdventureData({ npcs });
   };
 
-  const handleAddNote = (text: string, image?: string, icon?: string, iconColor?: string) => {
+  const setWikiWrapper = (wiki: WikiEntry[]) => {
+    updateActiveAdventureData({ wiki });
+  };
+
+  const setCustomCategoriesWrapper = (customCategories: CustomCategory[]) => {
+    updateActiveAdventureData({ customCategories });
+  };
+
+  const handleAddNote = (text: string, image?: string, icon?: string, iconColor?: string, newWikiEntries?: WikiEntry[]) => {
+     if (newWikiEntries && newWikiEntries.length > 0 && activeAdventure) {
+         const updatedWiki = [...(activeAdventure.wiki || []), ...newWikiEntries];
+         updateActiveAdventureData({ wiki: updatedWiki });
+     }
+
      addLog({
        id: generateUUID(),
        timestamp: Date.now(),
@@ -451,6 +596,12 @@ const AppContent: React.FC = () => {
           title: "Oráculo",
           text: "O coração do sistema. Faça perguntas de 'Sim ou Não' e clique em Rolar para ver o resultado. A cada rolagem '6' (Sim, e...), você acumula 1 ponto. Com 3 pontos, há uma Intervenção do Oráculo na história. Use o botão 'Tramas & NPCs' para gerenciar pontos de enredo.",
           icon: <MessageSquare size={32} className="text-primary" />
+        };
+      case Tab.WIKI:
+        return {
+          title: "Acervo (Wiki)",
+          text: "Sua base de conhecimento conectada. Crie entradas para Personagens, Locais e Itens. Use @Nome e #Tag para criar links automáticos entre as páginas. Tudo que você cria aqui pode ser referenciado rapidamente em suas notas.",
+          icon: <BookOpen size={32} className="text-primary" />
         };
       case Tab.TOOLS:
         return {
@@ -740,6 +891,13 @@ const AppContent: React.FC = () => {
               vertical
             />
             <NavButton 
+              active={activeTab === Tab.WIKI} 
+              onClick={() => setActiveTab(Tab.WIKI)}
+              icon={<BookOpen size={24} />}
+              label="Acervo"
+              vertical
+            />
+            <NavButton 
               active={activeTab === Tab.TOOLS} 
               onClick={() => setActiveTab(Tab.TOOLS)}
               icon={<Wrench size={24} />}
@@ -795,6 +953,20 @@ const AppContent: React.FC = () => {
                   updateNpcs={updateNpcs}
                 />
               </div>
+
+              <div className={activeTab === Tab.WIKI ? 'h-full w-full' : 'hidden'}>
+                <WikiView 
+                  entries={activeAdventure.wiki || []}
+                  setEntries={setWikiWrapper}
+                  customCategories={activeAdventure.customCategories || []}
+                  setCustomCategories={setCustomCategoriesWrapper}
+                  addLog={addLog}
+                  targetEntryId={wikiTargetId}
+                  onClearTarget={() => setWikiTargetId(null)}
+                  onUpdateReferences={handleUpdateReferences}
+                  logs={activeAdventure.logs || []}
+                />
+              </div>
               
               <div className={activeTab === Tab.TOOLS ? 'h-full w-full' : 'hidden'}>
                 <ToolsView 
@@ -823,6 +995,8 @@ const AppContent: React.FC = () => {
                   clearLogs={clearLogs} 
                   removeLog={removeLog} 
                   isActive={activeTab === Tab.LOG}
+                  wikiEntries={activeAdventure.wiki || []}
+                  onNavigateToWiki={handleNavigateToWiki}
                 />
               </div>
             </>
@@ -842,6 +1016,8 @@ const AppContent: React.FC = () => {
         <NoteModal 
           onClose={() => setShowNoteModal(false)}
           onSave={handleAddNote}
+          wikiEntries={activeAdventure?.wiki || []}
+          customCategories={activeAdventure?.customCategories || []}
         />
       )}
 
@@ -902,12 +1078,18 @@ const AppContent: React.FC = () => {
       {/* Bottom Navigation (Portrait Only) */}
       {currentAdventureId && !showSettings && (
         <nav className="flex-none bg-card border-t border-border z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden pb-safe-area">
-          <div className="grid grid-cols-5 h-16">
+          <div className="grid grid-cols-6 h-16">
             <NavButton 
               active={activeTab === Tab.ORACLE} 
               onClick={() => setActiveTab(Tab.ORACLE)}
               icon={<MessageSquare size={20} />}
               label="Oráculo"
+            />
+            <NavButton 
+              active={activeTab === Tab.WIKI} 
+              onClick={() => setActiveTab(Tab.WIKI)}
+              icon={<BookOpen size={20} />}
+              label="Acervo"
             />
             <NavButton 
               active={activeTab === Tab.TOOLS} 

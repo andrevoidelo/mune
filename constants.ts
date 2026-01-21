@@ -1,5 +1,4 @@
-
-import { Collection, CollectionItem } from './types';
+import { Collection, CollectionItem, DefaultCategory } from './types';
 
 export const ORACLE_ANSWERS = [
   { roll: 1, text: "Não, e...", sentiment: 'negative' },
@@ -17,6 +16,17 @@ export const INTERVENTION_TYPES = [
   { roll: 4, text: "Avançar Trama" },
   { roll: 5, text: "Regredir Trama" },
   { roll: 6, text: "Selvagem" },
+];
+
+// --- WIKI CONSTANTS ---
+
+export const DEFAULT_CATEGORIES: DefaultCategory[] = [
+  { id: 'NOVO', label: 'Novo', icon: 'sparkles', color: 'accent', isDefault: true, isSystem: true },
+  { id: 'PERSONAGENS', label: 'Personagens', icon: 'user', color: 'primary', isDefault: true },
+  { id: 'LOCAIS', label: 'Locais', icon: 'map-pin', color: 'success', isDefault: true },
+  { id: 'ITENS', label: 'Itens', icon: 'sword', color: 'warning', isDefault: true },
+  { id: 'EVENTOS', label: 'Eventos', icon: 'calendar', color: 'error', isDefault: true },
+  { id: 'NOTAS', label: 'Notas', icon: 'file-text', color: 'muted', isDefault: true },
 ];
 
 // --- COLEÇÕES PADRÃO (Tabelas e Decks) ---
@@ -238,7 +248,8 @@ export const BUILT_IN_THEMES = [
       textAccent: '#f59e0b',
       onPrimary: '#020617',
       success: '#4ade80',
-      error: '#f87171'
+      error: '#f87171',
+      warning: '#f59e0b'
     }
   },
   {
@@ -259,7 +270,8 @@ export const BUILT_IN_THEMES = [
       textAccent: '#b45309',
       onPrimary: '#ffffff',
       success: '#15803d',
-      error: '#b91c1c'
+      error: '#b91c1c',
+      warning: '#d97706'
     }
   },
   {
@@ -280,7 +292,8 @@ export const BUILT_IN_THEMES = [
       textAccent: '#eab308',
       onPrimary: '#1c1917',
       success: '#14532d',
-      error: '#7f1d1d'
+      error: '#7f1d1d',
+      warning: '#eab308'
     }
   },
   {
@@ -301,7 +314,8 @@ export const BUILT_IN_THEMES = [
       textAccent: '#1d4ed8',
       onPrimary: '#ffffff',
       success: '#15803d',
-      error: '#b91c1c'
+      error: '#b91c1c',
+      warning: '#f59e0b'
     }
   },
   {
@@ -322,7 +336,8 @@ export const BUILT_IN_THEMES = [
       textAccent: '#38bdf8',
       onPrimary: '#0a0514',
       success: '#4ade80',
-      error: '#f87171'
+      error: '#f87171',
+      warning: '#f59e0b'
     }
   },
   {
@@ -343,7 +358,8 @@ export const BUILT_IN_THEMES = [
       textAccent: '#4ade80',
       onPrimary: '#000000',
       success: '#4ade80',
-      error: '#f87171'
+      error: '#f87171',
+      warning: '#facc15'
     }
   }
 ];

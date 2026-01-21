@@ -7,8 +7,8 @@ interface DraggableFabProps {
 }
 
 const DraggableFab: React.FC<DraggableFabProps> = ({ onClick }) => {
-  // Default position: Bottom Right (approximate safe area)
-  const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 100 });
+  // Default position: Middle Right
+  const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight / 2 - 40 });
   const [isDragging, setIsDragging] = useState(false);
 
   const dragStartPos = useRef({ x: 0, y: 0 });

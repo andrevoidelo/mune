@@ -1,6 +1,5 @@
-
 import { PORTENT_ADJECTIVES, PORTENT_NOUNS } from "./constants";
-import { LogEntry } from "./types";
+import { LogEntry, WikiEntry, WikiCategoryId, CustomCategory } from "./types";
 
 export const rollD = (sides: number): number => {
   return Math.floor(Math.random() * sides) + 1;
@@ -188,4 +187,179 @@ export const adjustColorBrightness = (hex: string, percent: number): string => {
   b = Math.min(255, Math.max(0, b));
 
   return `#${(g | (b << 8) | (r << 16)).toString(16).padStart(6, '0')}`;
+};
+
+// --- WIKI UTILS ---
+
+export const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')  // Remove accents
+    .replace(/[^a-z0-9\s_]/g, '')       // Remove special chars (keep space and underscore)
+    .trim()
+    .replace(/\s+/g, '_');             // Spaces to underscores
+};
+
+export const generateUniqueSlug = (title: string, existingSlugs: string[]): string => {
+  let slug = generateSlug(title);
+  let counter = 1;
+  const originalSlug = slug;
+  while (existingSlugs.includes(slug)) {
+    slug = `${originalSlug}_${++counter}`;
+  }
+  return slug;
+};
+
+export interface ParsedLink {
+  type: 'mention' | 'tag';
+  value: string;          // Raw value (e.g., "Eldric_o_Mago")
+  displayValue: string;   // Display value (e.g., "Eldric o Mago")
+  entryId?: string;       // ID if entry exists
+  startIndex: number;
+  endIndex: number;
+}
+
+export interface ParsedContent {
+  parts: Array<
+    | { type: 'text'; value: string }
+    | { type: 'mention'; value: string; entryId?: string }
+    | { type: 'tag'; value: string; entryId?: string }
+  >;
+  links: ParsedLink[];
+}
+
+export const parseLinkedContent = (
+  content: string,
+  entries: WikiEntry[]
+): ParsedContent => {
+  const mentionRegex = /@([\p{L}0-9_]+)/gu;
+  const tagRegex = /#([\p{L}0-9_]+)/gu;
+
+  const links: ParsedLink[] = [];
+  let match;
+
+  // Find @mentions
+  while ((match = mentionRegex.exec(content)) !== null) {
+    // Generate normalized slug from the matched text (handling accents/spaces properly)
+    const slug = generateSlug(match[1]);
+    const entry = entries.find(e => e.slug === slug);
+    links.push({
+      type: 'mention',
+      value: match[1],
+      displayValue: match[1].replace(/_/g, ' '),
+      entryId: entry?.id,
+      startIndex: match.index,
+      endIndex: match.index + match[0].length,
+    });
+  }
+
+  // Find #tags
+  while ((match = tagRegex.exec(content)) !== null) {
+    const tagSlug = generateSlug(match[1]);
+    const entry = entries.find(e =>
+      e.tags.some(t => generateSlug(t) === tagSlug) || e.slug === tagSlug
+    );
+    links.push({
+      type: 'tag',
+      value: match[1],
+      displayValue: match[1].replace(/_/g, ' '),
+      entryId: entry?.id,
+      startIndex: match.index,
+      endIndex: match.index + match[0].length,
+    });
+  }
+
+  // Sort by position
+  links.sort((a, b) => a.startIndex - b.startIndex);
+
+  // Build parts array
+  const parts: ParsedContent['parts'] = [];
+  let lastIndex = 0;
+
+  for (const link of links) {
+    if (link.startIndex > lastIndex) {
+      parts.push({ type: 'text', value: content.slice(lastIndex, link.startIndex) });
+    }
+    parts.push({
+      type: link.type,
+      value: link.value,
+      entryId: link.entryId,
+    });
+    lastIndex = link.endIndex;
+  }
+
+  if (lastIndex < content.length) {
+    parts.push({ type: 'text', value: content.slice(lastIndex) });
+  }
+
+  return { parts, links };
+};
+
+export const createAutoEntry = (
+  title: string,
+  existingEntries: WikiEntry[]
+): WikiEntry => {
+  const existingSlugs = existingEntries.map(e => e.slug);
+  
+  return {
+    id: generateUUID(),
+    title: title.replace(/_/g, ' '),
+    slug: generateUniqueSlug(title, existingSlugs),
+    content: '',
+    category: 'NOVO',           // Always defaults to "Novo"
+    tags: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isAutoCreated: true,        // Flag for UI treatment
+  };
+};
+
+export const createCustomCategory = (
+  label: string,
+  icon: string,
+  color: string
+): CustomCategory => ({
+  id: generateUUID(),
+  label,
+  icon,
+  color,
+  isDefault: false,
+  createdAt: Date.now(),
+});
+
+export const deleteCustomCategory = (
+  categoryId: string,
+  entries: WikiEntry[],
+  customCategories: CustomCategory[]
+): { entries: WikiEntry[]; customCategories: CustomCategory[] } => {
+  // Move all entries in this category to "NOVO"
+  const updatedEntries = entries.map(e =>
+    e.category === categoryId
+      ? { ...e, category: 'NOVO' as WikiCategoryId, updatedAt: Date.now() }
+      : e
+  );
+  
+  // Remove the category
+  const updatedCategories = customCategories.filter(c => c.id !== categoryId);
+  
+  return { entries: updatedEntries, customCategories: updatedCategories };
+};
+
+export const getCategoryColor = (categoryId: string, customCategories: CustomCategory[]): string => {
+  return 'primary';
+};
+
+export const getCategoryIcon = (categoryId: string, customCategories: CustomCategory[]): string => {
+   switch (categoryId) {
+    case 'NOVO': return 'sparkles';
+    case 'PERSONAGENS': return 'user';
+    case 'LOCAIS': return 'map-pin';
+    case 'ITENS': return 'sword';
+    case 'EVENTOS': return 'calendar';
+    case 'NOTAS': return 'file-text';
+  }
+  
+  const custom = customCategories.find(c => c.id === categoryId);
+  return custom?.icon || 'folder';
 };

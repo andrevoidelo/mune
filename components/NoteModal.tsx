@@ -1,16 +1,27 @@
-
 import React, { useState, useRef, useMemo } from 'react';
 import { X, Image as ImageIcon, Save, Trash2, PenTool, Sticker } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 import IconPicker from './IconPicker';
 import ImageEditorModal from './ImageEditorModal';
+import { WikiEntry, CustomCategory, WikiCategoryId } from '../types';
+import { parseLinkedContent, createAutoEntry } from '../utils';
+import TextareaWithAutocomplete from './TextareaWithAutocomplete';
+import WikiLinkPreview from './WikiLinkPreview';
 
 interface NoteModalProps {
   onClose: () => void;
-  onSave: (text: string, image: string | undefined, icon: string | undefined, iconColor: string | undefined) => void;
+  onSave: (
+    text: string, 
+    image: string | undefined, 
+    icon: string | undefined, 
+    iconColor: string | undefined,
+    newWikiEntries?: WikiEntry[]
+  ) => void;
+  wikiEntries: WikiEntry[];
+  customCategories: CustomCategory[];
 }
 
-const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
+const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, customCategories }) => {
   const [text, setText] = useState('');
   const [image, setImage] = useState<string | undefined>(undefined);
   const [icon, setIcon] = useState<string | undefined>(undefined);
@@ -22,6 +33,15 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
   const { play } = useGameSound();
 
   const iconUrl = icon ? `/icons/${icon}.svg` : undefined;
+
+  // Detect links in real-time
+  const detectedLinks = useMemo(() => {
+    if (!text) return [];
+    return parseLinkedContent(text, wikiEntries).links.map(link => ({
+      ...link,
+      exists: !!link.entryId
+    }));
+  }, [text, wikiEntries]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,7 +57,25 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
 
   const handleSave = () => {
     if (!text.trim() && !image && !icon) return;
-    onSave(text, image, icon, iconColor);
+
+    // Identify new entries to be created
+    const newLinks = detectedLinks.filter(link => !link.exists);
+    const uniqueNewTitles = Array.from(new Set(newLinks.map(l => l.value.replace(/_/g, ' '))));
+    
+    // We need to pass the *current* state of wikiEntries + any already created in this loop?
+    // Actually, createAutoEntry needs existingEntries to check for slug collisions.
+    // If we create multiple at once, we should accumulate them.
+    
+    let currentEntries = [...wikiEntries];
+    const newWikiEntries: WikiEntry[] = [];
+    
+    uniqueNewTitles.forEach(title => {
+        const newEntry = createAutoEntry(title, currentEntries);
+        newWikiEntries.push(newEntry);
+        currentEntries.push(newEntry);
+    });
+
+    onSave(text, image, icon, iconColor, newWikiEntries);
     onClose();
   };
 
@@ -105,12 +143,16 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-0">
-          <textarea
+          <TextareaWithAutocomplete
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Descreva a cena, diálogos ou pensamentos..."
+            onChange={setText}
+            entries={wikiEntries}
+            customCategories={customCategories}
+            placeholder="Escreva sua nota... Use @Nome para criar/mencionar entradas do Acervo e #Tag para adicionar tópicos."
             className="w-full bg-app border border-border rounded-xl p-4 text-txt-main placeholder-txt-dim outline-none focus:border-primary h-40 sm:min-h-[150px] resize-none font-serif leading-relaxed text-lg"
           />
+          
+          <WikiLinkPreview links={detectedLinks} />
 
           {image && (
             <div className="mt-4 relative group rounded-xl overflow-hidden border border-border">

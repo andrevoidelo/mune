@@ -57,7 +57,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Wait, my constants.ts has Hex codes.
     // I need a hexToRgbString helper.
 
-    const hexToRgb = (hex: string) => {
+    const hexToRgb = (hex: string | undefined | null) => {
+      if (!hex) return '0 0 0';
       const bigint = parseInt(hex.replace('#', ''), 16);
       const r = (bigint >> 16) & 255;
       const g = (bigint >> 8) & 255;
@@ -83,6 +84,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     root.style.setProperty('--success', hexToRgb(theme.colors.success));
     root.style.setProperty('--error', hexToRgb(theme.colors.error));
+    root.style.setProperty('--warning', hexToRgb(theme.colors.warning));
 
     // Meta Theme Color
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.colors.appBg);

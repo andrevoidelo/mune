@@ -465,17 +465,17 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
               <div className="flex gap-2">
                  <button 
                     onClick={() => { play('CLICK'); handleEditCollection(activeCollection); }}
-                    className="p-2 bg-card rounded-full text-primary hover:text-on-primary hover:bg-primary transition-colors"
+                    className="p-2 bg-primary/40 backdrop-blur-md rounded-full text-on-primary hover:bg-primary/60 shadow-lg transition-all active:scale-95"
                     title="Editar"
                  >
-                    <Edit2 size={20} />
+                    <Edit2 size={24} />
                  </button>
                  <button 
                     onClick={() => { play('CLICK'); setCollectionToDelete(activeCollection); }}
-                    className="p-2 bg-card rounded-full text-error hover:text-slate-100 hover:bg-error transition-colors"
+                    className="p-2 bg-error/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-error/60 shadow-lg transition-all active:scale-95"
                     title="Excluir"
                  >
-                    <Trash2 size={20} />
+                    <Trash2 size={24} />
                  </button>
               </div>
            )}

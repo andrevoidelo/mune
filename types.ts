@@ -3,6 +3,7 @@ export enum Tab {
   TOOLS = 'TOOLS',
   DICE = 'DICE',
   PERSONA = 'PERSONA',
+  WIKI = 'WIKI',
   LOG = 'LOG'
 }
 
@@ -84,16 +85,43 @@ export interface Collection {
   iconColor?: string;
 }
 
-export interface Thread {
-  id: string;
-  name: string;
-  status: 'OPEN' | 'CLOSED';
+// --- WIKI TYPES ---
+
+export type DefaultCategoryId = 'NOVO' | 'PERSONAGENS' | 'LOCAIS' | 'ITENS' | 'EVENTOS' | 'NOTAS';
+
+export type WikiCategoryId = DefaultCategoryId | string;
+
+export interface DefaultCategory {
+  id: DefaultCategoryId;
+  label: string;
+  icon: string;
+  color: string;
+  isDefault: true;
+  isSystem?: boolean;
 }
 
-export interface NpcEntry {
+export interface CustomCategory {
   id: string;
-  name: string;
-  notes: string;
+  label: string;
+  icon: string;
+  color: string;
+  isDefault: false;
+  createdAt: number;
+}
+
+export type WikiCategory = DefaultCategory | CustomCategory;
+
+export interface WikiEntry {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  category: WikiCategoryId;
+  tags: string[];
+  imageUrl?: string;
+  createdAt: number;
+  updatedAt: number;
+  isAutoCreated?: boolean;
 }
 
 export interface AppTheme {
@@ -118,6 +146,7 @@ export interface AppTheme {
     
     success: string;       // --success
     error: string;         // --error
+    warning: string;       // --warning
   };
 }
 
@@ -131,6 +160,6 @@ export interface Adventure {
   logs: LogEntry[];
   characters: Character[];
   // Novos campos de estado da aventura
-  threads: Thread[];
-  npcs: NpcEntry[];
+  wiki: WikiEntry[];
+  customCategories: CustomCategory[];
 }
