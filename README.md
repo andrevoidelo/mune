@@ -30,7 +30,13 @@
 
 - **Oracle Rolls:** Complete 6-answer system (`No, and...`, `No`, `No, but...`, `Yes, but...`, `Yes`, `Yes, and...`) with "Normal", "Likely" (Advantage), and "Unlikely" (Disadvantage) options.
 - **Automatic Interventions:** The optional system tracks intervention points (generated when rolling a `Yes, and...`). Upon reaching 3 points, the result is automatically replaced by an Intervention.
-- **Plot & NPC Management:** Quick lists integrated into the oracle screen to dynamically add/remove narrative elements.
+
+
+### 📖 Wiki
+
+- **Knowledge Base:** Organize your world with a connected Wiki. Create entries for Characters, Locations, Items, and Events.
+- **Cross-Linking:** Use `@EntryName` to create clickable links to other wiki entries and `#Tag` to organize content. Clicking a link navigates to that entry; clicking a tag filters the library.
+- **Auto-Linking:** If you mention an existing entry in your Logs or other Wiki pages, the system can automatically detect and link it.
 
 
 ### 👤 Character Management (Personas)
@@ -113,7 +119,13 @@ This project uses **Vite** and **React**.
 
 - **Rolagens de Oráculo:** Sistema completo de 6 respostas (`Não, e...`, `Não`, `Não, mas...`, `Sim, mas...`, `Sim` e `Sim, e...`) com opções de rolagem "Normal", "Provável" (Vantagem) e "Improvável" (Desvantagem).
 - **Intervenções Automáticas:** O sistema opcional rastreia os pontos de intervenção (gerados ao rolar um `Sim, e...`). Ao atingir 3 pontos, o resultado é substituído por uma Intervenção automaticamente.
-- **Gestão de Tramas & NPCs:** Listas rápidas integradas à tela do oráculo para adicionar/remover elementos da narrativa dinamicamente.
+
+
+### 📖 Acervo Wiki-like
+
+- **Base de Conhecimento:** Organize seu mundo com uma Wiki conectada. Crie entradas para Personagens, Locais, Itens e Eventos.
+- **Links Cruzados:** Use `@NomeDaEntrada` para criar links clicáveis para outras entradas e `#Tag` para organizar conteúdo. Clicar em um link navega para a entrada; clicar em uma tag filtra a biblioteca.
+- **Detecção Automática:** Se você mencionar uma entrada existente nos seus Logs ou outras páginas da Wiki, o sistema pode detectar e criar o link automaticamente.
 
 
 ### 👤 Gestão de Personagens (Personas)
