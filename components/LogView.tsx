@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { LogEntry } from '../types';
+import { LogEntry, WikiEntry } from '../types';
 import { Trash2, Clock, X, StickyNote, Printer, Calendar, FileDown, ArrowDown, Download } from 'lucide-react';
 import { exportLogsToMarkdown } from '../utils';
 import { useGameSound } from '../hooks/useGameSound';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { exportTextFile, isNativePlatform, exportPdfFile } from '../utils/exportUtils';
 import { downloadLogPdf, generateLogPdfBase64 } from '../utils/pdfGenerator';
+import LinkedText from './LinkedText';
 
 interface LogViewProps {
   logs: LogEntry[];
@@ -13,6 +14,8 @@ interface LogViewProps {
   clearLogs: () => void;
   removeLog: (id: string) => void;
   isActive: boolean;
+  wikiEntries?: WikiEntry[];
+  onNavigateToWiki?: (entryId: string | null, createSlug?: string) => void;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -26,7 +29,15 @@ const TYPE_LABELS: Record<string, string> = {
   DRAW: 'BARALHO'
 };
 
-const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, removeLog, isActive }) => {
+const LogView: React.FC<LogViewProps> = ({ 
+  logs, 
+  adventureName, 
+  clearLogs, 
+  removeLog, 
+  isActive, 
+  wikiEntries, 
+  onNavigateToWiki 
+}) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -253,9 +264,13 @@ const LogView: React.FC<LogViewProps> = ({ logs, adventureName, clearLogs, remov
                             {entry.title && entry.title !== 'Nota' && (
                               <h3 className="font-bold text-primary/80 print:text-black text-sm mb-1">{entry.title}</h3>
                             )}
-                            <p className="text-base text-txt-main print:text-black font-serif print-serif leading-relaxed whitespace-pre-wrap">
-                              {entry.result}
-                            </p>
+                            <LinkedText 
+                                content={entry.result}
+                                entries={wikiEntries || []}
+                                onMentionClick={(slug, id) => onNavigateToWiki?.(id || null, !id ? slug : undefined)}
+                                onTagClick={(slug, id) => onNavigateToWiki?.(id || null, !id ? slug : undefined)}
+                                className="text-base text-txt-main print:text-black font-serif print-serif leading-relaxed whitespace-pre-wrap"
+                            />
                           </div>
                         ) : (
                           <div className="mt-1">

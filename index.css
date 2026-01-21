@@ -21,6 +21,7 @@
   /* Modifiers (Success/Error) - Keep absolute or themed? Themed is better for light mode */
   --color-success: rgb(var(--success));
   --color-error: rgb(var(--error));
+  --color-warning: rgb(var(--warning));
 }
 
 /* Ensure full height for app container */
@@ -51,6 +52,7 @@ html, body, #root {
 
   --success: 74 222 128; /* green-400 */
   --error: 248 113 113;   /* red-400 */
+  --warning: 245 158 11;  /* amber-500 */
 }
 
 [data-theme='light'] {

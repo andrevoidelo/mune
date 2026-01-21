@@ -1,30 +1,20 @@
-
 import React, { useState } from 'react';
-import { OracleBias, LogEntry, Thread, NpcEntry } from '../types';
+import { OracleBias, LogEntry } from '../types';
 import { ORACLE_ANSWERS, INTERVENTION_TYPES } from '../constants';
 import { rollD, generateUUID } from '../utils';
-import { BrainCircuit, AlertTriangle, Dices, List, X, Plus, Trash2, PenTool } from 'lucide-react';
+import { BrainCircuit, AlertTriangle, Dices } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 
 interface OracleViewProps {
   addLog: (entry: LogEntry) => void;
-  threads: Thread[];
-  npcs: NpcEntry[];
-  updateThreads: (threads: Thread[]) => void;
-  updateNpcs: (npcs: NpcEntry[]) => void;
 }
 
-const OracleView: React.FC<OracleViewProps> = ({ addLog, threads, npcs, updateThreads, updateNpcs }) => {
+const OracleView: React.FC<OracleViewProps> = ({ addLog }) => {
   const [interventionPoints, setInterventionPoints] = useState(0);
   const [interventionsEnabled, setInterventionsEnabled] = useState(true);
   const [lastAnswer, setLastAnswer] = useState<string | null>(null);
   const [lastRoll, setLastRoll] = useState<number | null>(null);
   const [lastIntervention, setLastIntervention] = useState<string | null>(null);
-  
-  // Lists Modal State
-  const [showLists, setShowLists] = useState(false);
-  const [activeListTab, setActiveListTab] = useState<'THREADS' | 'NPCS'>('THREADS');
-  const [newItemText, setNewItemText] = useState('');
 
   const { play } = useGameSound();
 
@@ -133,44 +123,6 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog, threads, npcs, updateTh
     return 'bg-error'; // Red
   };
 
-  // --- List Management ---
-
-  const handleAddItem = () => {
-    if (!newItemText.trim()) return;
-    play('CLICK');
-    
-    if (activeListTab === 'THREADS') {
-      updateThreads([...threads, { id: generateUUID(), name: newItemText, status: 'OPEN' }]);
-    } else {
-      updateNpcs([...npcs, { id: generateUUID(), name: newItemText, notes: '' }]);
-    }
-    setNewItemText('');
-  };
-
-  const handleRemoveItem = (id: string) => {
-    play('CLICK');
-    if (activeListTab === 'THREADS') {
-      updateThreads(threads.filter(t => t.id !== id));
-    } else {
-      updateNpcs(npcs.filter(n => n.id !== id));
-    }
-  };
-
-  const handleLogItem = (item: Thread | NpcEntry) => {
-    play('CLICK');
-    // Log referencing the item (e.g. Closing a thread)
-    const typeLabel = activeListTab === 'THREADS' ? 'Trama' : 'NPC';
-    addLog({
-      id: generateUUID(),
-      timestamp: Date.now(),
-      type: 'NOTE',
-      title: `${typeLabel} Atualizado`,
-      result: item.name,
-      details: 'Referenciado em intervenção ou cena.'
-    });
-    setShowLists(false);
-  };
-
   return (
     <div className="flex flex-col landscape:flex-row items-center justify-between h-full p-4 overflow-y-auto relative gap-4">
       <style>{shakeStyle}</style>
@@ -251,18 +203,8 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog, threads, npcs, updateTh
       {/* RIGHT SECTION (Landscape): Controls */}
       <div className="w-full max-w-md landscape:max-w-none landscape:w-2/5 landscape:h-full flex flex-col justify-end gap-2">
          
-         {/* List Toggle */}
-         <div className="w-full flex justify-end mb-2 landscape:mb-auto landscape:justify-start">
-             <button 
-               onClick={() => { play('CLICK'); setShowLists(true); }}
-               className="bg-card border border-border hover:bg-card-hover text-txt-muted hover:text-txt-main px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 landscape:w-full landscape:justify-center landscape:py-4"
-             >
-               <List size={14} /> Tramas & NPCs
-             </button>
-          </div>
-
           {/* Controls */}
-          <div className="grid grid-cols-3 landscape:grid-cols-1 gap-3">
+          <div className="grid grid-cols-3 landscape:grid-cols-1 gap-3 h-full">
             <button
               onClick={() => handleOracleRoll('UNLIKELY')}
               className="flex flex-col landscape:flex-row items-center justify-center gap-2 bg-card hover:bg-card-hover active:bg-border border-b-4 border-app active:border-b-0 active:translate-y-1 rounded-xl p-3 landscape:p-4 transition-all"
@@ -288,78 +230,6 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog, threads, npcs, updateTh
             </button>
           </div>
       </div>
-
-      {/* LISTS MODAL */}
-      {showLists && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-           <div className="bg-app border border-border rounded-xl w-full max-w-md h-[70vh] flex flex-col shadow-2xl animate-in zoom-in-95">
-              <div className="flex items-center justify-between p-4 border-b border-border">
-                 <h3 className="font-bold text-txt-main">Listas da Campanha</h3>
-                 <button onClick={() => { play('CLICK'); setShowLists(false); }}><X className="text-txt-muted" /></button>
-              </div>
-
-              <div className="flex p-2 gap-2 bg-card/50">
-                 <button 
-                   onClick={() => { play('CLICK'); setActiveListTab('THREADS'); }}
-                   className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${activeListTab === 'THREADS' ? 'bg-card-hover text-txt-main' : 'text-txt-muted'}`}
-                 >
-                   Tramas ({threads.length})
-                 </button>
-                 <button 
-                   onClick={() => { play('CLICK'); setActiveListTab('NPCS'); }}
-                   className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${activeListTab === 'NPCS' ? 'bg-card-hover text-txt-main' : 'text-txt-muted'}`}
-                 >
-                   NPCs ({npcs.length})
-                 </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                 {(activeListTab === 'THREADS' ? threads : npcs).map(item => (
-                   <div key={item.id} className="flex items-center justify-between bg-card border border-border p-3 rounded-lg group">
-                      <span className="font-bold text-txt-main">{item.name}</span>
-                      <div className="flex gap-2">
-                         <button 
-                           onClick={() => handleLogItem(item as any)}
-                           className="p-2 bg-card-hover rounded text-txt-muted hover:text-txt-main"
-                           title="Registrar no Log"
-                         >
-                           <PenTool size={16} />
-                         </button>
-                         <button 
-                           onClick={() => handleRemoveItem(item.id)}
-                           className="p-2 bg-card-hover rounded text-txt-muted hover:text-error"
-                         >
-                           <Trash2 size={16} />
-                         </button>
-                      </div>
-                   </div>
-                 ))}
-                 {(activeListTab === 'THREADS' ? threads : npcs).length === 0 && (
-                   <p className="text-center text-txt-dim italic mt-10">Nenhum item cadastrado.</p>
-                 )}
-              </div>
-
-              <div className="p-4 border-t border-border bg-card/30">
-                 <div className="flex gap-2">
-                    <input 
-                      className="flex-1 bg-app border border-border rounded p-2 text-txt-main outline-none focus:border-primary"
-                      placeholder={activeListTab === 'THREADS' ? "Nova Trama..." : "Novo NPC..."}
-                      value={newItemText}
-                      onChange={e => setNewItemText(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                    />
-                    <button 
-                      onClick={handleAddItem}
-                      className="bg-primary text-on-primary p-2 rounded hover:bg-primary-hover"
-                    >
-                      <Plus />
-                    </button>
-                 </div>
-              </div>
-           </div>
-        </div>
-      )}
-
     </div>
   );
 };
