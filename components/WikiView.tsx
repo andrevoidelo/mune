@@ -30,6 +30,7 @@ interface WikiViewProps {
   onClearTarget?: () => void;
   onUpdateReferences?: (oldSlug: string, newSlug: string) => void;
   logs?: LogEntry[]; // Add logs prop
+  onNavigateToLog?: (logId: string) => void;
 }
 
 type WikiViewMode = 'LIBRARY' | 'DETAIL' | 'FORM';
@@ -43,7 +44,8 @@ const WikiView: React.FC<WikiViewProps> = ({
     targetEntryId,
     onClearTarget,
     onUpdateReferences,
-    logs
+    logs,
+    onNavigateToLog
 }) => {
   const { play } = useGameSound();
   const [mode, setMode] = useState<WikiViewMode>('LIBRARY');
@@ -298,6 +300,8 @@ const WikiView: React.FC<WikiViewProps> = ({
                 onDelete={() => handleDeleteEntry(entry.id)}
                 onNavigate={(id) => { play('CLICK'); setSelectedEntryId(id); }}
                 onCreate={(title) => handleCreateEntry(title)}
+                onNavigateToLog={onNavigateToLog}
+                addLog={addLog}
             />
           );
       }
@@ -321,166 +325,167 @@ const WikiView: React.FC<WikiViewProps> = ({
   // If no specific content mode, show LIBRARY
   if (!content && mode === 'LIBRARY') {
       content = (
-        <div className="bg-app h-full flex flex-col landscape:flex-row overflow-hidden">
-        {/* Fixed Header / Sidebar in Landscape */}
-        <div className="p-4 pb-3 space-y-4 shrink-0 z-10 bg-app landscape:w-[280px] landscape:h-full landscape:overflow-y-auto landscape:border-r landscape:border-border landscape:pb-4">
-            {/* Search & Actions */}
-            <div className="flex gap-2">
-                <div className="relative flex-1">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-dim" />
+        <div className="bg-app h-full flex flex-col overflow-hidden">
+            {/* Header matching LogView style */}
+            <div className="flex justify-between items-center p-4 border-b border-border bg-app/95 sticky top-0 z-10 backdrop-blur-sm h-16 no-print shrink-0">
+                <div className="flex items-center gap-2 flex-1 bg-card/50 border border-border rounded-lg px-3 py-2 mr-2 focus-within:border-primary transition-colors">
+                    <Search size={16} className="text-txt-dim" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Buscar..."
-                        className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-3
-                                text-txt-main placeholder-txt-dim outline-none focus:border-primary"
+                        className="bg-transparent border-none outline-none text-sm text-txt-main placeholder-txt-dim w-full"
                     />
                     {searchQuery && (
                         <button
                         onClick={() => { play('CLICK'); setSearchQuery(''); }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-txt-dim hover:text-txt-main"
+                        className="text-txt-dim hover:text-txt-main"
                         >
-                        <X size={18} />
+                        <X size={14} />
                         </button>
                     )}
                 </div>
                 <button 
                     onClick={() => handleCreateEntry()}
-                    className="px-4 py-2 bg-card/50 border-2 border-dashed border-border hover:border-primary hover:text-primary text-txt-dim transition-all rounded-xl flex items-center justify-center font-bold whitespace-nowrap uppercase tracking-wider text-[10px]"
+                    className="px-4 py-2 bg-primary text-on-primary hover:bg-primary-hover transition-all rounded-xl flex items-center justify-center font-bold whitespace-nowrap uppercase tracking-wider text-[10px] shadow-sm active:scale-95"
                 >
                     <Plus size={16} className="mr-1" />
                     Nova
                 </button>
             </div>
-            
-            {/* Unsorted Prompt */}
-            {unsortedCount > 0 && filterCategory !== 'NOVO' && (
-                <button
-                    onClick={() => { play('CLICK'); setFilterCategory('NOVO'); }}
-                    className="w-full flex items-center justify-between p-3 rounded-lg bg-accent/10 border border-accent/30 text-txt-accent hover:bg-accent/20 transition-colors"
-                >
-                    <div className="flex items-center gap-2">
-                        <Sparkles size={16} />
-                        <span className="text-sm font-medium">{unsortedCount} entradas novas não classificadas.</span>
-                    </div>
-                    <span className="text-sm underline">Organizar</span>
-                </button>
-            )}
 
-            {/* Categories */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 landscape:grid-cols-1 gap-2">
-                <button
-                    onClick={() => { play('CLICK'); setFilterCategory('ALL'); }}
-                    className={`px-3 py-1.5 rounded-lg text-sm border transition-colors w-full flex items-center justify-center ${
-                        filterCategory === 'ALL'
-                        ? 'bg-txt-main text-app border-txt-main font-bold' // High contrast for "All"
-                        : 'bg-card text-txt-muted border-border hover:bg-card-hover'
-                    }`}
-                >
-                    Todos
-                </button>
-                
-                {allCategories.map(cat => {
-                    const isActive = filterCategory === cat.id;
-                    const color = getCategoryColor(cat.id, customCategories);
-                    const count = entries.filter(e => e.category === cat.id).length;
-                    
-                    const handleContextMenu = (e: React.MouseEvent) => {
-                        if (!cat.isDefault) {
-                            e.preventDefault();
-                            play('CLICK');
-                            setEditingCategory(cat as CustomCategory);
-                        }
-                    };
-
-                    // Map colors to tailwind classes carefully
-                    let activeClass = '';
-                    
-                    if (isActive) {
-                        if (color === 'accent') activeClass = 'bg-primary/20 text-txt-accent border-primary ring-1 ring-primary';
-                        else if (color === 'primary') activeClass = 'bg-primary/20 text-txt-accent border-primary ring-1 ring-primary';
-                        else if (color === 'success') activeClass = 'bg-success/20 text-success border-success ring-1 ring-success';
-                        else if (color === 'warning') activeClass = 'bg-yellow-500/20 text-yellow-500 border-yellow-500 ring-1 ring-yellow-500';
-                        else if (color === 'error') activeClass = 'bg-error/20 text-error border-error ring-1 ring-error';
-                        else if (color === 'muted') activeClass = 'bg-gray-500/20 text-gray-500 border-gray-500 ring-1 ring-gray-500';
-                        else activeClass = 'bg-primary/20 text-txt-accent border-primary ring-1 ring-primary';
-                    } else {
-                        activeClass = 'bg-card text-txt-muted border-border hover:bg-card-hover';
-                    }
-
-                    return (
+            <div className="flex-1 flex flex-col landscape:flex-row overflow-hidden">
+                {/* Fixed Sidebar in Landscape */}
+                <div className="p-4 pb-3 space-y-4 shrink-0 z-10 bg-app landscape:w-[280px] landscape:h-full landscape:overflow-y-auto landscape:border-r landscape:border-border landscape:pb-4">
+                    {/* Unsorted Prompt */}
+                    {unsortedCount > 0 && filterCategory !== 'NOVO' && (
                         <button
-                        key={cat.id}
-                        onClick={() => { play('CLICK'); setFilterCategory(cat.id as WikiCategoryId); }}
-                        onContextMenu={handleContextMenu}
-                        className={`flex items-center justify-between gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors w-full ${activeClass}`}
+                            onClick={() => { play('CLICK'); setFilterCategory('NOVO'); }}
+                            className="w-full flex items-center justify-between p-3 rounded-lg bg-accent/10 border border-accent/30 text-txt-accent hover:bg-accent/20 transition-colors"
                         >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                                <DynamicIcon name={cat.icon} size={14} className="flex-none" />
-                                <span className="truncate">{cat.label}</span>
+                            <div className="flex items-center gap-2">
+                                <Sparkles size={16} />
+                                <span className="text-sm font-medium">{unsortedCount} entradas novas não classificadas.</span>
                             </div>
-                            <div className="flex items-center gap-1.5 flex-none">
-                                {isActive && !cat.isDefault && (
-                                    <div 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            play('CLICK');
-                                            setEditingCategory(cat as CustomCategory);
-                                        }}
-                                        className="p-1 -m-1 hover:bg-white/20 rounded transition-colors animate-in fade-in zoom-in duration-300"
-                                        title="Editar Categoria"
-                                    >
-                                        <Edit2 size={12} className="text-current" />
-                                    </div>
-                                )}
-                                <span className="opacity-60 text-xs">({count})</span>
-                            </div>
+                            <span className="text-sm underline">Organizar</span>
                         </button>
-                    );
-                })}            
-                <button
-                    onClick={() => { play('CLICK'); setShowCreateCategoryModal(true); }}
-                    className="flex items-center justify-center gap-1 px-3 py-1.5 bg-card/50 border-2 border-dashed border-border text-txt-dim hover:border-primary hover:text-primary transition-all rounded-lg text-sm w-full"
-                >
-                    <Plus size={14} className="flex-none" />
-                    <span className="truncate">Categoria</span>
-                </button>
+                    )}
+
+                    {/* Categories */}
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 landscape:grid-cols-1 gap-2">
+                        <button
+                            onClick={() => { play('CLICK'); setFilterCategory('ALL'); }}
+                            className={`px-3 py-1.5 rounded-lg text-sm border transition-colors w-full flex items-center justify-center ${
+                                filterCategory === 'ALL'
+                                ? 'bg-txt-main text-app border-txt-main font-bold' // High contrast for "All"
+                                : 'bg-card text-txt-muted border-border hover:bg-card-hover'
+                            }`}
+                        >
+                            Todos
+                        </button>
+                        
+                        {allCategories.map(cat => {
+                            const isActive = filterCategory === cat.id;
+                            const color = getCategoryColor(cat.id, customCategories);
+                            const count = entries.filter(e => e.category === cat.id).length;
+                            
+                            const handleContextMenu = (e: React.MouseEvent) => {
+                                if (!cat.isDefault) {
+                                    e.preventDefault();
+                                    play('CLICK');
+                                    setEditingCategory(cat as CustomCategory);
+                                }
+                            };
+
+                            // Map colors to tailwind classes carefully
+                            let activeClass = '';
+                            
+                            if (isActive) {
+                                if (color === 'accent') activeClass = 'bg-primary/20 text-txt-accent border-primary ring-1 ring-primary';
+                                else if (color === 'primary') activeClass = 'bg-primary/20 text-txt-accent border-primary ring-1 ring-primary';
+                                else if (color === 'success') activeClass = 'bg-success/20 text-success border-success ring-1 ring-success';
+                                else if (color === 'warning') activeClass = 'bg-yellow-500/20 text-yellow-500 border-yellow-500 ring-1 ring-yellow-500';
+                                else if (color === 'error') activeClass = 'bg-error/20 text-error border-error ring-1 ring-error';
+                                else if (color === 'muted') activeClass = 'bg-gray-500/20 text-gray-500 border-gray-500 ring-1 ring-gray-500';
+                                else activeClass = 'bg-primary/20 text-txt-accent border-primary ring-1 ring-primary';
+                            } else {
+                                activeClass = 'bg-card text-txt-muted border-border hover:bg-card-hover';
+                            }
+
+                            return (
+                                <button
+                                key={cat.id}
+                                onClick={() => { play('CLICK'); setFilterCategory(cat.id as WikiCategoryId); }}
+                                onContextMenu={handleContextMenu}
+                                className={`flex items-center justify-between gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors w-full ${activeClass}`}
+                                >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <DynamicIcon name={cat.icon} size={14} className="flex-none" />
+                                        <span className="truncate">{cat.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-none">
+                                        {isActive && !cat.isDefault && (
+                                            <div 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    play('CLICK');
+                                                    setEditingCategory(cat as CustomCategory);
+                                                }}
+                                                className="p-1 -m-1 hover:bg-white/20 rounded transition-colors animate-in fade-in zoom-in duration-300"
+                                                title="Editar Categoria"
+                                            >
+                                                <Edit2 size={12} className="text-current" />
+                                            </div>
+                                        )}
+                                        <span className="opacity-60 text-xs">({count})</span>
+                                    </div>
+                                </button>
+                            );
+                        })}            
+                        <button
+                            onClick={() => { play('CLICK'); setShowCreateCategoryModal(true); }}
+                            className="flex items-center justify-center gap-1 px-3 py-1.5 bg-card/50 border-2 border-dashed border-border text-txt-dim hover:border-primary hover:text-primary transition-all rounded-lg text-sm w-full"
+                        >
+                            <Plus size={14} className="flex-none" />
+                            <span className="truncate">Categoria</span>
+                        </button>
+                    </div>
+                </div>
+                
+                {/* Scrollable Entries Grid */}
+                <div className="flex-1 overflow-y-auto min-h-0 p-4 pb-20 pt-4 bg-app">
+                    {filteredEntries.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {filteredEntries.map(entry => (
+                                <WikiEntryCard
+                                    key={entry.id}
+                                    entry={entry}
+                                    customCategories={customCategories}
+                                    onClick={() => {
+                                        play('CLICK');
+                                        setSelectedEntryId(entry.id);
+                                        setMode('DETAIL');
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
+                            <BookOpen size={48} className="text-txt-dim mb-4" />
+                            {searchQuery && (
+                                <h3 className="text-lg font-bold text-txt-main mb-2">Nenhum resultado</h3>
+                            )}
+                            <p className="text-txt-muted max-w-xs">
+                                {searchQuery 
+                                ? `Não encontramos nada para "${searchQuery}"`
+                                : 'Crie uma nova entrada para popular esta categoria'}
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
-        
-        {/* Scrollable Entries Grid */}
-        <div className="flex-1 overflow-y-auto min-h-0 p-4 pb-20 pt-4">
-            {filteredEntries.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {filteredEntries.map(entry => (
-                        <WikiEntryCard
-                            key={entry.id}
-                            entry={entry}
-                            customCategories={customCategories}
-                            onClick={() => {
-                                play('CLICK');
-                                setSelectedEntryId(entry.id);
-                                setMode('DETAIL');
-                            }}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
-                    <BookOpen size={48} className="text-txt-dim mb-4" />
-                    {searchQuery && (
-                        <h3 className="text-lg font-bold text-txt-main mb-2">Nenhum resultado</h3>
-                    )}
-                    <p className="text-txt-muted max-w-xs">
-                        {searchQuery 
-                        ? `Não encontramos nada para "${searchQuery}"`
-                        : 'Crie uma nova entrada para popular esta categoria'}
-                    </p>
-                </div>
-            )}
-        </div>
-      </div>
       );
   }
 

@@ -3,8 +3,9 @@ import { X, Image as ImageIcon, Save, Trash2, PenTool, Sticker } from 'lucide-re
 import { useGameSound } from '../hooks/useGameSound';
 import IconPicker from './IconPicker';
 import ImageEditorModal from './ImageEditorModal';
+import ImageUploadArea from './ImageUploadArea';
 import { WikiEntry, CustomCategory, WikiCategoryId } from '../types';
-import { parseLinkedContent, createAutoEntry } from '../utils';
+import { parseLinkedContent, createAutoEntry, processTextWithDice } from '../utils';
 import TextareaWithAutocomplete from './TextareaWithAutocomplete';
 import WikiLinkPreview from './WikiLinkPreview';
 
@@ -15,7 +16,8 @@ interface NoteModalProps {
     image: string | undefined, 
     icon: string | undefined, 
     iconColor: string | undefined,
-    newWikiEntries?: WikiEntry[]
+    newWikiEntries?: WikiEntry[],
+    details?: string
   ) => void;
   wikiEntries: WikiEntry[];
   customCategories: CustomCategory[];
@@ -37,10 +39,12 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, cus
   // Detect links in real-time
   const detectedLinks = useMemo(() => {
     if (!text) return [];
-    return parseLinkedContent(text, wikiEntries).links.map(link => ({
-      ...link,
-      exists: !!link.entryId
-    }));
+    return parseLinkedContent(text, wikiEntries).links
+      .filter(l => l.type === 'mention' || l.type === 'tag' || l.type === 'dice')
+      .map(link => ({
+        ...link,
+        exists: !!link.entryId
+      }));
   }, [text, wikiEntries]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,8 +62,15 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, cus
   const handleSave = () => {
     if (!text.trim() && !image && !icon) return;
 
-    // Identify new entries to be created
-    const newLinks = detectedLinks.filter(link => !link.exists);
+    // Process dice rolls in text
+    const { processedText, rollDetails, hasRolls } = processTextWithDice(text);
+
+    if (hasRolls) {
+        play('DICE');
+    }
+
+    // Identify new entries to be created (only mentions/tags)
+    const newLinks = detectedLinks.filter(link => !link.exists && (link.type === 'mention' || link.type === 'tag'));
     const uniqueNewTitles = Array.from(new Set(newLinks.map(l => l.value.replace(/_/g, ' '))));
     
     // We need to pass the *current* state of wikiEntries + any already created in this loop?
@@ -75,7 +86,9 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, cus
         currentEntries.push(newEntry);
     });
 
-    onSave(text, image, icon, iconColor, newWikiEntries);
+    const details = rollDetails.length > 0 ? rollDetails.join(' | ') : undefined;
+
+    onSave(processedText, image, icon, iconColor, newWikiEntries, details);
     onClose();
   };
 
@@ -100,14 +113,6 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, cus
                     }}
                     onClose={() => setShowIconPicker(false)}
                 />
-             </div>
-             <div className="p-4 border-t border-border flex justify-end">
-                <button 
-                    onClick={() => { play('CLICK'); setShowIconPicker(false); }}
-                    className="px-6 py-2 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold"
-                >
-                    Confirmar
-                </button>
              </div>
         </div>
       </div>
@@ -142,29 +147,34 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, cus
            </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col p-1 gap-4">
+          <ImageUploadArea
+             imageUrl={image}
+             onUpload={() => fileInputRef.current?.click()}
+             onClear={() => setImage(undefined)}
+             heightClass="h-32"
+             placeholderText="Imagem da Nota"
+          />
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*"
+            onChange={handleImageUpload} 
+          />
+
           <TextareaWithAutocomplete
             value={text}
             onChange={setText}
             entries={wikiEntries}
             customCategories={customCategories}
             placeholder="Escreva sua nota... Use @Nome para criar/mencionar entradas do Acervo e #Tag para adicionar tópicos."
-            className="w-full bg-app border border-border rounded-xl p-4 text-txt-main placeholder-txt-dim outline-none focus:border-primary h-40 sm:min-h-[150px] resize-none font-serif leading-relaxed text-lg"
+            className="w-full bg-app border border-border rounded-xl p-4 text-txt-main placeholder-txt-dim outline-none focus:border-primary min-h-[150px] resize-none font-serif leading-relaxed text-lg"
           />
           
-          <WikiLinkPreview links={detectedLinks} />
-
-          {image && (
-            <div className="mt-4 relative group rounded-xl overflow-hidden border border-border">
-              <img src={image} alt="Preview" className="w-full h-auto object-cover max-h-60" />
-              <button 
-                onClick={() => { play('CLICK'); setImage(undefined); }}
-                className="absolute top-2 right-2 bg-error/80 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          )}
+          <div className="flex-none">
+            <WikiLinkPreview links={detectedLinks} />
+          </div>
         </div>
 
         <div className="flex gap-3 mt-4 pt-2 border-t border-border flex-none">
@@ -194,26 +204,11 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, cus
           </button>
 
           <button
-            onClick={() => { play('CLICK'); fileInputRef.current?.click(); }}
-            className="p-3 bg-card hover:bg-card-hover text-txt-muted hover:text-txt-main rounded-xl border border-border transition-colors"
-            title="Adicionar Imagem"
-          >
-            <ImageIcon size={24} />
-          </button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
-            accept="image/*"
-            onChange={handleImageUpload} 
-          />
-
-          <button
             onClick={() => { play('CLICK'); handleSave(); }}
             disabled={!text.trim() && !image && !icon}
             className="flex-1 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:bg-card text-on-primary font-bold rounded-xl py-3 flex items-center justify-center gap-2 enabled:shadow-lg enabled:shadow-primary/20 active:translate-y-1 transition-all"
           >
-            <Save size={20} /> Salvar no Log
+            Salvar no Log
           </button>
         </div>
       </div>

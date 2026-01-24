@@ -6,7 +6,8 @@ import TextareaWithAutocomplete from './TextareaWithAutocomplete';
 import WikiLinkPreview from './WikiLinkPreview';
 import DynamicIcon from './DynamicIcon';
 import ImageEditorModal from './ImageEditorModal';
-import { ImageIcon, Trash2, X, Upload, CheckSquare } from 'lucide-react';
+import ImageUploadArea from './ImageUploadArea';
+import { ImageIcon, Trash2, X, Upload, Save } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 
 interface WikiEntryFormProps {
@@ -143,9 +144,10 @@ const WikiEntryForm: React.FC<WikiEntryFormProps> = ({
             type="button"
             onClick={handleSave}
             disabled={!formData.title?.trim() || !!duplicateEntry}
-            className="px-4 py-2 bg-success hover:bg-green-500 text-on-primary font-bold rounded-full shadow-lg pointer-events-auto flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 bg-success/20 backdrop-blur-md text-success hover:bg-success/30 rounded-full shadow-lg pointer-events-auto transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Salvar"
           >
-            <CheckSquare size={18} /> Salvar
+            <Save size={24} />
           </button>
       </div>
 
@@ -211,37 +213,18 @@ const WikiEntryForm: React.FC<WikiEntryFormProps> = ({
           </div>
 
           {/* 3. Image Upload Area */}
-          <div 
-            onClick={() => { play('CLICK'); imageInputRef.current?.click(); }}
-            className="relative h-40 bg-app border border-dashed border-border rounded-lg overflow-hidden group cursor-pointer flex flex-col items-center justify-center gap-2"
-          >
-            {formData.imageUrl ? (
-              <>
-                <img src={formData.imageUrl} alt="Entry Image" className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" />
-                <div className="relative z-10 bg-black/60 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg border border-white/10">
-                  <Upload size={16} /> Alterar Imagem
-                </div>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); play('CLICK'); setFormData(prev => ({ ...prev, imageUrl: undefined })); }}
-                  className="absolute top-2 right-2 p-2 bg-error/80 text-white rounded-full z-20 hover:bg-error transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </>
-            ) : (
-              <>
-                <ImageIcon className="text-txt-dim group-hover:text-primary transition-colors" size={40} />
-                <span className="text-sm font-bold text-txt-dim uppercase tracking-wider group-hover:text-primary transition-colors">Adicionar Imagem</span>
-              </>
-            )}
-            <input 
-              type="file" 
-              ref={imageInputRef} 
-              className="hidden" 
-              accept="image/*"
-              onChange={handleImageUpload}
-            />
-          </div>
+          <ImageUploadArea
+            imageUrl={formData.imageUrl}
+            onUpload={() => imageInputRef.current?.click()}
+            onClear={() => setFormData(prev => ({ ...prev, imageUrl: undefined }))}
+          />
+          <input 
+            type="file" 
+            ref={imageInputRef} 
+            className="hidden" 
+            accept="image/*"
+            onChange={handleImageUpload}
+          />
 
           {/* 4. Content with Link Preview */}
           <div className="relative">

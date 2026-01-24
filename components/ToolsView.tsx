@@ -1,20 +1,24 @@
 
 import React, { useState, useEffect } from 'react';
-import { Collection, CollectionItem, CollectionType, LogEntry } from '../types';
-import { generatePortent, generateUUID, shuffleArray, getLuminance, adjustColorBrightness } from '../utils';
-import { Sparkles, User, Plus, Trash2, Edit2, Dices, Layers, X, Save, RefreshCw, ChevronLeft, Zap, HelpCircle, Sticker, Eye } from 'lucide-react';
+import { Collection, CollectionItem, CollectionType, LogEntry, Clock } from '../types';
+import { generatePortent, generateUUID, shuffleArray, getLuminance, adjustColorBrightness, processCollectionText } from '../utils';
+import { Sparkles, User, Plus, Trash2, Edit2, Dices, Layers, X, Save, RefreshCw, ChevronLeft, HelpCircle, Sticker, Eye, Clock as ClockIcon, Zap, Search } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 import { useTheme } from '../contexts/ThemeContext';
 import IconPicker, { PRESET_COLORS } from './IconPicker';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import ClocksView from './ClocksView';
+import TextareaWithAutocomplete from './TextareaWithAutocomplete';
 
 interface ToolsViewProps {
   addLog: (entry: LogEntry) => void;
   collections: Collection[];
   setCollections: React.Dispatch<React.SetStateAction<Collection[]>>;
+  clocks: Clock[];
+  setClocks: React.Dispatch<React.SetStateAction<Clock[]>>;
 }
 
-const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollections }) => {
+const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollections, clocks, setClocks }) => {
   const { activeThemeId, allThemes } = useTheme();
   const activeTheme = allThemes.find(t => t.id === activeThemeId);
   // Threshold can be tweaked, but > 128 usually means light background
@@ -52,8 +56,17 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
   
   // Icon Picker State
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { play } = useGameSound();
+
+  const filteredCollections = collections.filter(c => 
+      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Sub-Navigation State
+  const [activeTab, setActiveTab] = useState<'COLLECTIONS' | 'CLOCKS'>('COLLECTIONS');
 
   // --- ACTIONS ---
 
@@ -121,7 +134,21 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
       result = { text: generatePortent() };
     } else {
       const idx = Math.floor(Math.random() * activeCollection.items.length);
-      result = activeCollection.items[idx];
+      const rawResult = activeCollection.items[idx];
+      
+      const { text, details } = processCollectionText(rawResult.text, collections);
+      
+      // Combine existing subtext with processing details
+      const combinedDetails = [
+          rawResult.subtext, 
+          ...details
+      ].filter(Boolean).join(' | ');
+
+      result = { 
+          ...rawResult, 
+          text: text,
+          subtext: combinedDetails // Update subtext for UI display if desired, or just use for log
+      };
     }
 
     setTableResult(result);
@@ -133,7 +160,8 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
       timestamp: Date.now(),
       type: 'GENERATOR',
       title: activeCollection.title,
-      result: result.text
+      result: result.text,
+      details: result.subtext
     });
   };
 
@@ -142,7 +170,20 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
 
     setIsDrawing(true);
     setTimeout(() => {
-      const [drawn, ...remaining] = deckState.items;
+      const [drawnItem, ...remaining] = deckState.items;
+      
+      const { text, details } = processCollectionText(drawnItem.text, collections);
+      
+      const combinedDetails = [
+          drawnItem.subtext, 
+          ...details
+      ].filter(Boolean).join(' | ');
+
+      const drawn = {
+          ...drawnItem,
+          text: text,
+          subtext: combinedDetails
+      };
       
       setDeckState({
         ...deckState,
@@ -322,17 +363,42 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
     };
   };
 
+  // Helper to render bold text
+  const renderFormattedText = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <span key={index} className="text-primary font-black">{part.slice(2, -2)}</span>;
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
   // --- RENDERERS ---
 
   if (isEditing) {
     return (
       <div className="h-full p-4 overflow-y-auto bg-app">
         <div className="max-w-md mx-auto space-y-4">
-           <div className="flex justify-between items-center mb-4">
+           {/* Header */}
+           <div className="flex justify-between items-center mb-4 pb-2 border-b border-border">
+             <button 
+                onClick={() => { play('CLICK'); setIsEditing(false); }} 
+                className="p-2 bg-black/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-black/60 shadow-lg transition-all active:scale-95"
+             >
+                <X size={24} />
+             </button>
              <h2 className="text-xl font-bold text-txt-main">
                {formData.id && collections.some(c => c.id === formData.id) ? 'Editar Coleção' : 'Nova Coleção'}
              </h2>
-             <button onClick={() => { play('CLICK'); setIsEditing(false); }}><X className="text-txt-muted" /></button>
+             <button 
+                onClick={() => { play('CLICK'); handleSaveCollection(); }} 
+                className="p-2 bg-success/20 backdrop-blur-md text-success hover:bg-success/30 rounded-full shadow-lg pointer-events-auto transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Salvar"
+             >
+                <Save size={24} />
+             </button>
            </div>
            
            <div className="flex gap-2">
@@ -388,14 +454,6 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                             onClose={() => setShowIconPicker(false)}
                         />
                      </div>
-                     <div className="p-4 border-t border-border flex justify-end">
-                        <button 
-                            onClick={() => { play('CLICK'); setShowIconPicker(false); }}
-                            className="px-6 py-2 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold"
-                        >
-                            Confirmar
-                        </button>
-                     </div>
                 </div>
               </div>
            )}
@@ -424,27 +482,22 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
 
            <div>
               <label className="text-xs uppercase font-bold text-txt-muted mb-1 block">Itens (Um por linha)</label>
-              <textarea 
-                className="w-full h-40 bg-card border border-border rounded p-3 text-txt-main text-sm font-mono outline-none focus:border-primary placeholder-txt-dim"
+              <TextareaWithAutocomplete 
+                className="w-full min-h-[160px] bg-card border border-border rounded p-3 text-txt-main text-sm font-mono outline-none focus:border-primary placeholder-txt-dim"
                 placeholder="Item 1&#10;Item 2&#10;Item 3"
                 value={bulkItems}
-                onChange={e => setBulkItems(e.target.value)}
+                onChange={setBulkItems}
+                entries={[]}
+                customCategories={[]}
               />
            </div>
-
-           <button 
-             onClick={() => { play('CLICK'); handleSaveCollection(); }}
-             className="w-full bg-success hover:bg-green-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"
-           >
-             <Save size={18} /> Salvar Coleção
-           </button>
         </div>
       </div>
     );
   }
 
   // ACTIVE COLLECTION VIEW (TABLE OR DECK)
-  if (activeCollection) {
+  if (activeCollection && activeTab === 'COLLECTIONS') {
     const isDeck = activeCollection.type === 'DECK';
     
     return (
@@ -512,7 +565,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                             ) : (
                               // Custom Card Style (Full Text Adjusted)
                               <div className={`font-black leading-tight break-words w-full ${currentDraw.text.length > 15 ? 'text-xl' : (currentDraw.text.length > 8 ? 'text-2xl' : 'text-4xl')}`}>
-                                  {currentDraw.text}
+                                  {renderFormattedText(currentDraw.text)}
                               </div>
                             )}
                             
@@ -565,7 +618,7 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
                       </div>
                   ) : tableResult ? (
                      <div className="animate-in fade-in zoom-in duration-200">
-                        <h3 className="text-2xl font-bold text-txt-main mb-1">{tableResult.text}</h3>
+                        <h3 className="text-2xl font-bold text-txt-main mb-1">{renderFormattedText(tableResult.text)}</h3>
                         {tableResult.subtext && <p className="text-txt-muted">{tableResult.subtext}</p>}
                      </div>
                   ) : (
@@ -621,78 +674,159 @@ const ToolsView: React.FC<ToolsViewProps> = ({ addLog, collections, setCollectio
           onConfirm={confirmDeleteCollection}
           onCancel={() => setCollectionToDelete(null)}
         />
+
+      {/* Footer Bar */}
+      <div className="flex-none h-12 bg-card border-t border-border flex items-stretch">
+         <button 
+           onClick={() => { play('CLICK'); setActiveTab('COLLECTIONS'); }}
+           className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'COLLECTIONS' ? 'text-primary bg-primary/5' : 'text-txt-muted hover:text-txt-main hover:bg-card-hover'}`}
+         >
+           <Layers size={16} /> Coleções
+         </button>
+         <div className="w-px bg-border my-3"></div>
+         <button 
+           onClick={() => { play('CLICK'); setActiveTab('CLOCKS'); }}
+           className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'CLOCKS' ? 'text-primary bg-primary/5' : 'text-txt-muted hover:text-txt-main hover:bg-card-hover'}`}
+         >
+           <ClockIcon size={16} /> Relógios
+         </button>
+      </div>
       </div>
     );
   }
 
   // COLLECTION LIST VIEW
   return (
-    <div className="flex flex-col h-full bg-app overflow-y-auto">
-      {/* Responsive Grid */}
-      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-24 max-w-7xl mx-auto w-full">
-         
-         {collections.map(col => {
-            const styles = getCollectionStyles(col);
-            const customIconUrl = col.icon ? `/icons/${col.icon}.svg` : undefined;
-            
-            // Calculate dynamic contrast bg for custom icons
-            let dynamicBgStyle = {};
-            if (customIconUrl && col.iconColor) {
-                const lum = getLuminance(col.iconColor);
-                // If icon is light (>128), we want a Dark background (-150).
-                // If icon is dark (<128), we want a Light background (+150).
-                const bg = adjustColorBrightness(col.iconColor, lum > 128 ? -150 : 150);
-                dynamicBgStyle = { backgroundColor: bg };
-            }
+    <div className="flex flex-col h-full bg-app relative">
+      <div className="flex-1 overflow-hidden relative">
+        {activeTab === 'COLLECTIONS' ? (
+          <div className="h-full flex flex-col overflow-hidden bg-app">
+            <div className="flex justify-between items-center p-4 border-b border-border bg-app/95 sticky top-0 z-10 backdrop-blur-sm h-16 no-print">
+                <div className="flex items-center gap-2 flex-1 bg-card/50 border border-border rounded-lg px-3 py-2 mr-2 focus-within:border-primary transition-colors">
+                    <Search size={16} className="text-txt-dim" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Buscar..."
+                        className="bg-transparent border-none outline-none text-sm text-txt-main placeholder-txt-dim w-full"
+                    />
+                    {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="text-txt-dim hover:text-txt-main">
+                        <X size={14} />
+                        </button>
+                    )}
+                </div>
+                                    <button 
+                                        onClick={() => { play('CLICK'); handleCreateCollection(); }}
+                                        className="px-4 py-2 bg-primary text-on-primary hover:bg-primary-hover transition-all rounded-xl flex items-center justify-center font-bold whitespace-nowrap uppercase tracking-wider text-[10px] shadow-sm active:scale-95"
+                                    >
+                                        <Plus size={16} className="mr-1" />
+                                        Nova
+                                    </button>            </div>
 
-            return (
-              <div 
-                key={col.id}
-                onClick={() => handleOpenCollection(col)}
-                className={`bg-card border border-border ${styles.container} rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-all relative group shadow-sm flex flex-col aspect-[4/3]`}
-              >
-                 <div className="flex items-start justify-between mb-2">
-                    <div 
-                        className={`p-2 rounded-lg ${!customIconUrl ? styles.iconBg : ''} ${styles.iconColor}`}
-                        style={dynamicBgStyle}
-                    >
-                       {customIconUrl ? (
-                           <div 
-                               className="w-5 h-5"
-                               style={{
-                                   backgroundColor: col.iconColor || 'currentColor',
-                                   maskImage: `url("${customIconUrl}")`,
-                                   maskRepeat: 'no-repeat',
-                                   maskPosition: 'center',
-                                   maskSize: 'contain',
-                                   WebkitMaskImage: `url("${customIconUrl}")`,
-                                   WebkitMaskRepeat: 'no-repeat',
-                                   WebkitMaskPosition: 'center',
-                                   WebkitMaskSize: 'contain'
-                               }}
-                           />
-                       ) : (
-                           styles.icon
-                       )}
-                    </div>
-                 </div>
-                 <div className="flex-1">
-                   <h3 className="font-bold text-txt-main text-sm leading-tight line-clamp-1">{col.title}</h3>
-                   <p className="text-[10px] text-txt-muted mt-1 line-clamp-3 opacity-80">{col.description}</p>
-                 </div>
-              </div>
-            );
-         })}
+            <div className="flex-1 overflow-y-auto p-4">
+                <div className="max-w-7xl mx-auto w-full pb-24">
+                                    {/* Responsive Grid - Matching WikiView */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                    
+                                    {filteredCollections.map(col => {
+                                        const styles = getCollectionStyles(col);
+                                        const customIconUrl = col.icon ? `/icons/${col.icon}.svg` : undefined;
+                                        
+                                        // Calculate dynamic contrast bg for custom icons
+                                        let dynamicBgStyle = {};
+                                        if (customIconUrl && col.iconColor) {
+                                            const lum = getLuminance(col.iconColor);
+                                            const bg = adjustColorBrightness(col.iconColor, lum > 128 ? -150 : 150);
+                                            dynamicBgStyle = { backgroundColor: bg };
+                                        }
+                    
+                    return (
+                        <button 
+                            key={col.id}
+                            onClick={() => handleOpenCollection(col)}
+                            className="w-full text-left p-4 bg-card border border-border rounded-xl
+                                     hover:bg-card-hover active:bg-card-hover transition-all flex items-start gap-3 shadow-sm group relative"
+                        >
+                            {/* Collection Info (Top Right) */}
+                            <div className={`absolute top-4 right-4 flex items-center gap-1.5 opacity-20 group-hover:opacity-60 transition-opacity ${col.type === 'DECK' ? 'text-primary' : 'text-success'}`}>
+                                <span className="text-[10px] font-mono font-bold">
+                                    {col.id === 'built-in-portent' ? '400' : 
+                                     col.id === 'built-in-visual-portent' ? '4170' :
+                                     col.id === 'built-in-twene' ? '10' :
+                                     col.id === 'built-in-npc' ? '6' : 
+                                     col.items.length}
+                                </span>
+                                {col.type === 'DECK' ? <Layers size={14} /> : <Dices size={14} />}
+                            </div>
 
-         {/* Add New Button */}
+                            {/* Icon Section */}
+                            <div 
+                                className={`p-2 rounded-lg shrink-0 ${!customIconUrl ? styles.iconBg : ''} ${styles.iconColor}`}
+                                style={dynamicBgStyle}
+                            >
+                                {customIconUrl ? (
+                                    <div 
+                                        className="w-6 h-6"
+                                        style={{
+                                            backgroundColor: col.iconColor || 'currentColor',
+                                            maskImage: `url("${customIconUrl}")`,
+                                            maskRepeat: 'no-repeat',
+                                            maskPosition: 'center',
+                                            maskSize: 'contain',
+                                            WebkitMaskImage: `url("${customIconUrl}")`,
+                                            WebkitMaskRepeat: 'no-repeat',
+                                            WebkitMaskPosition: 'center',
+                                            WebkitMaskSize: 'contain'
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="w-6 h-6 flex items-center justify-center">
+                                        {React.cloneElement(styles.icon as React.ReactElement, { size: 24 })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Content Section */}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-txt-main text-sm sm:text-base truncate group-hover:text-primary transition-colors pr-10">
+                                        {col.title}
+                                    </h3>
+                                </div>
+                                <p className="text-xs text-txt-muted mt-1 line-clamp-2 leading-relaxed opacity-80">
+                                    {col.description || "Sem descrição..."}
+                                </p>
+                            </div>
+                        </button>
+                    );                                    })}
+                                    </div>                </div>
+            </div>
+          </div>
+        ) : (
+          <ClocksView 
+            clocks={clocks}
+            setClocks={setClocks}
+            addLog={addLog}
+          />
+        )}
+      </div>
+
+      {/* Footer Bar */}
+      <div className="flex-none h-12 bg-card border-t border-border flex items-stretch">
          <button 
-           onClick={() => { play('CLICK'); handleCreateCollection(); }}
-           className="w-full aspect-[4/3] border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 text-txt-dim hover:text-primary hover:border-primary/50 bg-card/50 transition-all group"
+           onClick={() => { play('CLICK'); setActiveTab('COLLECTIONS'); }}
+           className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'COLLECTIONS' ? 'text-primary bg-primary/5' : 'text-txt-muted hover:text-txt-main hover:bg-card-hover'}`}
          >
-           <div className="bg-card p-3 rounded-full group-hover:bg-primary/10 transition-colors">
-             <Plus size={32} />
-           </div>
-           <span className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-center">Nova Coleção</span>
+           <Layers size={16} /> Coleções
+         </button>
+         <div className="w-px bg-border my-3"></div>
+         <button 
+           onClick={() => { play('CLICK'); setActiveTab('CLOCKS'); }}
+           className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'CLOCKS' ? 'text-primary bg-primary/5' : 'text-txt-muted hover:text-txt-main hover:bg-card-hover'}`}
+         >
+           <ClockIcon size={16} /> Relógios
          </button>
       </div>
     </div>

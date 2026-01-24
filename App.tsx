@@ -11,7 +11,9 @@ import SettingsView from './components/SettingsView';
 import NoteModal from './components/NoteModal';
 import DraggableFab from './components/DraggableFab';
 import ImageEditorModal from './components/ImageEditorModal';
-import { MessageSquare, Wrench, Dices, ScrollText, HelpCircle, X, User, ChevronLeft, Plus, Calendar, Trash2, Edit2, Play, Save, Settings, BookOpen, UploadCloud, Image as ImageIcon, Upload } from 'lucide-react';
+import ImageUploadArea from './components/ImageUploadArea';
+import HelpView from './components/HelpView';
+import { MessageSquare, Wrench, Dices, ScrollText, HelpCircle, X, User, ChevronLeft, Plus, Calendar, Trash2, Edit2, Play, Save, Settings, BookOpen, UploadCloud, Image as ImageIcon, Upload, Search } from 'lucide-react';
 import { generateUUID, generateSlug } from './utils';
 import { DEFAULT_COLLECTIONS } from './constants';
 import { exportTextFile } from './utils/exportUtils';
@@ -113,6 +115,7 @@ const AppContent: React.FC = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [adventureSearchQuery, setAdventureSearchQuery] = useState('');
 
   // Adventure Management State
   const [isEditingAdv, setIsEditingAdv] = useState(false);
@@ -121,6 +124,7 @@ const AppContent: React.FC = () => {
   
   // Wiki Navigation State
   const [wikiTargetId, setWikiTargetId] = useState<string | null>(null);
+  const [logTargetId, setLogTargetId] = useState<string | null>(null);
 
   const handleNavigateToWiki = (entryId: string | null, createSlug?: string) => {
       if (entryId) {
@@ -129,6 +133,11 @@ const AppContent: React.FC = () => {
           setWikiTargetId(`CREATE:${createSlug}`);
       }
       setActiveTab(Tab.WIKI);
+  };
+
+  const handleNavigateToLog = (logId: string) => {
+      setLogTargetId(logId);
+      setActiveTab(Tab.LOG);
   };
 
   const handleUpdateReferences = (oldSlug: string, newSlug: string) => {
@@ -271,7 +280,14 @@ const AppContent: React.FC = () => {
             threads: adv.threads || [],
             npcs: adv.npcs || [],
             wiki: wiki,
-            customCategories: customCategories
+            customCategories: customCategories,
+            clocks: adv.clocks || [],
+            conflictState: adv.conflictState || {
+              isActive: false,
+              round: 1,
+              turnIndex: 0,
+              participants: []
+            }
           };
         });
         setAdventures(migrated.sort((a: Adventure, b: Adventure) => b.lastPlayedAt - a.lastPlayedAt));
@@ -295,7 +311,14 @@ const AppContent: React.FC = () => {
           threads: [],
           npcs: [],
           wiki: [],
-          customCategories: []
+          customCategories: [],
+          clocks: [],
+          conflictState: {
+            isActive: false,
+            round: 1,
+            turnIndex: 0,
+            participants: []
+          }
         };
         setAdventures([newAdv]);
         
@@ -484,7 +507,14 @@ const AppContent: React.FC = () => {
         threads: [],
         npcs: [],
         wiki: [],
-        customCategories: []
+        customCategories: [],
+        clocks: [],
+        conflictState: {
+          isActive: false,
+          round: 1,
+          turnIndex: 0,
+          participants: []
+        }
       };
       setAdventures(prev => [newAdv, ...prev]);
     }
@@ -558,7 +588,32 @@ const AppContent: React.FC = () => {
     updateActiveAdventureData({ customCategories });
   };
 
-  const handleAddNote = (text: string, image?: string, icon?: string, iconColor?: string, newWikiEntries?: WikiEntry[]) => {
+  const setClocksWrapper = (value: React.SetStateAction<import('./types').Clock[]> | import('./types').Clock[]) => {
+    if (!activeAdventure) return;
+    const newClocks = typeof value === 'function'
+      ? (value as (prev: import('./types').Clock[]) => import('./types').Clock[])(activeAdventure.clocks || [])
+      : value;
+    updateActiveAdventureData({ clocks: newClocks });
+  };
+
+  const setConflictStateWrapper = (newState: import('./types').ConflictState) => {
+    updateActiveAdventureData({ conflictState: newState });
+  };
+
+  const unreadLogsCount = React.useMemo(() => {
+    if (!activeAdventure) return 0;
+    const lastViewed = activeAdventure.lastLogViewedAt || 0;
+    return activeAdventure.logs.filter(log => log.timestamp > lastViewed).length;
+  }, [activeAdventure]);
+
+  const handleMarkLogRead = (timestamp: number) => {
+    if (!activeAdventure || !currentAdventureId) return;
+    if (timestamp > (activeAdventure.lastLogViewedAt || 0)) {
+      updateActiveAdventureData({ lastLogViewedAt: timestamp });
+    }
+  };
+
+  const handleAddNote = (text: string, image?: string, icon?: string, iconColor?: string, newWikiEntries?: WikiEntry[], details?: string) => {
      if (newWikiEntries && newWikiEntries.length > 0 && activeAdventure) {
          const updatedWiki = [...(activeAdventure.wiki || []), ...newWikiEntries];
          updateActiveAdventureData({ wiki: updatedWiki });
@@ -572,7 +627,8 @@ const AppContent: React.FC = () => {
        result: text,
        imageUrl: image,
        icon,
-       iconColor
+       iconColor,
+       details
      });
   };
 
@@ -636,109 +692,125 @@ const AppContent: React.FC = () => {
 
   // --- RENDER: Adventure List (Home) ---
 
-  const renderAdventureList = () => (
-    <div className="flex flex-col h-full bg-app text-txt-main p-4 overflow-y-auto">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-4">
-        
-        {/* New Adventure Card */}
+  const renderAdventureList = () => {
+    const filteredAdventures = sortedAdventures.filter(adv => 
+      adv.name.toLowerCase().includes(adventureSearchQuery.toLowerCase()) || 
+      (adv.description || '').toLowerCase().includes(adventureSearchQuery.toLowerCase())
+    );
+
+    return (
+    <div className="flex flex-col h-full bg-app text-txt-main overflow-hidden">
+      <div className="flex justify-between items-center p-4 border-b border-border bg-app/95 sticky top-0 z-10 backdrop-blur-sm h-16 shrink-0">
+        <div className="flex items-center gap-2 flex-1 bg-card/50 border border-border rounded-lg px-3 py-2 mr-2 focus-within:border-primary transition-colors">
+           <Search size={16} className="text-txt-dim" />
+           <input 
+             type="text" 
+             value={adventureSearchQuery}
+             onChange={(e) => setAdventureSearchQuery(e.target.value)}
+             placeholder="Buscar aventura..." 
+             className="bg-transparent border-none outline-none text-sm text-txt-main placeholder-txt-dim w-full"
+           />
+           {adventureSearchQuery && (
+             <button onClick={() => setAdventureSearchQuery('')} className="text-txt-dim hover:text-txt-main">
+               <X size={14} />
+             </button>
+           )}
+        </div>
         <button 
           onClick={() => { play('CLICK'); handleCreateAdventure(); }}
-          className="aspect-[3/4] rounded-xl border-2 border-dashed border-border hover:border-primary bg-card/50 flex flex-col items-center justify-center gap-2 text-txt-dim hover:text-primary transition-all active:scale-[0.98] group"
+          className="px-4 py-2 bg-primary text-on-primary hover:bg-primary-hover transition-all rounded-xl flex items-center justify-center font-bold whitespace-nowrap uppercase tracking-wider text-[10px] shadow-sm active:scale-95"
         >
-          <div className="bg-card p-3 rounded-full group-hover:bg-primary/10 transition-colors">
-            <Plus size={32} />
-          </div>
-          <span className="font-bold uppercase text-xs tracking-wider text-center">Nova Aventura</span>
+          <Plus size={16} className="mr-1" /> Nova
         </button>
+      </div>
 
-        {/* Adventure Cards */}
-        {sortedAdventures.map((adv, index) => {
-            const isLastPlayed = index === 0;
-            return (
-            <div 
-              key={adv.id}
-              onClick={() => { play('CLICK'); handleSelectAdventure(adv.id); }}
-              className={`bg-card border rounded-xl shadow-lg transition-all active:scale-[0.98] group cursor-pointer relative flex flex-col overflow-hidden aspect-[3/4] ${isLastPlayed ? 'border-primary ring-1 ring-primary shadow-primary/20' : 'border-border hover:border-primary/50'}`}
-            >
-              {adv.coverUrl && (
-                <div className="absolute inset-0 z-0">
-                  <img src={adv.coverUrl} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute inset-0 bg-card/50" />
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-24 max-w-7xl mx-auto">
+          {filteredAdventures.map((adv, index) => {
+              const isLastPlayed = !adventureSearchQuery && index === 0;
+              return (
+              <div 
+                key={adv.id}
+                onClick={() => { play('CLICK'); handleSelectAdventure(adv.id); }}
+                className={`bg-card border rounded-xl shadow-lg transition-all active:scale-[0.98] group cursor-pointer relative flex flex-col overflow-hidden aspect-[3/4] ${isLastPlayed ? 'border-primary ring-1 ring-primary shadow-primary/20' : 'border-border hover:border-primary/50'}`}
+              >
+                {adv.coverUrl && (
+                  <div className="absolute inset-0 z-0">
+                    <img src={adv.coverUrl} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-card/50" />
+                  </div>
+                )}
+
+                {isLastPlayed && (
+                   <div className="absolute bottom-0 left-0 bg-primary text-on-primary text-[9px] font-bold px-2 py-1 rounded-tr-lg shadow-sm z-10 uppercase tracking-wider">
+                      Último Jogo
+                   </div>
+                )}
+
+                <div className="flex-1 p-3 flex flex-col relative z-10">
+                  <h3 className="text-sm font-bold text-txt-main group-hover:text-primary transition-colors line-clamp-2 leading-tight mb-2 drop-shadow-md">
+                    {adv.name}
+                  </h3>
+                  
+                  <p className="text-xs text-txt-muted line-clamp-4 leading-relaxed flex-1">
+                    {adv.description || <span className="italic opacity-50"></span>}
+                  </p>
                 </div>
-              )}
 
-              {isLastPlayed && (
-                 <div className="absolute bottom-0 left-0 bg-primary text-on-primary text-[9px] font-bold px-2 py-1 rounded-tr-lg shadow-sm z-10 uppercase tracking-wider">
-                    Último Jogo
-                 </div>
-              )}
-
-              <div className="flex-1 p-3 flex flex-col relative z-10">
-                <h3 className="text-sm font-bold text-txt-main group-hover:text-primary transition-colors line-clamp-2 leading-tight mb-2 drop-shadow-md">
-                  {adv.name}
-                </h3>
-                
-                <p className="text-xs text-txt-muted line-clamp-4 leading-relaxed flex-1">
-                  {adv.description || <span className="italic opacity-50"></span>}
-                </p>
+                <div className="absolute bottom-2 right-2 flex gap-2 z-20">
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); play('CLICK'); handleEditAdventure(adv, e); }}
+                     className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-md text-txt-muted hover:text-txt-main transition-all"
+                   >
+                     <Edit2 size={14} />
+                   </button>
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); play('CLICK'); handleDeleteAdventure(adv.id, e); }}
+                     className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-md text-txt-muted hover:text-error transition-all"
+                   >
+                     <Trash2 size={14} />
+                   </button>
+                </div>
               </div>
-
-              <div className="absolute bottom-2 right-2 flex gap-2 z-20">
-                 <button 
-                   onClick={(e) => { e.stopPropagation(); play('CLICK'); handleEditAdventure(adv, e); }}
-                   className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-md text-txt-muted hover:text-txt-main transition-all"
-                 >
-                   <Edit2 size={14} />
-                 </button>
-                 <button 
-                   onClick={(e) => { e.stopPropagation(); play('CLICK'); handleDeleteAdventure(adv.id, e); }}
-                   className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-md text-txt-muted hover:text-error transition-all"
-                 >
-                   <Trash2 size={14} />
-                 </button>
-              </div>
-            </div>
-          )})}
+            )})}
+        </div>
       </div>
 
       {/* Modal: Create/Edit Adventure */}
       {isEditingAdv && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
-             <div className="flex justify-between items-center mb-4">
+             <div className="flex justify-between items-center mb-4 pb-2 border-b border-border">
+               <button onClick={() => { play('CLICK'); setIsEditingAdv(false); }} className="p-2 text-txt-muted hover:text-txt-main hover:bg-card-hover rounded-full transition-colors"><X size={24} /></button>
                <h3 className="text-lg font-bold text-txt-main">
                  {advFormData.id ? 'Editar Aventura' : 'Nova Aventura'}
                </h3>
-               <button onClick={() => { play('CLICK'); setIsEditingAdv(false); }}><X className="text-txt-muted" /></button>
+               <button 
+                 onClick={() => { play('CLICK'); handleSaveAdventure(); }}
+                 disabled={!advFormData.name.trim()}
+                 className="p-2 bg-success/20 backdrop-blur-md text-success hover:bg-success/30 rounded-full shadow-lg pointer-events-auto transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                 title="Salvar"
+               >
+                 <Save size={24} />
+               </button>
              </div>
              
              <div className="space-y-4">
                {/* Cover Image Upload Area */}
-               <div 
-                 onClick={() => coverInputRef.current?.click()}
-                 className="relative h-40 bg-app border border-dashed border-border rounded-lg overflow-hidden group cursor-pointer flex flex-col items-center justify-center gap-2"
-               >
-                 {advFormData.coverUrl ? (
-                   <>
-                    <img src={advFormData.coverUrl} alt="Cover" className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" />
-                    <div className="relative z-10 bg-black/60 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg border border-white/10">
-                      <Upload size={16} /> Alterar Capa
-                    </div>
-                   </>
-                 ) : (
-                   <>
-                    <ImageIcon className="text-txt-dim group-hover:text-primary transition-colors" size={40} />
-                    <span className="text-sm font-bold text-txt-dim uppercase tracking-wider group-hover:text-primary transition-colors">Adicionar Capa</span>
-                   </>
-                 )}
-                 <input 
+               <ImageUploadArea
+                 imageUrl={advFormData.coverUrl}
+                 onUpload={() => coverInputRef.current?.click()}
+                 onClear={() => setAdvFormData(prev => ({ ...prev, coverUrl: undefined }))}
+                 heightClass="h-40"
+                 placeholderText="Adicionar Capa"
+               />
+               <input 
                    type="file" 
                    accept="image/*" 
                    className="hidden" 
                    ref={coverInputRef}
                    onChange={handleCoverUpload}
-                 />
-               </div>
+               />
 
                <div>
                  <label className="text-xs uppercase font-bold text-txt-muted block mb-1">Título</label>
@@ -759,13 +831,6 @@ const AppContent: React.FC = () => {
                    placeholder="Uma breve sinopse..."
                    />
                </div>
-               <button 
-                 onClick={() => { play('CLICK'); handleSaveAdventure(); }}
-                 disabled={!advFormData.name.trim()}
-                 className="w-full bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-on-primary font-bold py-3 rounded-lg flex items-center justify-center gap-2"
-               >
-                 <Save size={18} /> Salvar
-               </button>
              </div>
           </div>
         </div>
@@ -799,7 +864,8 @@ const AppContent: React.FC = () => {
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   return (
     <div className="flex flex-col h-full bg-app text-txt-main overflow-hidden relative pt-safe">
@@ -856,23 +922,23 @@ const AppContent: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-1">
+          {!showSettings && !currentAdventureId && (
+            <button 
+              onClick={() => { play('CLICK'); setShowHelp(true); }}
+              className="p-2 text-txt-muted hover:text-primary active:text-primary-active transition-colors rounded-full hover:bg-app"
+              aria-label="Manual do Sistema"
+            >
+              <HelpCircle size={20} />
+            </button>
+          )}
           {!showSettings && (
-            <>
-              <button 
-                onClick={() => { play('CLICK'); setShowHelp(true); }}
-                className="p-2 text-txt-muted hover:text-primary active:text-primary-active transition-colors rounded-full hover:bg-app"
-                aria-label="Ajuda Contextual"
-              >
-                <HelpCircle size={20} />
-              </button>
-              <button 
-                onClick={() => { play('CLICK'); setShowSettings(true); }}
-                className="p-2 text-txt-muted hover:text-primary active:text-primary-active transition-colors rounded-full hover:bg-app"
-                aria-label="Configurações"
-              >
-                <Settings size={20} />
-              </button>
-            </>
+            <button 
+              onClick={() => { play('CLICK'); setShowSettings(true); }}
+              className="p-2 text-txt-muted hover:text-primary active:text-primary-active transition-colors rounded-full hover:bg-app"
+              aria-label="Configurações"
+            >
+              <Settings size={20} />
+            </button>
           )}
         </div>
       </header>
@@ -891,24 +957,10 @@ const AppContent: React.FC = () => {
               vertical
             />
             <NavButton 
-              active={activeTab === Tab.WIKI} 
-              onClick={() => setActiveTab(Tab.WIKI)}
-              icon={<BookOpen size={24} />}
-              label="Acervo"
-              vertical
-            />
-            <NavButton 
               active={activeTab === Tab.TOOLS} 
               onClick={() => setActiveTab(Tab.TOOLS)}
               icon={<Wrench size={24} />}
               label="Coleções"
-              vertical
-            />
-            <NavButton 
-              active={activeTab === Tab.PERSONA} 
-              onClick={() => setActiveTab(Tab.PERSONA)}
-              icon={<User size={24} />}
-              label="Persona"
               vertical
             />
             <NavButton 
@@ -919,11 +971,25 @@ const AppContent: React.FC = () => {
               vertical
             />
             <NavButton 
+              active={activeTab === Tab.PERSONA} 
+              onClick={() => setActiveTab(Tab.PERSONA)}
+              icon={<User size={24} />}
+              label="Persona"
+              vertical
+            />
+            <NavButton 
+              active={activeTab === Tab.WIKI} 
+              onClick={() => setActiveTab(Tab.WIKI)}
+              icon={<BookOpen size={24} />}
+              label="Acervo"
+              vertical
+            />
+            <NavButton 
               active={activeTab === Tab.LOG} 
               onClick={() => setActiveTab(Tab.LOG)}
               icon={<ScrollText size={24} />}
               label="Log"
-              badge={activeAdventure?.logs.length || 0}
+              badge={unreadLogsCount}
               vertical
             />
           </nav>
@@ -954,6 +1020,30 @@ const AppContent: React.FC = () => {
                 />
               </div>
 
+              <div className={activeTab === Tab.TOOLS ? 'h-full w-full' : 'hidden'}>
+                <ToolsView 
+                  addLog={addLog} 
+                  collections={collections}
+                  setCollections={setCollections}
+                  clocks={activeAdventure.clocks || []}
+                  setClocks={setClocksWrapper}
+                />
+              </div>
+
+              <div className={activeTab === Tab.DICE ? 'h-full w-full' : 'hidden'}>
+                <DiceView addLog={addLog} />
+              </div>
+
+              <div className={activeTab === Tab.PERSONA ? 'h-full w-full' : 'hidden'}>
+                <PersonaView 
+                  characters={activeAdventure.characters} 
+                  setCharacters={setCharactersWrapper} 
+                  addLog={addLog}
+                  conflictState={activeAdventure.conflictState || { isActive: false, round: 1, turnIndex: 0, participants: [] }}
+                  setConflictState={setConflictStateWrapper}
+                />
+              </div>
+
               <div className={activeTab === Tab.WIKI ? 'h-full w-full' : 'hidden'}>
                 <WikiView 
                   entries={activeAdventure.wiki || []}
@@ -965,27 +1055,8 @@ const AppContent: React.FC = () => {
                   onClearTarget={() => setWikiTargetId(null)}
                   onUpdateReferences={handleUpdateReferences}
                   logs={activeAdventure.logs || []}
+                  onNavigateToLog={handleNavigateToLog}
                 />
-              </div>
-              
-              <div className={activeTab === Tab.TOOLS ? 'h-full w-full' : 'hidden'}>
-                <ToolsView 
-                  addLog={addLog} 
-                  collections={collections}
-                  setCollections={setCollections}
-                />
-              </div>
-
-              <div className={activeTab === Tab.PERSONA ? 'h-full w-full' : 'hidden'}>
-                <PersonaView 
-                  characters={activeAdventure.characters} 
-                  setCharacters={setCharactersWrapper} 
-                  addLog={addLog} 
-                />
-              </div>
-
-              <div className={activeTab === Tab.DICE ? 'h-full w-full' : 'hidden'}>
-                <DiceView addLog={addLog} />
               </div>
 
               <div className={activeTab === Tab.LOG ? 'h-full w-full' : 'hidden'}>
@@ -997,6 +1068,10 @@ const AppContent: React.FC = () => {
                   isActive={activeTab === Tab.LOG}
                   wikiEntries={activeAdventure.wiki || []}
                   onNavigateToWiki={handleNavigateToWiki}
+                  targetLogId={logTargetId}
+                  onClearTargetLog={() => setLogTargetId(null)}
+                  onLogRead={handleMarkLogRead}
+                  lastLogViewedAt={activeAdventure.lastLogViewedAt}
                 />
               </div>
             </>
@@ -1021,58 +1096,9 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      {/* HELP MODAL */}
+      {/* HELP VIEW */}
       {showHelp && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
-          onClick={() => { play('CLICK'); setShowHelp(false); }}
-        >
-           <div 
-             className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 flex flex-col items-center text-center"
-             onClick={e => e.stopPropagation()}
-           >
-              <button onClick={() => { play('CLICK'); setShowHelp(false); }} className="absolute top-4 right-4 text-txt-muted hover:text-txt-main"><X size={20} /></button>
-              
-              <div className="p-4 bg-app rounded-full mb-4 text-primary border border-border shadow-inner">
-                 {helpContent.icon}
-              </div>
-              
-              <h3 className="text-xl font-bold text-txt-main mb-2">{helpContent.title}</h3>
-              
-              <p className="text-txt-muted text-sm mb-4 leading-relaxed">
-                 {helpContent.text}
-              </p>
-              
-              {/* SPACER LINE */}
-              <div className="w-full h-px bg-border/50 my-4"></div>
-
-              {/* PDF BUTTON */}
-              <a 
-                href={MANUAL_URL} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="w-full py-3 bg-card-hover hover:bg-border text-primary font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm mb-2"
-              >
-                <BookOpen size={18} />
-                Acessar M.U.N.E. em PDF
-              </a>
-
-              {/* SMALL TEXT */}
-              <p className="text-[10px] text-txt-dim mb-2 leading-tight mx-auto">
-                 Este app foi baseado no sistema M.U.N.E. disponível no botão acima.
-              </p>
-              <p className="text-[10px] text-txt-dim mb-2 leading-tight mx-auto">
-                 Ícones por <a href="https://game-icons.net/" target="_blank" rel="noopener noreferrer" className="text-txt-dim hover:text-primary underline">Game-Icons.Net</a> sob licença CC BY 3.0.
-              </p>
-
-              <button 
-                onClick={() => { play('CLICK'); setShowHelp(false); }}
-                className="w-full py-3 bg-primary hover:bg-primary-hover text-on-primary font-bold rounded-lg transition-colors shadow-lg shadow-primary/20"
-              >
-                Entendi
-              </button>
-           </div>
-        </div>
+        <HelpView onClose={() => setShowHelp(false)} />
       )}
 
       {/* Bottom Navigation (Portrait Only) */}
@@ -1086,22 +1112,10 @@ const AppContent: React.FC = () => {
               label="Oráculo"
             />
             <NavButton 
-              active={activeTab === Tab.WIKI} 
-              onClick={() => setActiveTab(Tab.WIKI)}
-              icon={<BookOpen size={20} />}
-              label="Acervo"
-            />
-            <NavButton 
               active={activeTab === Tab.TOOLS} 
               onClick={() => setActiveTab(Tab.TOOLS)}
               icon={<Wrench size={20} />}
               label="Coleções"
-            />
-            <NavButton 
-              active={activeTab === Tab.PERSONA} 
-              onClick={() => setActiveTab(Tab.PERSONA)}
-              icon={<User size={20} />}
-              label="Persona"
             />
             <NavButton 
               active={activeTab === Tab.DICE} 
@@ -1110,11 +1124,23 @@ const AppContent: React.FC = () => {
               label="Dados"
             />
             <NavButton 
+              active={activeTab === Tab.PERSONA} 
+              onClick={() => setActiveTab(Tab.PERSONA)}
+              icon={<User size={20} />}
+              label="Persona"
+            />
+            <NavButton 
+              active={activeTab === Tab.WIKI} 
+              onClick={() => setActiveTab(Tab.WIKI)}
+              icon={<BookOpen size={20} />}
+              label="Acervo"
+            />
+            <NavButton 
               active={activeTab === Tab.LOG} 
               onClick={() => setActiveTab(Tab.LOG)}
               icon={<ScrollText size={20} />}
               label="Log"
-              badge={activeAdventure?.logs.length || 0}
+              badge={unreadLogsCount}
             />
           </div>
         </nav>

@@ -1,17 +1,28 @@
 import React, { useState } from 'react';
-import { OracleBias, LogEntry } from '../types';
-import { ORACLE_ANSWERS, INTERVENTION_TYPES } from '../constants';
-import { rollD, generateUUID } from '../utils';
-import { BrainCircuit, AlertTriangle, Dices } from 'lucide-react';
+import { OracleBias, LogEntry, CollectionItem } from '../types';
+import { ORACLE_ANSWERS, INTERVENTION_TYPES, NPC_ATTITUDES_ITEMS, TWENE_ITEMS } from '../constants';
+import { rollD, generateUUID, getLuminance } from '../utils';
+import { BrainCircuit, AlertTriangle, Dices, User, Zap } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface OracleViewProps {
   addLog: (entry: LogEntry) => void;
+  // Included props passed from App.tsx
+  threads?: any[];
+  npcs?: any[];
+  updateThreads?: (threads: any[]) => void;
+  updateNpcs?: (npcs: any[]) => void;
 }
 
 const OracleView: React.FC<OracleViewProps> = ({ addLog }) => {
+  const { activeThemeId, allThemes } = useTheme();
+  const activeTheme = allThemes.find(t => t.id === activeThemeId);
+  const isLightMode = activeTheme ? getLuminance(activeTheme.colors.appBg) > 128 : false;
+
   const [interventionPoints, setInterventionPoints] = useState(0);
   const [interventionsEnabled, setInterventionsEnabled] = useState(true);
+  const [resultTitle, setResultTitle] = useState('Resposta do Oráculo');
   const [lastAnswer, setLastAnswer] = useState<string | null>(null);
   const [lastRoll, setLastRoll] = useState<number | null>(null);
   const [lastIntervention, setLastIntervention] = useState<string | null>(null);
@@ -36,6 +47,7 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog }) => {
 
   const handleOracleRoll = (bias: OracleBias) => {
     play('ROLL');
+    setResultTitle('Resposta do Oráculo');
     
     let roll1 = rollD(6);
     let roll2 = 0;
@@ -115,6 +127,26 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog }) => {
     }
   };
 
+  const handleTableRoll = (title: string, items: CollectionItem[]) => {
+    play('ROLL');
+    setResultTitle(title);
+    
+    const idx = Math.floor(Math.random() * items.length);
+    const result = items[idx];
+    
+    setLastAnswer(result.text);
+    setLastRoll(null);
+    setLastIntervention(null);
+
+    addLog({
+      id: generateUUID(),
+      timestamp: Date.now(),
+      type: 'GENERATOR',
+      title: title,
+      result: result.text
+    });
+  };
+
   const getPointsColor = () => {
     if (!interventionsEnabled) return 'bg-card-hover opacity-50'; // Gray when disabled
     if (interventionPoints === 0) return 'bg-card-hover';
@@ -124,11 +156,14 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog }) => {
   };
 
   return (
-    <div className="flex flex-col landscape:flex-row items-center justify-between h-full p-4 overflow-y-auto relative gap-4">
+    <div className="flex flex-col h-full overflow-y-auto bg-app">
       <style>{shakeStyle}</style>
 
-      {/* LEFT SECTION (Landscape): Intervention + Result */}
-      <div className="w-full max-w-md landscape:max-w-none landscape:w-3/5 landscape:h-full flex flex-col items-center justify-center gap-4">
+      {/* Empty Header matching LogView style */}
+      <div className="flex-none h-16 border-b border-border bg-app/95 sticky top-0 z-10 backdrop-blur-sm no-print"></div>
+
+      {/* Main Content Area: Display + Tracker */}
+      <div className="flex-1 flex flex-col items-center p-4 gap-4 w-full max-w-4xl mx-auto">
           
           {/* Intervention Tracker */}
           <div className={`flex-none w-full bg-card rounded-xl p-4 shadow-lg border border-border transition-opacity ${interventionsEnabled ? 'opacity-100' : 'opacity-80'}`}>
@@ -162,13 +197,12 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog }) => {
             </div>
           </div>
 
-          {/* Result Display Container (Relative for Overlay) */}
-          <div className="flex-1 w-full relative flex flex-col min-h-[160px] landscape:flex-1">
+          {/* Result Display Container */}
+          <div className="flex-1 w-full relative flex flex-col min-h-[200px]">
             
-            {/* 1. Base Layer: Oracle Answer (Always rendered to maintain layout shape) */}
-            <div className={`w-full h-full bg-card border-2 ${lastAnswer?.includes('Sim') ? 'border-success/50' : (lastAnswer?.includes('Não') ? 'border-error/50' : 'border-border')} rounded-2xl p-8 text-center shadow-xl transition-all duration-300 flex flex-col items-center justify-center`}>
-              <h2 className="text-txt-muted text-sm uppercase mb-2">Resposta do Oráculo</h2>
-              <p className="text-4xl lg:text-5xl font-extrabold text-txt-main tracking-tight leading-tight">
+            <div className={`w-full h-full bg-card border-2 ${lastAnswer?.includes('Sim') ? 'border-success/50' : (lastAnswer?.includes('Não') ? 'border-error/50' : 'border-border')} rounded-2xl p-8 text-center shadow-xl transition-all duration-300 flex flex-col items-center justify-center relative overflow-hidden`}>
+              <h2 className="text-txt-muted text-sm uppercase mb-2 tracking-widest">{resultTitle}</h2>
+              <p className={`font-extrabold text-txt-main tracking-tight leading-tight transition-all ${lastAnswer && lastAnswer.length > 20 ? 'text-2xl lg:text-3xl' : 'text-4xl lg:text-5xl'}`}>
                 {lastAnswer || "..."}
               </p>
               
@@ -183,7 +217,7 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog }) => {
               )}
             </div>
 
-            {/* 2. Overlay Layer: Intervention (Appears ON TOP) */}
+            {/* Overlay Layer: Intervention */}
             {lastIntervention && (
               <div className="absolute inset-0 z-20 bg-app/95 backdrop-blur-sm border-2 border-error rounded-2xl p-4 text-center flex flex-col items-center justify-center animate-in fade-in duration-200 animate-shake-alert shadow-2xl">
                 <div className="flex justify-center mb-4 text-error">
@@ -196,38 +230,70 @@ const OracleView: React.FC<OracleViewProps> = ({ addLog }) => {
                 <p className="text-xs text-txt-muted mt-4">A cena foi interrompida.</p>
               </div>
             )}
-            
           </div>
       </div>
 
-      {/* RIGHT SECTION (Landscape): Controls */}
-      <div className="w-full max-w-md landscape:max-w-none landscape:w-2/5 landscape:h-full flex flex-col justify-end gap-2">
-         
-          {/* Controls */}
-          <div className="grid grid-cols-3 landscape:grid-cols-1 gap-3 h-full">
-            <button
-              onClick={() => handleOracleRoll('UNLIKELY')}
-              className="flex flex-col landscape:flex-row items-center justify-center gap-2 bg-card hover:bg-card-hover active:bg-border border-b-4 border-app active:border-b-0 active:translate-y-1 rounded-xl p-3 landscape:p-4 transition-all"
-            >
-              <span className="text-xs text-txt-muted uppercase font-bold landscape:order-2">Improvável</span>
-              <span className="text-lg font-bold landscape:order-1 text-txt-main">Desvant.</span>
-            </button>
+      {/* Controls Section */}
+      <div className="flex-none w-full bg-card/50 border-t border-border p-4 pb-safe">
+          <div className="max-w-4xl mx-auto space-y-3">
+              {/* Quick Table Buttons (Now Top) */}
+              <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => handleTableRoll('Atitude de NPC', NPC_ATTITUDES_ITEMS)}
+                    className={`flex flex-col items-center justify-center gap-1 active:border-b-0 active:translate-y-1 rounded-xl py-4 transition-all text-sm font-bold border-b-4 ${
+                      isLightMode 
+                        ? 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' 
+                        : 'bg-yellow-900/20 text-yellow-400 border-yellow-700/50 hover:bg-yellow-900/30'
+                    }`}
+                  >
+                    <User size={20} /> Atitude de NPC
+                  </button>
+                  <button
+                    onClick={() => handleTableRoll('TWENE (Inesperado)', TWENE_ITEMS)}
+                    className={`flex flex-col items-center justify-center gap-1 active:border-b-0 active:translate-y-1 rounded-xl py-4 transition-all text-sm font-bold border-b-4 ${
+                      isLightMode 
+                        ? 'bg-orange-100 text-orange-700 border-orange-300 hover:bg-orange-200' 
+                        : 'bg-orange-900/20 text-orange-400 border-orange-700/50 hover:bg-orange-900/30'
+                    }`}
+                  >
+                    <Zap size={20} /> TWENE
+                  </button>
+              </div>
 
-            <button
-              onClick={() => handleOracleRoll('NORMAL')}
-              className="flex flex-col landscape:flex-row items-center justify-center gap-2 bg-primary hover:bg-primary-hover active:bg-primary-active border-b-4 border-primary-active active:border-b-0 active:translate-y-1 rounded-xl p-4 landscape:py-6 transition-all shadow-lg"
-            >
-              <span className="text-xs text-on-primary uppercase font-bold landscape:order-2">Normal</span>
-              <span className="text-2xl font-bold text-on-primary landscape:order-1">Rolar</span>
-            </button>
+              {/* Main Oracle Buttons (Now Bottom) */}
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => handleOracleRoll('UNLIKELY')}
+                  className={`flex flex-col items-center justify-center gap-1 active:border-b-0 active:translate-y-1 rounded-xl p-3 transition-all border-b-4 ${
+                    isLightMode 
+                      ? 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200' 
+                      : 'bg-red-900/20 text-red-400 border-red-700/50 hover:bg-red-900/30'
+                  }`}
+                >
+                  <span className="text-lg font-bold">Desvant.</span>
+                  <span className={`text-[10px] uppercase font-bold ${isLightMode ? 'text-red-600/70' : 'text-red-400/70'}`}>Improvável</span>
+                </button>
 
-            <button
-              onClick={() => handleOracleRoll('LIKELY')}
-              className="flex flex-col landscape:flex-row items-center justify-center gap-2 bg-card hover:bg-card-hover active:bg-border border-b-4 border-app active:border-b-0 active:translate-y-1 rounded-xl p-3 landscape:p-4 transition-all"
-            >
-              <span className="text-xs text-txt-muted uppercase font-bold landscape:order-2">Provável</span>
-              <span className="text-lg font-bold landscape:order-1 text-txt-main">Vantagem</span>
-            </button>
+                <button
+                  onClick={() => handleOracleRoll('NORMAL')}
+                  className="flex flex-col items-center justify-center gap-1 bg-primary hover:bg-primary-hover active:bg-primary-active border-b-4 border-primary-active active:border-b-0 active:translate-y-1 rounded-xl p-3 transition-all shadow-lg"
+                >
+                  <span className="text-2xl font-black text-on-primary">Rolar</span>
+                  <span className="text-[10px] text-on-primary/80 uppercase font-bold tracking-widest">Oráculo</span>
+                </button>
+
+                <button
+                  onClick={() => handleOracleRoll('LIKELY')}
+                  className={`flex flex-col items-center justify-center gap-1 active:border-b-0 active:translate-y-1 rounded-xl p-3 transition-all border-b-4 ${
+                    isLightMode 
+                      ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' 
+                      : 'bg-green-900/20 text-green-400 border-green-700/50 hover:bg-green-900/30'
+                  }`}
+                >
+                  <span className="text-lg font-bold">Vantagem</span>
+                  <span className={`text-[10px] uppercase font-bold ${isLightMode ? 'text-green-600/70' : 'text-green-400/70'}`}>Provável</span>
+                </button>
+              </div>
           </div>
       </div>
     </div>

@@ -1,9 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Character, Attribute, AttributeType, LogEntry, InventoryItem, Resource } from '../types';
+import { Character, Attribute, AttributeType, LogEntry, InventoryItem, Resource, ConflictState } from '../types';
 import { generateUUID, rollDiceNotation, getContrastColor } from '../utils';
 import { CARD_THEMES } from '../constants';
-import { User, Plus, Trash2, Edit2, X, ChevronLeft, Shield, Backpack, Image as ImageIcon, Upload, Minus, CheckSquare, Square, Dices, Activity, Zap, TrendingUp, TrendingDown, Target, Sword, FileText, PaintBucket, List, LayoutGrid, Sticker } from 'lucide-react';
+import { User, Plus, Trash2, Edit2, X, ChevronLeft, Shield, Backpack, Image as ImageIcon, Upload, Minus, CheckSquare, Square, Dices, Activity, Zap, TrendingUp, TrendingDown, Target, Sword, FileText, PaintBucket, List, LayoutGrid, Sticker, Save, Search } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -12,7 +12,9 @@ import { ColorPicker } from './ColorPicker';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import InventoryGridItem from './InventoryGridItem';
 import IconPicker from './IconPicker';
+import ImageUploadArea from './ImageUploadArea';
 import ImageEditorModal from './ImageEditorModal';
+import ConflictView from './ConflictView';
 import { useBackButton } from '../hooks/useBackButton';
 
 const PREVIEW_COLORS: Record<string, string> = {
@@ -31,6 +33,8 @@ interface PersonaViewProps {
   characters: Character[];
   setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
   addLog: (entry: LogEntry) => void;
+  conflictState: ConflictState;
+  setConflictState: (state: ConflictState) => void;
 }
 
 // Helper to resolve styles for themes vs custom hex
@@ -147,15 +151,17 @@ interface PendingRoll {
   attr: Attribute;
 }
 
-const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, addLog }) => {
+const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, addLog, conflictState, setConflictState }) => {
   const [mode, setMode] = useState<ViewMode>('LIST');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'CHARACTERS' | 'CONFLICT'>('CHARACTERS');
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Character | null>(null);
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   
   // Rolling States
   const [pendingRoll, setPendingRoll] = useState<PendingRoll | null>(null);
-  const [rollConfig, setRollConfig] = useState({ modifier: 0, mode: 'NORMAL' as RollMode });
+  const [rollConfig, setRollConfig] = useState({ modifier: 0, tempAttributeBoost: 0, mode: 'NORMAL' as RollMode });
   
   // Result States
   const [rollResult, setRollResult] = useState<AttributeRollResult | null>(null);
@@ -168,14 +174,6 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   const [itemToUse, setItemToUse] = useState<ItemToUse | null>(null);
   const [charToDelete, setCharToDelete] = useState<Character | null>(null);
   
-  // State for adding new item in Form Mode
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemDice, setNewItemDice] = useState('');
-  const [newItemIsPermanent, setNewItemIsPermanent] = useState(false);
-  const [newItemIcon, setNewItemIcon] = useState<string>('');
-  const [newItemIconColor, setNewItemIconColor] = useState<string>('');
-  const [showNewItemIconPicker, setShowNewItemIconPicker] = useState(false);
-
   // Auto-reduce quantity setting (persisted in localStorage)
   const [autoReduceOnUse, setAutoReduceOnUse] = useState<boolean>(() => {
     const saved = localStorage.getItem('mune_auto_reduce_on_use');
@@ -222,10 +220,6 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     }
     if (tempImage) {
       setTempImage(null);
-      return true;
-    }
-    if (showNewItemIconPicker) {
-      setShowNewItemIconPicker(false);
       return true;
     }
     if (editingIconForItem) {
@@ -323,11 +317,6 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
       resources: [],
       inventory: []
     });
-    setNewItemName('');
-    setNewItemDice('');
-    setNewItemIsPermanent(false);
-    setNewItemIcon('');
-    setNewItemIconColor('');
     setValidationErrors(new Set());
     setMode('FORM');
   };
@@ -351,11 +340,6 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
       inventory: migratedInventory,
       resources: char.resources || [] // Migration for resources
     });
-    setNewItemName('');
-    setNewItemDice('');
-    setNewItemIsPermanent(false);
-    setNewItemIcon('');
-    setNewItemIconColor('');
     setValidationErrors(new Set());
     setMode('FORM');
   };
@@ -416,9 +400,42 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   // 1. Trigger Pre-Roll Modal
   const initiateAttributeRoll = (charName: string, attr: Attribute) => {
     play('CLICK');
-    // Allowed for all types, including NONE
+    
+    let initialModifier = 0;
+    
+    if (attr.rollType === 'TARGET') {
+        // Calculate default target: Half of max roll (rounded down)
+        const diceStr = attr.dice || '1d20';
+        let maxRoll = 20; 
+        
+        try {
+            // Simple regex for XdY+Z or XdY
+            const match = diceStr.match(/(\d*)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
+            if (match) {
+                const count = parseInt(match[1]) || 1;
+                const sides = parseInt(match[2]);
+                const op = match[3];
+                const mod = parseInt(match[4]) || 0;
+                
+                let total = count * sides;
+                if (op === '-') total -= mod;
+                else if (op === '+') total += mod;
+                
+                maxRoll = total;
+            } else if (!isNaN(parseInt(diceStr))) {
+                maxRoll = parseInt(diceStr);
+            }
+        } catch (e) {
+            console.error("Failed to parse max roll", e);
+        }
+        
+        initialModifier = Math.floor(maxRoll / 2);
+    }
+
     setPendingRoll({ charName, attr });
-    setRollConfig({ modifier: 0, mode: 'NORMAL' });
+    // Initialize tempAttributeBoost with the attribute's modifier if TARGET type
+    const initialBoost = attr.rollType === 'TARGET' ? (attr.modifier || 0) : 0;
+    setRollConfig({ modifier: initialModifier, tempAttributeBoost: initialBoost, mode: 'NORMAL' });
   };
 
   // 2. Execute Roll with Config
@@ -455,16 +472,34 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
          finalRoll = Math.max(val1.total, val2.total);
          discardedRoll = Math.min(val1.total, val2.total);
       }
-      // Re-format log detail for Adv/Disadv
-      logDetail = `[${val1.total}, ${val2.total}] ➔ **${finalRoll}** (${rollConfig.mode === 'ADVANTAGE' ? 'Vant.' : 'Desv.'})`;
+      
+      const modePrefix = rollConfig.mode === 'ADVANTAGE' ? 'Vant' : 'Desv';
+      logDetail = `${modePrefix} ${val1.detail}, ${val2.detail} ➔ **${finalRoll}**`;
     } else {
-      // Normal Mode formatting: append = Total
-      logDetail = `${logDetail} = **${finalRoll}**`;
+      logDetail = `${logDetail} ➔ **${finalRoll}**`;
     }
 
     // Apply Modifier to Target
-    const originalTarget = attr.value;
-    const modifiedTarget = originalTarget + rollConfig.modifier;
+    // IMPORTANT: rollConfig.modifier affects the target number directly (difficulty)
+    // rollConfig.tempAttributeBoost affects the attribute value itself (competence)
+    
+    // For TARGET type: Boost IS the modifier. Attribute Value is ignored in calculation (based on prompt "roll+-modifiers").
+    const boostedAttributeValue = attr.rollType === 'TARGET' 
+        ? rollConfig.tempAttributeBoost 
+        : attr.value + rollConfig.tempAttributeBoost;
+    
+    // For TARGET type, modifier IS the target. For others, it adjusts the attribute-based target.
+    let modifiedTarget = 0;
+    let finalCheckValue = finalRoll;
+
+    if (attr.rollType === 'TARGET') {
+        modifiedTarget = rollConfig.modifier; // The manually defined target
+        // For Bater Alvo: Dice + Boost(Modifier) >= Target
+        finalCheckValue = finalRoll + boostedAttributeValue;
+    } else {
+        modifiedTarget = boostedAttributeValue + rollConfig.modifier;
+        finalCheckValue = finalRoll;
+    }
     
     let success = false;
     let resultText = "";
@@ -477,13 +512,28 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         setTimeout(() => play('DICE_RESULT'), 600);
     } else {
         if (attr.rollType === 'UNDER') {
-          success = finalRoll <= modifiedTarget;
+          success = finalCheckValue <= modifiedTarget;
         } else {
-          success = finalRoll >= modifiedTarget;
+          // OVER and TARGET both check >=
+          success = finalCheckValue >= modifiedTarget;
         }
+        
         resultText = success ? "Sucesso" : "Falha";
-        const modText = rollConfig.modifier !== 0 ? ` (Mod. Alvo: ${rollConfig.modifier > 0 ? '+' : ''}${rollConfig.modifier})` : '';
-        logDetails = `${logDetail}. Alvo ${attr.rollType === 'UNDER' ? '≤' : '≥'} **${modifiedTarget}**${modText}`;
+        
+        if (attr.rollType === 'TARGET') {
+             // Show "Roll (X) + Mod (Y) >= Target (Z)" logic in log
+             const sign = boostedAttributeValue >= 0 ? '+' : '';
+             logDetails = `${logDetail} ${sign} ${boostedAttributeValue} Mod = **${finalCheckValue}**. Alvo ≥ **${modifiedTarget}**`;
+        } else {
+             // Roll Under/Over
+             const base = attr.value;
+             const mod = rollConfig.tempAttributeBoost;
+             const targetMod = rollConfig.modifier;
+             
+             const breakdown = `(Base ${base}${mod !== 0 ? ` ${mod > 0 ? '+' : ''}${mod} Mod` : ''}${targetMod !== 0 ? ` ${targetMod > 0 ? '+' : ''}${targetMod} Alvo` : ''})`;
+             
+             logDetails = `${logDetail}. Alvo ${attr.rollType === 'UNDER' ? '≤' : '≥'} **${modifiedTarget}** ${breakdown}`;
+        }
 
         setTimeout(() => {
             if (success) {
@@ -508,13 +558,13 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     setRollResult({
       charName,
       attrName: attr.name,
-      roll: finalRoll,
+      roll: finalCheckValue, // Show the total used for checking
       otherRoll: discardedRoll,
       target: modifiedTarget,
       isSuccess: success,
       rollType: attr.rollType,
-      diceNotation,
-      detailText: logDetail.replace(/\*\*/g, '') // Remove markup for modal display as it has its own styling
+      diceNotation: attr.rollType === 'TARGET' ? `${diceNotation} + ${boostedAttributeValue}` : diceNotation,
+      detailText: logDetail.replace(/\*\*/g, '') 
     });
 
     // Trigger Suspense Animation
@@ -582,7 +632,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
           type: 'ITEM',
           title: `${charName} usou ${itemName}`,
           result: diceResult.total.toString(),
-          details: getLogDetails(`${diceNotation} -> ${diceResult.detail}`),
+          details: getLogDetails(`${diceResult.detail} = ${diceResult.total}`),
           highlight: false
         });
 
@@ -710,11 +760,11 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
     return (
       <div 
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
         onClick={() => { play('CLICK'); setPendingRoll(null); }}
       >
         <div 
-          className="w-full max-w-sm bg-card border border-border rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200"
+          className="w-full max-w-sm bg-card border border-border rounded-xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200"
           onClick={e => e.stopPropagation()}
         >
           <button 
@@ -779,16 +829,52 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                </button>
             </div>
 
+            {/* Temp Attribute Boost */}
+            {!isNone && (
+                <div className="bg-card/50 rounded-xl p-4 border border-border">
+                   <div className="flex justify-between items-center mb-3">
+                     <span className="text-xs font-bold text-txt-muted uppercase flex items-center gap-2">
+                       <Shield size={14} /> Modificar Atributo
+                     </span>
+                     <span className="text-xs font-mono text-txt-dim">
+                       Valor Final: <span className="text-txt-main font-bold text-sm">{attr.value + rollConfig.tempAttributeBoost}</span>
+                     </span>
+                   </div>
+                   
+                   <div className="flex items-center gap-3">
+                     <button 
+                       onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, tempAttributeBoost: prev.tempAttributeBoost - 1 })); }}
+                       className="w-12 h-12 flex items-center justify-center bg-card hover:bg-card-hover text-txt-muted rounded-lg border border-border active:scale-95 transition-all"
+                     >
+                       <Minus size={20} />
+                     </button>
+                     
+                     <div className="flex-1 text-center font-mono text-2xl font-black text-txt-main bg-app rounded-lg py-2 border border-border">
+                       {rollConfig.tempAttributeBoost > 0 ? '+' : ''}{rollConfig.tempAttributeBoost}
+                     </div>
+
+                     <button 
+                       onClick={() => { play('CLICK'); setRollConfig(prev => ({ ...prev, tempAttributeBoost: prev.tempAttributeBoost + 1 })); }}
+                       className="w-12 h-12 flex items-center justify-center bg-card hover:bg-card-hover text-txt-muted rounded-lg border border-border active:scale-95 transition-all"
+                     >
+                       <Plus size={20} />
+                     </button>
+                   </div>
+                </div>
+            )}
+
             {/* Target Modifier - Only show if not NONE */}
             {!isNone && (
                 <div className="bg-card/50 rounded-xl p-4 border border-border">
                    <div className="flex justify-between items-center mb-3">
                      <span className="text-xs font-bold text-txt-muted uppercase flex items-center gap-2">
-                       <Target size={14} /> Modificar Alvo
+                       <Target size={14} /> {attr.rollType === 'TARGET' ? 'Definir Alvo' : 'Modificar Alvo'}
                      </span>
-                     <span className="text-xs font-mono text-txt-dim">
-                       Alvo Final: <span className="text-txt-main font-bold text-sm">{attr.value + rollConfig.modifier}</span>
-                     </span>
+                     {attr.rollType !== 'TARGET' && (
+                        <span className="text-xs font-mono text-txt-dim">
+                          Alvo Final: <span className="text-txt-main font-bold text-sm">{attr.value + rollConfig.tempAttributeBoost + rollConfig.modifier}</span>
+                        </span>
+                     )}
                    </div>
                    
                    <div className="flex items-center gap-3">
@@ -800,7 +886,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                      </button>
                      
                      <div className="flex-1 text-center font-mono text-2xl font-black text-txt-main bg-app rounded-lg py-2 border border-border">
-                       {rollConfig.modifier > 0 ? '+' : ''}{rollConfig.modifier}
+                       {attr.rollType !== 'TARGET' && rollConfig.modifier > 0 ? '+' : ''}{rollConfig.modifier}
                      </div>
 
                      <button 
@@ -1123,45 +1209,70 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     );
   };
 
-  const renderList = () => (
-    <div className="h-full overflow-y-auto bg-app">
-      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-24 max-w-7xl mx-auto">
-        {characters.map(char => (
-          <div 
-            key={char.id}
-            onClick={() => { play('CLICK'); setSelectedCharId(char.id); setMode('DETAIL'); }}
-            className="aspect-[3/4] rounded-xl bg-card border border-border overflow-hidden relative shadow-lg hover:border-primary/50 transition-all active:scale-95 cursor-pointer flex flex-col"
-          >
-            <div className="flex-1 bg-app relative min-h-0">
-               {char.imageUrl ? (
-                 <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover object-top" />
-               ) : (
-                 <div className="w-full h-full flex items-center justify-center text-txt-dim">
-                   <User size={48} />
-                 </div>
-               )}
-               <div className="absolute inset-0 bg-gradient-to-t from-app/80 via-transparent to-transparent opacity-60" />
-            </div>
-            <div className="p-3 bg-card border-t border-border/50">
-              <h3 className="font-bold text-txt-main leading-tight truncate">{char.name}</h3>
-              <p className="text-xs text-primary truncate">{char.profession}</p>
-            </div>
-          </div>
-        ))}
+  const renderList = () => {
+    const filteredChars = characters.filter(c => 
+        c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        c.profession.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
+    return (
+    <div className="h-full flex flex-col overflow-hidden bg-app">
+      <div className="flex justify-between items-center p-4 border-b border-border bg-app/95 sticky top-0 z-10 backdrop-blur-sm h-16 no-print">
+        <div className="flex items-center gap-2 flex-1 bg-card/50 border border-border rounded-lg px-3 py-2 mr-2 focus-within:border-primary transition-colors">
+            <Search size={16} className="text-txt-dim" />
+            <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Buscar..."
+                className="bg-transparent border-none outline-none text-sm text-txt-main placeholder-txt-dim w-full"
+            />
+            {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="text-txt-dim hover:text-txt-main">
+                <X size={14} />
+                </button>
+            )}
+        </div>
         <button 
-          type="button"
-          onClick={() => { play('CLICK'); handleCreateNew(); }}
-          className="aspect-[3/4] rounded-xl border-2 border-dashed border-border hover:border-primary bg-card/50 flex flex-col items-center justify-center gap-2 text-txt-dim hover:text-primary transition-all active:scale-95 group"
+            onClick={() => { play('CLICK'); handleCreateNew(); }}
+            className="px-4 py-2 bg-primary text-on-primary hover:bg-primary-hover transition-all rounded-xl flex items-center justify-center font-bold whitespace-nowrap uppercase tracking-wider text-[10px] shadow-sm active:scale-95"
         >
-          <div className="bg-card p-3 rounded-full group-hover:bg-primary/10 transition-colors">
-            <Plus size={32} />
-          </div>
-          <span className="font-bold uppercase text-xs tracking-wider">Novo Personagem</span>
+            <Plus size={16} className="mr-1" />
+            Novo
         </button>
       </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-7xl mx-auto w-full pb-24">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {filteredChars.map(char => (
+                <div 
+                    key={char.id}
+                    onClick={() => { play('CLICK'); setSelectedCharId(char.id); setMode('DETAIL'); }}
+                    className="aspect-[3/4] rounded-xl bg-card border border-border overflow-hidden relative shadow-lg hover:border-primary/50 transition-all active:scale-95 cursor-pointer flex flex-col"
+                >
+                    <div className="flex-1 bg-app relative min-h-0">
+                    {char.imageUrl ? (
+                        <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover object-top" />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-txt-dim">
+                        <User size={48} />
+                        </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-app/80 via-transparent to-transparent opacity-60" />
+                    </div>
+                    <div className="p-3 bg-card border-t border-border/50">
+                    <h3 className="font-bold text-txt-main leading-tight truncate">{char.name}</h3>
+                    <p className="text-xs text-primary truncate">{char.profession}</p>
+                    </div>
+                </div>
+                ))}
+            </div>
+        </div>
+      </div>
     </div>
-  );
+    );
+  };
 
   const renderDetail = () => {
     const char = characters.find(c => c.id === selectedCharId);
@@ -1325,17 +1436,22 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                       >
                         <span className={`text-[10px] uppercase font-bold mb-1 w-full truncate text-center ${getTextStyle(attr.color)}`} title={attr.name}>{attr.name}</span>
                         
-                        <div className={`flex items-center justify-center rounded px-2 w-full mb-1 ${attr.color ? 'bg-black/20' : 'bg-app/50'}`}>
+                        <div className={`flex items-center justify-center rounded px-2 w-full mb-1 gap-2 ${attr.color ? 'bg-black/20' : 'bg-app/50'}`}>
                             <span className={`text-2xl font-black font-mono ${attr.color ? 'text-white' : 'text-primary'}`}>
                                 {attr.value}
                             </span>
+                            {attr.rollType === 'TARGET' && attr.modifier !== undefined && (
+                                <span className={`text-lg font-bold font-mono ${attr.color ? 'text-white/80' : 'text-txt-muted'}`}>
+                                    {attr.modifier >= 0 ? '+' : ''}{attr.modifier}
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex flex-col items-center">
                              <span className={`text-[9px] font-mono ${attr.color ? 'text-white/70' : 'text-txt-dim'}`}>{attr.dice || 'd20'}</span>
                              {attr.rollType !== 'NONE' && (
                                  <span className={`text-[8px] uppercase font-bold ${attr.color ? 'text-white/50' : 'text-txt-dim'}`}>
-                                    {attr.rollType === 'UNDER' ? 'Menor' : 'Maior'}
+                                    {attr.rollType === 'UNDER' ? 'Menor' : (attr.rollType === 'TARGET' ? 'Alvo' : 'Maior')}
                                  </span>
                              )}
                         </div>
@@ -1608,30 +1724,22 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
     };
 
     const addNewItem = () => {
-        if (!newItemName.trim()) return;
-
         setFormData(prev => {
             if (!prev) return null;
             const newItem: InventoryItem = {
                 id: generateUUID(),
-                name: newItemName,
+                name: 'Novo Item',
                 quantity: 1,
-                isPermanent: newItemIsPermanent,
-                dice: newItemDice,
-                icon: newItemIcon || undefined,
-                iconColor: newItemIconColor || undefined
+                isPermanent: false,
+                dice: '',
+                icon: '',
+                iconColor: ''
             };
             return {
                 ...prev,
-                inventory: [...prev.inventory, newItem]
+                inventory: [newItem, ...prev.inventory]
             };
         });
-
-        setNewItemName('');
-        setNewItemDice('');
-        setNewItemIsPermanent(false);
-        setNewItemIcon('');
-        setNewItemIconColor('');
     };
 
     const updateInventoryItemForm = (id: string, updates: Partial<InventoryItem>) => {
@@ -1658,6 +1766,10 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         });
     };
 
+    const isSaveDisabled = !formData.name.trim() || 
+      formData.attributes.some(attr => !attr.dice || attr.dice.trim() === '') ||
+      formData.resources.some(res => !res.max || isNaN(res.max));
+
     return (
       <div className="flex flex-col h-full bg-app relative">
         {/* Persistent Form Header */}
@@ -1673,44 +1785,35 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
             <button 
               type="button"
               onClick={(e) => { play('CLICK'); e.preventDefault(); e.stopPropagation(); handleSave(); }}
-              className="px-4 py-2 bg-success hover:bg-green-500 text-on-primary font-bold rounded-full shadow-lg pointer-events-auto flex items-center gap-2 transition-all active:scale-95"
+              disabled={isSaveDisabled}
+              className="p-2 bg-success/20 backdrop-blur-md text-success hover:bg-success/30 rounded-full shadow-lg pointer-events-auto transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Salvar"
             >
-              <CheckSquare size={18} /> Salvar
+              <Save size={24} />
             </button>
         </div>
 
         <div className="flex-1 overflow-y-auto pb-24 w-full">
           <div className="max-w-3xl mx-auto w-full min-h-full">
             {/* Header / Image Upload */}
-            <div className="relative h-48 w-full flex-none bg-black/20 group cursor-pointer" onClick={() => { play('CLICK'); triggerFileUpload(); }}>
-              {formData.imageUrl ? (
-                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover object-top opacity-60 group-hover:opacity-40 transition-opacity" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-txt-dim bg-app group-hover:bg-card transition-colors">
-                  <ImageIcon size={64} />
-                </div>
-              )}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-app/90 border border-border text-txt-main px-5 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 shadow-xl">
-                  <Upload size={16} /> Alterar Imagem
-                </span>
-              </div>
-              <input 
+            <ImageUploadArea
+                imageUrl={formData.imageUrl}
+                onUpload={triggerFileUpload}
+                onClear={() => setFormData(prev => prev ? ({ ...prev, imageUrl: undefined }) : null)}
+                heightClass="h-48"
+                placeholderText="Imagem do Personagem"
+            />
+            <input 
                 type="file" 
                 accept="image/*" 
                 className="hidden" 
                 ref={fileInputRef}
                 onChange={handleImageUpload}
-              />
-            </div>
+            />
 
             <div className="p-4 space-y-6">
             {/* Basic Info */}
-            <div>
-               <h3 className="flex items-center gap-2 text-txt-muted uppercase font-bold text-xs tracking-wider mb-3">
-                  <FileText size={14} /> Dados Básicos
-               </h3>
-               <div className="bg-card/50 p-4 rounded-xl border border-border/50 space-y-4">
+            <div className="space-y-4">
                  <div>
                    <label className="text-xs uppercase font-bold text-txt-muted mb-1 block">Nome do Personagem</label>
                    <input 
@@ -1742,7 +1845,6 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                      placeholder="Detalhes sobre o personagem..."
                    />
                  </div>
-               </div>
             </div>
 
             {/* Resources Management */}
@@ -1787,6 +1889,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                               <input 
                                 type="text" 
                                 value={res.name}
+                                onFocus={(e) => e.target.select()}
                                 onChange={(e) => updateResource(res.id, 'name', e.target.value)}
                                 className={`flex-1 bg-transparent border-b ${getInputStyle(res.color)} font-bold outline-none pb-1 transition-colors`}
                                 placeholder="Nome do Recurso"
@@ -1895,6 +1998,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                 <input 
                                   type="text" 
                                   value={attr.name}
+                                  onFocus={(e) => e.target.select()}
                                   onChange={(e) => updateAttribute(attr.id, 'name', e.target.value)}
                                   className={`flex-1 bg-transparent border-b ${getInputStyle(attr.color)} font-bold outline-none pb-1 transition-colors`}
                                   placeholder="Nome do Atributo"
@@ -1902,7 +2006,20 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                 <button onClick={() => { play('CLICK'); removeAttribute(attr.id); }} className={`${getButtonStyle(attr.color)}`}><Trash2 size={16} /></button>
                               </div>
                               
-                              <div className="grid grid-cols-3 gap-2">
+                              <div className={`grid gap-2 ${attr.rollType === 'TARGET' ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                                <div>
+                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>Tipo</label>
+                                  <select 
+                                    value={attr.rollType}
+                                    onChange={(e) => updateAttribute(attr.id, 'rollType', e.target.value)}
+                                    className={`w-full rounded px-2 text-xs outline-none border appearance-none h-10 ${getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
+                                  >
+                                      <option value="UNDER" className="text-black">Menor ou Igual</option>
+                                      <option value="OVER" className="text-black">Maior ou Igual</option>
+                                      <option value="TARGET" className="text-black">Bater Alvo</option>
+                                      <option value="NONE" className="text-black">Apenas Rolar</option>
+                                  </select>
+                                </div>
                                 <div>
                                   <label className={`text-[9px] uppercase font-bold block mb-1 ${!attr.value ? 'text-error' : getLabelStyle(attr.color)}`}>
                                     Valor {!attr.value && '*'}
@@ -1915,21 +2032,27 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                     className={`w-full rounded p-2 font-mono text-center outline-none border h-10 ${!attr.value ? 'border-error' : getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
                                   />
                                 </div>
-                                <div>
-                                  <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>Tipo de Rolagem</label>
-                                  <select 
-                                    value={attr.rollType}
-                                    onChange={(e) => updateAttribute(attr.id, 'rollType', e.target.value)}
-                                    className={`w-full rounded px-2 text-xs outline-none border appearance-none h-10 ${getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
-                                  >
-                                      <option value="UNDER" className="text-black">Menor ou Igual</option>
-                                      <option value="OVER" className="text-black">Maior ou Igual</option>
-                                      <option value="NONE" className="text-black">Apenas Rolar</option>
-                                  </select>
-                                </div>
+                                {attr.rollType === 'TARGET' && (
+                                  <div>
+                                    <label className={`text-[9px] uppercase font-bold block mb-1 ${getLabelStyle(attr.color)}`}>
+                                      Mod.
+                                    </label>
+                                    <input 
+                                      type="number" 
+                                      value={attr.modifier || ''}
+                                      placeholder="+0"
+                                      onFocus={(e) => e.target.select()}
+                                      onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        updateAttribute(attr.id, 'modifier', isNaN(val) ? 0 : val);
+                                      }}
+                                      className={`w-full rounded p-2 font-mono text-center outline-none border h-10 ${getInputStyle(attr.color).replace('bg-transparent', 'bg-black/10')}`}
+                                    />
+                                  </div>
+                                )}
                                 <div>
                                   <label className={`text-[9px] uppercase font-bold block mb-1 ${isDiceEmpty ? 'text-error' : getLabelStyle(attr.color)} ${validationErrors.has(attr.id) ? 'animate-pulse' : ''}`}>
-                                      Dado {isDiceEmpty && '*'}
+                                      Teste {isDiceEmpty && '*'}
                                   </label>
                                   <input 
                                     type="text" 
@@ -1957,82 +2080,13 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                 <h3 className="text-sm font-bold text-txt-muted uppercase flex items-center gap-2">
                   <Backpack size={16} /> Inventário
                 </h3>
-              </div>
-
-              {/* Add New Item Form */}
-              <div className="bg-card/50 p-3 rounded-lg border border-border mb-4">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      {/* Icon Picker Button */}
-                      <button
-                        type="button"
-                        onClick={() => { play('CLICK'); setShowNewItemIconPicker(true); }}
-                        className={`p-3 rounded-xl border transition-colors flex-none ${
-                          newItemIcon
-                            ? 'bg-card-hover border-primary/50'
-                            : 'bg-card border-border hover:bg-card-hover text-txt-muted hover:text-txt-main'
-                        }`}
-                        title="Selecionar Ícone"
-                      >
-                        {newItemIcon ? (
-                          <div
-                            className="w-6 h-6"
-                            style={{
-                              backgroundColor: newItemIconColor || 'rgb(var(--text-main))',
-                              maskImage: `url("/icons/${newItemIcon}.svg")`,
-                              WebkitMaskImage: `url("/icons/${newItemIcon}.svg")`,
-                              maskRepeat: 'no-repeat',
-                              maskPosition: 'center',
-                              maskSize: 'contain',
-                              WebkitMaskRepeat: 'no-repeat',
-                              WebkitMaskPosition: 'center',
-                              WebkitMaskSize: 'contain',
-                            }}
-                          />
-                        ) : (
-                          <Sticker size={24} />
-                        )}
-                      </button>
-                      <input
-                        type="text"
-                        value={newItemName}
-                        onChange={(e) => setNewItemName(e.target.value)}
-                        className="flex-1 bg-app border border-border rounded p-2 text-sm text-txt-main outline-none focus:border-primary placeholder-txt-dim"
-                        placeholder="Nome do Item (Ex: Corda, Espada...)"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newItemDice}
-                          onChange={(e) => setNewItemDice(e.target.value)}
-                          className="flex-1 bg-app border border-border rounded p-2 text-sm text-txt-main outline-none focus:border-primary placeholder-txt-dim font-mono"
-                          placeholder="Dano/Efeito (Ex: 1d8)"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewItemIsPermanent(!newItemIsPermanent);
-                            play('CLICK');
-                          }}
-                          className={`px-3 rounded border transition-colors flex items-center justify-center ${newItemIsPermanent ? 'bg-primary/20 border-primary text-primary' : 'bg-app border-border text-txt-dim'}`}
-                          title="Item Permanente?"
-                        >
-                          <Shield size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            addNewItem();
-                            play('CLICK');
-                          }}
-                          disabled={!newItemName.trim()}
-                          className="px-4 bg-primary hover:bg-primary-hover text-on-primary rounded font-bold uppercase text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Plus size={16} />
-                        </button>
-                    </div>
-                  </div>
+                <button 
+                  type="button" 
+                  onClick={() => { play('CLICK'); addNewItem(); }}
+                  className="text-xs font-bold text-primary hover:text-primary-active flex items-center gap-1 bg-card px-2 py-1 rounded"
+                >
+                  <Plus size={12} /> Adicionar
+                </button>
               </div>
 
               <div className="space-y-2">
@@ -2058,16 +2112,16 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
 
                       return (
                         <SortableItem key={id} id={id}>
-                          <div className="flex items-center justify-between p-2 bg-card rounded border border-border group">
-                              <div className="flex items-center gap-2 overflow-hidden">
-                                {/* Icon Preview Button */}
+                          <div className="p-3 bg-card border border-border rounded-lg transition-colors flex flex-col gap-2 relative group">
+                              <div className="flex justify-between gap-2 items-center">
+                                {/* Icon Picker Button */}
                                 {!isString && (
                                   <button
                                     type="button"
-                                    onClick={() => { play('CLICK'); setEditingIconForItem(item.id); }}
-                                    className={`p-2 rounded-lg border transition-colors flex-none ${
+                                    onClick={(e) => { e.stopPropagation(); setEditingIconForItem(item.id); }}
+                                    className={`p-2 rounded-lg transition-all flex items-center justify-center border active:scale-95 shadow-sm ${
                                       icon
-                                        ? 'bg-card-hover border-primary/50'
+                                        ? 'bg-card-hover border-primary/50 text-primary'
                                         : 'bg-card border-border hover:bg-card-hover text-txt-muted hover:text-txt-main'
                                     }`}
                                     title="Alterar Ícone"
@@ -2076,7 +2130,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                       <div
                                         className="w-5 h-5"
                                         style={{
-                                          backgroundColor: iconColor || 'rgb(var(--text-main))',
+                                          backgroundColor: iconColor || 'currentColor',
                                           maskImage: `url("/icons/${icon}.svg")`,
                                           WebkitMaskImage: `url("/icons/${icon}.svg")`,
                                           maskRepeat: 'no-repeat',
@@ -2092,18 +2146,71 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                                     )}
                                   </button>
                                 )}
-                                {isPerm ? <Shield size={14} className="text-primary flex-none" /> : !isString && <div className="w-0" />}
-                                <span className="text-sm font-bold text-txt-main truncate">{name}</span>
-                                {quantity > 1 && <span className="text-xs text-primary font-mono">x{quantity}</span>}
-                                {dice && <span className="text-[10px] text-txt-dim font-mono bg-app px-1 rounded">{dice}</span>}
+                                <input 
+                                  type="text" 
+                                  value={name}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => !isString && updateInventoryItemForm(item.id, { name: e.target.value })}
+                                  className="flex-1 bg-transparent border-b border-border text-txt-main font-bold outline-none pb-1 focus:border-primary transition-colors"
+                                  placeholder="Nome do Item"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => { play('CLICK'); removeItem(isString ? name : item.id); }}
+                                  className="text-txt-muted hover:text-txt-main hover:bg-card-hover p-1.5 rounded transition-colors"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => { play('CLICK'); removeItem(isString ? name : item.id); }}
-                                className="text-txt-dim hover:text-error p-1"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              
+                              <div className="grid grid-cols-[2fr_1fr_1.5fr] gap-2">
+                                  <div>
+                                    <label className="text-[9px] uppercase font-bold block mb-1 text-txt-dim">Dados / Efeito</label>
+                                    <input 
+                                      type="text" 
+                                      value={!isString ? item.dice || '' : ''}
+                                      onFocus={(e) => e.target.select()}
+                                      onChange={(e) => !isString && updateInventoryItemForm(item.id, { dice: e.target.value })}
+                                      className="w-full bg-black/10 rounded p-2 font-mono text-center outline-none border border-border text-xs h-9"
+                                      placeholder="Ex: 1d8"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <label className="text-[9px] uppercase font-bold block mb-1 text-txt-dim text-center">Perm.</label>
+                                    <button
+                                      type="button"
+                                      onClick={() => !isString && updateInventoryItemForm(item.id, { isPermanent: !item.isPermanent })}
+                                      className={`w-full h-9 rounded border transition-all flex items-center justify-center ${!isString && item.isPermanent ? 'bg-primary text-on-primary border-primary shadow-sm' : 'bg-black/10 border-border text-txt-dim opacity-60'}`}
+                                      title={!isString && item.isPermanent ? "Item Permanente" : "Item Consumível"}
+                                    >
+                                      <Shield size={16} />
+                                    </button>
+                                  </div>
+                                  <div className={`flex flex-col transition-all duration-300 ${!isString && item.isPermanent ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+                                    <label className="text-[9px] uppercase font-bold block mb-1 text-txt-dim text-center">Qtd.</label>
+                                    <div className="flex items-center bg-black/10 rounded border border-border h-9 overflow-hidden">
+                                        <button 
+                                          onClick={() => !isString && updateInventoryItemForm(item.id, { quantity: Math.max(0, item.quantity - 1) })} 
+                                          className="px-2 h-full hover:bg-card-hover hover:text-txt-main transition-colors"
+                                        >
+                                          <Minus size={12} />
+                                        </button>
+                                        <input
+                                          type="number"
+                                          value={!isString ? item.quantity : 1}
+                                          onFocus={(e) => e.target.select()}
+                                          onChange={(e) => !isString && updateInventoryItemForm(item.id, { quantity: parseInt(e.target.value) || 0 })}
+                                          className="w-full bg-transparent text-center font-bold text-xs font-mono outline-none"
+                                        />
+                                        <button 
+                                          onClick={() => !isString && updateInventoryItemForm(item.id, { quantity: item.quantity + 1 })} 
+                                          className="px-2 h-full hover:bg-card-hover hover:text-txt-main transition-colors"
+                                        >
+                                          <Plus size={12} />
+                                        </button>
+                                    </div>
+                                  </div>
+                              </div>
                           </div>
                         </SortableItem>
                       );
@@ -2121,10 +2228,41 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
   };
 
   return (
-    <div className="h-full bg-app relative">
-      {mode === 'LIST' && renderList()}
-      {mode === 'DETAIL' && renderDetail()}
-      {mode === 'FORM' && renderForm()}
+    <div className="h-full bg-app relative flex flex-col">
+      <div className="flex-1 overflow-hidden relative">
+        {activeTab === 'CHARACTERS' ? (
+           <>
+              {mode === 'LIST' && renderList()}
+              {mode === 'DETAIL' && renderDetail()}
+              {mode === 'FORM' && renderForm()}
+           </>
+        ) : (
+           <ConflictView 
+             conflictState={conflictState}
+             setConflictState={setConflictState}
+             characters={characters}
+             addLog={addLog}
+           />
+        )}
+      </div>
+
+      {/* Footer Bar */}
+      <div className="flex-none h-12 bg-card border-t border-border flex items-stretch z-10">
+           <button 
+             onClick={() => { play('CLICK'); setActiveTab('CHARACTERS'); }}
+             className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'CHARACTERS' ? 'text-primary bg-primary/5' : 'text-txt-muted hover:text-txt-main hover:bg-card-hover'}`}
+           >
+             <User size={16} /> Personagens
+           </button>
+           <div className="w-px bg-border my-3"></div>
+           <button 
+             onClick={() => { play('CLICK'); setActiveTab('CONFLICT'); }}
+             className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'CONFLICT' ? 'text-primary bg-primary/5' : 'text-txt-muted hover:text-txt-main hover:bg-card-hover'}`}
+           >
+             <Sword size={16} /> Conflito
+           </button>
+      </div>
+
       {renderRollResultModal()}
       {renderItemRollResultModal()}
       {renderPreRollModal()}
@@ -2167,40 +2305,7 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
         }}
       />
 
-      {/* Icon Picker Modal for New Item */}
-      {showNewItemIconPicker && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-          onClick={() => { play('CLICK'); setShowNewItemIconPicker(false); }}
-        >
-          <div
-            className="w-full max-w-2xl bg-app border border-border rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200 flex flex-col h-[70vh]"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <IconPicker
-                selectedIcon={newItemIcon}
-                selectedColor={newItemIconColor || '#ffffff'}
-                onSelect={(icon, color) => {
-                  setNewItemIcon(icon || '');
-                  setNewItemIconColor(color || '');
-                }}
-                onClose={() => setShowNewItemIconPicker(false)}
-              />
-            </div>
-            <div className="p-4 border-t border-border flex justify-end">
-              <button
-                onClick={() => { play('CLICK'); setShowNewItemIconPicker(false); }}
-                className="px-6 py-2 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold"
-              >
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Icon Picker Modal for Editing Existing Items */}
+      {/* Icon Picker Modal for Editing Items */}
       {editingIconForItem && formData && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
@@ -2230,14 +2335,6 @@ const PersonaView: React.FC<PersonaViewProps> = ({ characters, setCharacters, ad
                 }}
                 onClose={() => setEditingIconForItem(null)}
               />
-            </div>
-            <div className="p-4 border-t border-border flex justify-end">
-              <button
-                onClick={() => { play('CLICK'); setEditingIconForItem(null); }}
-                className="px-6 py-2 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold"
-              >
-                Confirmar
-              </button>
             </div>
           </div>
         </div>

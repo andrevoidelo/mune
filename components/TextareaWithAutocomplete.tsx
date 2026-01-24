@@ -1,26 +1,53 @@
-import React, { useRef, useState } from 'react';
-import { WikiEntry, CustomCategory } from '../types';
+import React, { useRef, useState, useMemo } from 'react';
+import { WikiEntry, CustomCategory, Collection } from '../types';
 import AutocompletePopup from './AutocompletePopup';
+import { parseLinkedContent } from '../utils';
+import { AtSign, Hash, Dices, Layers } from 'lucide-react';
 
 interface TextareaWithAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
   entries: WikiEntry[];
   customCategories: CustomCategory[];
+  collections?: Collection[];
   placeholder?: string;
   className?: string;
+  containerClassName?: string;
+  autoResize?: boolean;
 }
 
-const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ value, onChange, entries, customCategories, placeholder, className }) => {
+const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ value, onChange, entries, customCategories, collections, placeholder, className, containerClassName, autoResize = true }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const [autocomplete, setAutocomplete] = useState<{ 
     isOpen: boolean;
-    type: 'mention' | 'tag';
+    type: 'mention' | 'tag' | 'collection';
     query: string;
     position: { top: number; left: number };
-    startIndex: number;  // Where the @ or # started
+    startIndex: number;
   } | null>(null);
   
+  // Highlight Generation
+  const highlights = useMemo(() => {
+    // We append a space if the value ends with a newline to ensure the line renders in the backdrop
+    const textToParse = value.endsWith('\n') ? value + ' ' : value;
+    
+    return parseLinkedContent(textToParse, entries).parts.map((part, i) => {
+        if (part.type === 'dice') return <span key={i} className="text-purple-400">[{part.value}]</span>;
+        if (part.type === 'mention') return <span key={i} className="text-primary">@{part.value}</span>;
+        if (part.type === 'tag') return <span key={i} className="text-blue-400">#{part.value}</span>;
+        if (part.type === 'bold') return <span key={i} className="text-primary">**{part.value}**</span>;
+        return <span key={i}>{part.value}</span>;
+    });
+  }, [value, entries]);
+
+  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (backdropRef.current) {
+        backdropRef.current.scrollTop = e.currentTarget.scrollTop;
+        backdropRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
+
   // Helper: Get pixel position of caret in textarea
   const getCaretPosition = (textarea: HTMLTextAreaElement, charIndex: number): { top: number; left: number } => {
     // Create a mirror div to measure text
@@ -64,50 +91,54 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
 
   // Auto-resize textarea
   React.useEffect(() => {
-    if (textareaRef.current) {
+    if (autoResize && textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-  }, [value]);
+  }, [value, autoResize]);
 
-  // Detect @ or # triggers
+  // Detect @ or # or [ triggers
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
     
     onChange(newValue);
     
-    // Look backwards from cursor to find @ or #
+    // Look backwards from cursor to find @ or # or [
     const textBeforeCursor = newValue.slice(0, cursorPos);
     const mentionMatch = textBeforeCursor.match(/@([\p{L}0-9_]*)$/u);
     const tagMatch = textBeforeCursor.match(/#([\p{L}0-9_]*)$/u);
+    const collectionMatch = textBeforeCursor.match(/\[([^\]]*)$/); // Match open bracket without close
     
     if (mentionMatch) {
       const query = mentionMatch[1];
-      if (query.length >= 0) {
-        setAutocomplete({
-          isOpen: true,
-          type: 'mention',
-          query,
-          position: getCaretPosition(textareaRef.current!, cursorPos),
-          startIndex: cursorPos - query.length - 1,  // -1 for @
-        });
-      } else {
-        setAutocomplete(null);
-      }
+      setAutocomplete({
+        isOpen: true,
+        type: 'mention',
+        query,
+        position: getCaretPosition(textareaRef.current!, cursorPos),
+        startIndex: cursorPos - query.length - 1,  // -1 for @
+      });
     } else if (tagMatch) {
       const query = tagMatch[1];
-      if (query.length >= 0) {
-        setAutocomplete({
-          isOpen: true,
-          type: 'tag',
-          query,
-          position: getCaretPosition(textareaRef.current!, cursorPos),
-          startIndex: cursorPos - query.length - 1,  // -1 for #
-        });
-      } else {
-        setAutocomplete(null);
-      }
+      setAutocomplete({
+        isOpen: true,
+        type: 'tag',
+        query,
+        position: getCaretPosition(textareaRef.current!, cursorPos),
+        startIndex: cursorPos - query.length - 1,  // -1 for #
+      });
+    } else if (collectionMatch && collections) {
+      const query = collectionMatch[1];
+      // Only trigger if no dice notation characters are present? 
+      // Or simply trigger and filter. If query is "1d", suggestions will be empty (likely).
+      setAutocomplete({
+        isOpen: true,
+        type: 'collection',
+        query,
+        position: getCaretPosition(textareaRef.current!, cursorPos),
+        startIndex: cursorPos - query.length - 1, // -1 for [
+      });
     } else {
       setAutocomplete(null);
     }
@@ -117,8 +148,26 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
   const handleSelect = (suggestion: any) => {
     if (!autocomplete || !textareaRef.current) return;
     
-    const prefix = autocomplete.type === 'mention' ? '@' : '#';
-    const insertText = `${prefix}${suggestion.slug.replace(/\s/g, '_')} `;
+    let prefix = '';
+    let suffix = ' ';
+    let insertText = '';
+
+    if (autocomplete.type === 'mention') {
+        prefix = '@';
+        insertText = `${prefix}${suggestion.slug.replace(/\s/g, '_')}${suffix}`;
+    } else if (autocomplete.type === 'tag') {
+        prefix = '#';
+        insertText = `${prefix}${suggestion.slug.replace(/\s/g, '_')}${suffix}`;
+    } else if (autocomplete.type === 'collection') {
+        // Replace [query with [CollectionTitle]
+        // We need to keep the opening bracket or re-add it.
+        // The selection replaces from startIndex.
+        // insertText = `[${suggestion.title}]`;
+        // Actually, autocomplete replacement logic replaces the whole trigger + query.
+        // So we replace `[` + `query`.
+        insertText = `[${suggestion.title}]`;
+        suffix = ''; // No space after collection? Maybe not.
+    }
     
     const before = value.slice(0, autocomplete.startIndex);
     const after = value.slice(textareaRef.current.selectionStart);
@@ -135,16 +184,114 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
     
     setAutocomplete(null);
   };
+
+  const insertAtCursor = (textToInsert: string, cursorOffset: number = 0) => {
+    if (!textareaRef.current) return;
+    
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+    
+    const newValue = before + textToInsert + after;
+    onChange(newValue);
+    
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const newPos = start + textToInsert.length + cursorOffset;
+        textareaRef.current.setSelectionRange(newPos, newPos);
+        
+        // Manually trigger handleInput logic to check for autocomplete
+        // We construct a synthetic event or just call logic if needed.
+        // If we inserted `[`, we want to trigger autocomplete.
+        // But `handleInput` takes an event. We can refactor `handleInput` logic or just let the user type.
+        // The user said "Clicking collections icon brings up autocomplete".
+        // If I insert `[`, I should try to open it.
+        
+        if (textToInsert === '[') {
+             // Force check
+             const position = getCaretPosition(textareaRef.current, newPos);
+             if (collections) {
+                 setAutocomplete({
+                    isOpen: true,
+                    type: 'collection',
+                    query: '',
+                    position,
+                    startIndex: start 
+                 });
+             }
+        }
+      }
+    }, 0);
+  };
   
   return (
-    <div className="relative w-full">
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleInput}
-        placeholder={placeholder}
-        className={className}
-      />
+    <div className={`relative w-full group flex flex-col gap-1 ${containerClassName || ''}`}>
+      <div className="relative w-full flex-1">
+        {/* Backdrop for Syntax Highlighting */}
+        <div 
+            ref={backdropRef}
+            className={`absolute inset-0 pointer-events-none whitespace-pre-wrap break-words overflow-hidden rounded-b-lg pb-10 ${className}`}
+            style={{ 
+                color: 'rgb(var(--text-main))', 
+                // Background and Border handled by className (visible on backdrop)
+            }}
+            aria-hidden="true"
+        >
+            {highlights}
+            {value.endsWith('\n') && <br />} 
+        </div>
+
+        <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={handleInput}
+            onScroll={handleScroll}
+            placeholder={placeholder}
+            className={`relative z-10 bg-transparent text-transparent caret-txt-main rounded-b-lg rounded-t-none pb-10 ${className}`}
+            style={{ 
+                color: 'transparent', 
+                caretColor: 'rgb(var(--text-main))',
+                backgroundColor: 'transparent',
+                borderColor: 'transparent'
+            }}
+        />
+
+        {/* Floating Toolbar */}
+        <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity bg-app/80 backdrop-blur-sm border border-border rounded-lg p-1 shadow-sm">
+            <button 
+            onClick={() => insertAtCursor(' @')}
+            className="p-1.5 hover:bg-card-hover rounded text-primary font-bold"
+            title="Mencionar (@)"
+            >
+            <AtSign size={14} />
+            </button>
+            <button 
+            onClick={() => insertAtCursor('#')}
+            className="p-1.5 hover:bg-card-hover rounded text-blue-400 font-bold"
+            title="Tag (#)"
+            >
+            <Hash size={14} />
+            </button>
+            <button 
+            onClick={() => insertAtCursor('[]', -1)} 
+            className="p-1.5 hover:bg-card-hover rounded text-purple-400"
+            title="Dado ([])"
+            >
+            <Dices size={14} />
+            </button>
+            {collections && (
+                <button 
+                onClick={() => insertAtCursor('[')} 
+                className="p-1.5 hover:bg-card-hover rounded text-txt-main"
+                title="Coleção ([)"
+                >
+                <Layers size={14} />
+                </button>
+            )}
+        </div>
+      </div>
       
       {autocomplete?.isOpen && (
         <AutocompletePopup
@@ -152,6 +299,7 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
           type={autocomplete.type}
           entries={entries}
           customCategories={customCategories}
+          collections={collections}
           position={autocomplete.position}
           onSelect={handleSelect}
           onClose={() => setAutocomplete(null)}

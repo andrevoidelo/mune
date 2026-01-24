@@ -23,7 +23,7 @@ export interface LogEntry {
 
 export type OracleBias = 'LIKELY' | 'NORMAL' | 'UNLIKELY';
 
-export type AttributeType = 'UNDER' | 'OVER' | 'NONE';
+export type AttributeType = 'UNDER' | 'OVER' | 'NONE' | 'TARGET';
 
 export interface Attribute {
   id: string;
@@ -31,6 +31,7 @@ export interface Attribute {
   value: number;
   rollType: AttributeType;
   dice?: string;
+  modifier?: number; // Added for TARGET roll type
   color?: string;
 }
 
@@ -124,6 +125,48 @@ export interface WikiEntry {
   isAutoCreated?: boolean;
 }
 
+// --- CLOCK TYPES ---
+
+export type ClockType = 'THREAT' | 'PROGRESS' | 'COUNTDOWN' | 'RACING' | 'TUG_OF_WAR';
+
+export interface Clock {
+  id: string;
+  name: string;
+  segments: number;              // Total segments (customizable)
+  filled: number;                // Currently filled (0 to segments)
+  filledOpponent?: number;       // For Racing clocks
+  type: ClockType;
+  completionText?: string;       // What happens when full (or Max for Tug)
+  completionTextMin?: string;    // What happens when empty (For Tug of War)
+  isComplete: boolean;
+  isArchived: boolean;
+  linkedWikiId?: string;         // Optional link to wiki entry
+  createdAt: number;
+  completedAt?: number;
+  color?: string;                // Custom color (optional)
+}
+
+// --- CONFLICT TYPES ---
+
+export interface ConflictParticipant {
+  id: string;
+  name: string;
+  type: 'PLAYER' | 'ENEMY' | 'ALLY';
+  initiative: number;
+  hp?: number;
+  maxHp?: number;
+  status?: string;
+  notes?: string;
+  active: boolean; // Is it their turn?
+}
+
+export interface ConflictState {
+  isActive: boolean;
+  round: number;
+  turnIndex: number;
+  participants: ConflictParticipant[];
+}
+
 export interface AppTheme {
   id: string;
   name: string;
@@ -162,4 +205,7 @@ export interface Adventure {
   // Novos campos de estado da aventura
   wiki: WikiEntry[];
   customCategories: CustomCategory[];
+  clocks: Clock[];
+  conflictState?: ConflictState;
+  lastLogViewedAt?: number; // Timestamp of when the log tab was last visited
 }
