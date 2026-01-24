@@ -8,7 +8,7 @@
 *Um app completo para o jogador de RPG Solo*
 
 ![Status](https://img.shields.io/badge/Status-Functional-green)
-[![Version](https://img.shields.io/badge/version-0.9.7-blue.svg)](https://github.com/andrevoidelo/mune)
+[![Version](https://img.shields.io/badge/version-0.9.8-blue.svg)](https://github.com/andrevoidelo/mune)
 ![Tech](https://img.shields.io/badge/Tech-React%20%7C%20Vite%20%7C%20TypeScript%20%7C%20Tailwind-blue)
 [![Platform](https://img.shields.io/badge/platform-Web%20%7C%20Android%20%7C%20iOS-lightgrey.svg)]()
 

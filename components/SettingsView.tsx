@@ -278,7 +278,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="pt-4 pb-8 flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-opacity space-y-2 flex-none">
         <div className="w-12 h-1 bg-card rounded-full mb-1"></div>
         <span className="px-2 py-0.5 rounded bg-card border border-border text-[10px] font-mono text-txt-muted">
-          v0.9.7
+          v0.9.8
         </span>
         <p className="text-[10px] font-medium text-txt-muted font-mono uppercase tracking-widest">
           André Ricardo Voidelo
