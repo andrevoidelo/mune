@@ -1,5 +1,5 @@
-import { PORTENT_ADJECTIVES, PORTENT_NOUNS } from "./constants";
-import { LogEntry, WikiEntry, WikiCategoryId, CustomCategory } from "./types";
+import { PORTENT_ADJECTIVES, PORTENT_NOUNS, DEFAULT_CATEGORIES } from "./constants";
+import { LogEntry, WikiEntry, WikiCategoryId, CustomCategory, Collection } from "./types";
 
 export const rollD = (sides: number): number => {
   return Math.floor(Math.random() * sides) + 1;
@@ -177,16 +177,81 @@ export const adjustColorBrightness = (hex: string, percent: number): string => {
       c = c.split('').map(char => char + char).join('');
   }
   
-  const num = parseInt(c, 16);
-  let r = (num >> 16) + percent;
-  let g = ((num >> 8) & 0x00FF) + percent;
-  let b = (num & 0x0000FF) + percent;
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
 
-  r = Math.min(255, Math.max(0, r));
-  g = Math.min(255, Math.max(0, g));
-  b = Math.min(255, Math.max(0, b));
+  const nr = Math.min(255, Math.max(0, r + percent));
+  const ng = Math.min(255, Math.max(0, g + percent));
+  const nb = Math.min(255, Math.max(0, b + percent));
 
-  return `#${(g | (b << 8) | (r << 16)).toString(16).padStart(6, '0')}`;
+  return `#${((1 << 24) + (nr << 16) + (ng << 8) + nb).toString(16).slice(1)}`;
+};
+
+// --- DICE PROCESSING ---
+
+export const processTextWithDice = (text: string): { processedText: string, rollDetails: string[], hasRolls: boolean } => {
+  const diceRegex = /\[([0-9dD+\-khlKHL]+)\]/g;
+  const rollDetails: string[] = [];
+  let hasRolls = false;
+
+  const processedText = text.replace(diceRegex, (match, notation) => {
+    try {
+      hasRolls = true;
+      const { total, detail } = rollDiceNotation(notation);
+      rollDetails.push(`${notation}[${total}]`); 
+      return `**${total}**`;
+    } catch (e) {
+      return match;
+    }
+  });
+
+  return { processedText, rollDetails, hasRolls };
+};
+
+export const processCollectionText = (
+  text: string, 
+  collections: Collection[], 
+  depth: number = 0
+): { text: string, details: string[] } => {
+  if (depth > 5) return { text, details: [] };
+
+  let currentText = text;
+  let allDetails: string[] = [];
+
+  // 1. Resolve Tables: [TableName]
+  const tableRegex = /\[([^\]]+)\]/g;
+  
+  // Using replace with a function allows us to check each match against collections
+  // However, we need to handle the fact that we might match dice notation here too.
+  // We only replace if we find a collection.
+  
+  // NOTE: String.replace doesn't support async or easy way to restart scan if we replace content.
+  // But since we are replacing [Table] with "Result", "Result" might contain more [Table] or [Dice].
+  // So we might need a loop or just rely on recursion for the *replaced* content.
+  // The recursive call `processCollectionText(item.text)` handles the content of the item.
+  // But what if the original line has multiple tables? `replace` handles all global matches.
+  
+  currentText = currentText.replace(tableRegex, (match, content) => {
+      const collection = collections.find(c => c.title.toLowerCase() === content.toLowerCase());
+      
+      if (collection && collection.items.length > 0) {
+          const item = collection.items[Math.floor(Math.random() * collection.items.length)];
+          const subResult = processCollectionText(item.text, collections, depth + 1);
+          allDetails.push(...subResult.details);
+          return subResult.text;
+      }
+      return match;
+  });
+
+  // 2. Resolve Dice
+  const diceResult = processTextWithDice(currentText);
+  allDetails.push(...diceResult.rollDetails);
+  
+  return {
+      text: diceResult.processedText,
+      details: allDetails
+  };
 };
 
 // --- WIKI UTILS ---
@@ -212,7 +277,7 @@ export const generateUniqueSlug = (title: string, existingSlugs: string[]): stri
 };
 
 export interface ParsedLink {
-  type: 'mention' | 'tag';
+  type: 'mention' | 'tag' | 'bold' | 'dice';
   value: string;          // Raw value (e.g., "Eldric_o_Mago")
   displayValue: string;   // Display value (e.g., "Eldric o Mago")
   entryId?: string;       // ID if entry exists
@@ -225,6 +290,8 @@ export interface ParsedContent {
     | { type: 'text'; value: string }
     | { type: 'mention'; value: string; entryId?: string }
     | { type: 'tag'; value: string; entryId?: string }
+    | { type: 'bold'; value: string }
+    | { type: 'dice'; value: string }
   >;
   links: ParsedLink[];
 }
@@ -235,6 +302,8 @@ export const parseLinkedContent = (
 ): ParsedContent => {
   const mentionRegex = /@([\p{L}0-9_]+)/gu;
   const tagRegex = /#([\p{L}0-9_]+)/gu;
+  const boldRegex = /\*\*([^*]+)\*\*/g;
+  const diceRegex = /\[([0-9dD+\-khlKHL]+)\]/g;
 
   const links: ParsedLink[] = [];
   let match;
@@ -270,6 +339,28 @@ export const parseLinkedContent = (
     });
   }
 
+  // Find **bold**
+  while ((match = boldRegex.exec(content)) !== null) {
+    links.push({
+      type: 'bold',
+      value: match[1],
+      displayValue: match[1],
+      startIndex: match.index,
+      endIndex: match.index + match[0].length,
+    });
+  }
+
+  // Find [dice]
+  while ((match = diceRegex.exec(content)) !== null) {
+    links.push({
+      type: 'dice',
+      value: match[1],
+      displayValue: match[1],
+      startIndex: match.index,
+      endIndex: match.index + match[0].length,
+    });
+  }
+
   // Sort by position
   links.sort((a, b) => a.startIndex - b.startIndex);
 
@@ -281,11 +372,19 @@ export const parseLinkedContent = (
     if (link.startIndex > lastIndex) {
       parts.push({ type: 'text', value: content.slice(lastIndex, link.startIndex) });
     }
-    parts.push({
-      type: link.type,
-      value: link.value,
-      entryId: link.entryId,
-    });
+    
+    if (link.type === 'bold') {
+      parts.push({ type: 'bold', value: link.value });
+    } else if (link.type === 'dice') {
+      parts.push({ type: 'dice', value: link.value });
+    } else {
+      parts.push({
+        type: link.type as 'mention' | 'tag',
+        value: link.value,
+        entryId: link.entryId,
+      });
+    }
+    
     lastIndex = link.endIndex;
   }
 
@@ -347,7 +446,11 @@ export const deleteCustomCategory = (
 };
 
 export const getCategoryColor = (categoryId: string, customCategories: CustomCategory[]): string => {
-  return 'primary';
+  const defaultCat = DEFAULT_CATEGORIES.find(c => c.id === categoryId);
+  if (defaultCat) return defaultCat.color;
+  
+  const custom = customCategories.find(c => c.id === categoryId);
+  return custom?.color || 'primary';
 };
 
 export const getCategoryIcon = (categoryId: string, customCategories: CustomCategory[]): string => {

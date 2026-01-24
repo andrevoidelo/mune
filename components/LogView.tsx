@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LogEntry, WikiEntry } from '../types';
-import { Trash2, Clock, X, StickyNote, Printer, Calendar, FileDown, ArrowDown, Download } from 'lucide-react';
+import { Trash2, Clock, X, StickyNote, Printer, Calendar, FileDown, ArrowDown, Download, Search } from 'lucide-react';
 import { exportLogsToMarkdown } from '../utils';
 import { useGameSound } from '../hooks/useGameSound';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
@@ -16,6 +16,10 @@ interface LogViewProps {
   isActive: boolean;
   wikiEntries?: WikiEntry[];
   onNavigateToWiki?: (entryId: string | null, createSlug?: string) => void;
+  targetLogId?: string | null;
+  onClearTargetLog?: () => void;
+  onLogRead?: (timestamp: number) => void;
+  lastLogViewedAt?: number;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -36,14 +40,33 @@ const LogView: React.FC<LogViewProps> = ({
   removeLog, 
   isActive, 
   wikiEntries, 
-  onNavigateToWiki 
+  onNavigateToWiki,
+  targetLogId,
+  onClearTargetLog,
+  onLogRead,
+  lastLogViewedAt
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const logRefs = useRef<Map<string, HTMLDivElement>>(new Map()); // Ref map for logs
+  const [highlightedLogId, setHighlightedLogId] = useState<string | null>(null);
+
   const prevLogsLength = useRef(logs.length);
   const { play } = useGameSound();
 
+  const filteredLogs = logs.filter(log => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    
+    const matchesTitle = log.title?.toLowerCase().includes(query);
+    const matchesResult = log.result?.toLowerCase().includes(query);
+    const matchesDetails = log.details?.toLowerCase().includes(query);
+    const matchesType = TYPE_LABELS[log.type]?.toLowerCase().includes(query);
+    
+    return matchesTitle || matchesResult || matchesDetails || matchesType;
+  });
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -59,18 +82,80 @@ const LogView: React.FC<LogViewProps> = ({
     return () => observer.disconnect();
   }, []);
 
+  // Scroll to target log
   useEffect(() => {
-    const shouldScroll = isActive && (logs.length > prevLogsLength.current || prevLogsLength.current === 0);
+    if (isActive && targetLogId) {
+        // Wait a tick for rendering
+        setTimeout(() => {
+            const element = logRefs.current.get(targetLogId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setHighlightedLogId(targetLogId);
+                
+                // Remove highlight after animation
+                setTimeout(() => {
+                    setHighlightedLogId(null);
+                    onClearTargetLog?.();
+                }, 1500);
+            }
+        }, 100);
+    }
+  }, [isActive, targetLogId, onClearTargetLog]);
+
+  useEffect(() => {
+    // Only auto-scroll to bottom if we are NOT targeting a specific log
+    const shouldScroll = isActive && !targetLogId && (logs.length > prevLogsLength.current || prevLogsLength.current === 0);
 
     if (shouldScroll) {
-      const timeoutId = setTimeout(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 50);
-      return () => clearTimeout(timeoutId);
+      // If there are unread logs, scroll to the first unread one instead of the bottom
+      const firstUnread = logs.find(l => l.timestamp > (lastLogViewedAt || 0));
+      
+      if (firstUnread) {
+        setTimeout(() => {
+          const element = logRefs.current.get(firstUnread.id);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      } else {
+        const timeoutId = setTimeout(() => {
+          bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
+        return () => clearTimeout(timeoutId);
+      }
     }
     
     prevLogsLength.current = logs.length;
-  }, [logs.length, isActive]);
+  }, [logs.length, isActive, targetLogId]); // Added targetLogId to dependencies
+
+  // Intersection Observer to mark logs as read
+  useEffect(() => {
+    if (!isActive || !onLogRead) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const timestamp = parseInt(entry.target.getAttribute('data-timestamp') || '0');
+            if (timestamp > (lastLogViewedAt || 0)) {
+              onLogRead(timestamp);
+            }
+          }
+        });
+      },
+      { 
+        root: null, // Viewport
+        threshold: 0.5 // Mark as read when 50% visible
+      }
+    );
+
+    // Watch all currently rendered log elements
+    logRefs.current.forEach(el => {
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [isActive, logs.length, lastLogViewedAt, onLogRead]);
 
   const scrollToBottom = () => {
     play('CLICK');
@@ -160,7 +245,23 @@ const LogView: React.FC<LogViewProps> = ({
   return (
     <div className="flex flex-col h-full bg-app relative">
       <div className="flex justify-between items-center p-4 border-b border-border bg-app/95 sticky top-0 z-10 backdrop-blur-sm h-16 no-print">
-        <h2 className="text-lg font-bold text-txt-main">Registro da Sessão</h2>
+        {/* Search Bar */}
+        <div className="flex items-center gap-2 flex-1 bg-card/50 border border-border rounded-lg px-3 py-2 mr-2 focus-within:border-primary transition-colors">
+           <Search size={16} className="text-txt-dim" />
+           <input 
+             type="text" 
+             value={searchQuery}
+             onChange={(e) => setSearchQuery(e.target.value)}
+             placeholder="Buscar..." 
+             className="bg-transparent border-none outline-none text-sm text-txt-main placeholder-txt-dim w-full"
+           />
+           {searchQuery && (
+             <button onClick={() => setSearchQuery('')} className="text-txt-dim hover:text-txt-main">
+               <X size={14} />
+             </button>
+           )}
+        </div>
+
         {logs.length > 0 && (
           <div className="flex items-center gap-2">
             <button 
@@ -196,22 +297,29 @@ const LogView: React.FC<LogViewProps> = ({
            <p className="text-sm text-gray-600">Exportado em {new Date().toLocaleString()}</p>
         </div>
 
-        {logs.length === 0 ? (
+        {filteredLogs.length === 0 ? (
           <div className="text-center text-txt-dim mt-20 flex flex-col items-center no-print">
             <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mb-4">
-              <Clock size={32} className="opacity-50" />
+              {searchQuery ? <Search size={32} className="opacity-50" /> : <Clock size={32} className="opacity-50" />}
             </div>
-            <p className="font-medium text-txt-muted">Nenhum registro ainda.</p>
-            <p className="text-sm mt-2 text-txt-dim max-w-[200px]">As rolagens do oráculo, ferramentas e suas anotações aparecerão aqui.</p>
+            <p className="font-medium text-txt-muted">{searchQuery ? 'Nenhum resultado encontrado.' : 'Nenhum registro ainda.'}</p>
+            {!searchQuery && <p className="text-sm mt-2 text-txt-dim max-w-[200px]">As rolagens do oráculo, ferramentas e suas anotações aparecerão aqui.</p>}
           </div>
         ) : (
-          logs.map((entry) => {
+          filteredLogs.map((entry) => {
             const { dateStr, timeStr } = formatDateTime(entry.timestamp);
             const iconUrl = entry.icon ? `/icons/${entry.icon}.svg` : undefined;
+            const isHighlighted = highlightedLogId === entry.id;
+            
             return (
               <div 
-                key={entry.id} 
-                className={`relative pl-4 pr-3 py-3 rounded-r-lg border-l-4 shadow-sm group break-inside-avoid print:shadow-none print:border-l-[3px] print:border-y-0 print:border-r-0 print:rounded-none print:pl-3 print:py-2 ${getEntryStyle(entry)}`}
+                key={entry.id}
+                ref={el => { 
+                  if (el) logRefs.current.set(entry.id, el); 
+                  else logRefs.current.delete(entry.id);
+                }}
+                data-timestamp={entry.timestamp}
+                className={`relative pl-4 pr-3 py-3 rounded-r-lg border-l-4 shadow-sm group break-inside-avoid print:shadow-none print:border-l-[3px] print:border-y-0 print:border-r-0 print:rounded-none print:pl-3 print:py-2 ${getEntryStyle(entry)} ${isHighlighted ? 'ring-2 ring-primary shadow-[0_0_15px_rgba(var(--primary),0.5)] scale-[1.02] z-10 transition-all duration-500' : 'transition-all duration-300'}`}
               >
                 <div className="flex justify-between items-start mb-1 print:flex-col print:gap-1">
                   <span className="text-[10px] sm:text-xs font-mono text-txt-muted print:text-gray-500 flex items-center gap-2 flex-wrap">

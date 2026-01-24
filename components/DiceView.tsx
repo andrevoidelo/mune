@@ -45,7 +45,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
       type: 'DICE',
       title: `Rolagem: ${formula}`,
       result: total.toString(),
-      details: detail
+      details: `${detail} = ${total}`
     });
   };
 

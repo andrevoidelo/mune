@@ -157,18 +157,18 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
                 className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2 text-txt-main placeholder-txt-dim focus:outline-none focus:border-primary"
             />
             </div>
-            {/* Close button visible only on portrait, typically modal handles close on landscape or via outside click, but let's keep it consistent or hide if modal header exists */}
+            {/* Close button - "Fechar" as requested */}
             <button 
                 onClick={onClose}
-                className="p-2 hover:bg-card-hover rounded-full text-txt-muted hover:text-txt-main landscape:hidden"
+                className="px-4 py-2 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold text-sm transition-colors shadow-sm active:scale-95 whitespace-nowrap"
             >
-            <X size={20} />
+            Fechar
             </button>
         </div>
 
         {/* Color Picker Section */}
         <div className="p-4 border-b landscape:border-b-0 border-border landscape:overflow-y-auto landscape:flex-1">
-            <label className="text-xs text-txt-muted uppercase font-bold tracking-wider mb-3 block">Cor do Ícone</label>
+            
             <div className="flex flex-wrap gap-2 landscape:gap-1.5 items-center landscape:content-start">
             {PRESET_COLORS.map((c) => (
                 <button
@@ -213,7 +213,7 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
                 <p>Carregando biblioteca...</p>
             </div>
         ) : (
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 landscape:grid-cols-6 lg:landscape:grid-cols-8 gap-2">
+            <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 landscape:grid-cols-8 lg:landscape:grid-cols-10 gap-2">
                 <button
                     onClick={() => onSelect(undefined, undefined)} 
                     className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-1 border border-border hover:bg-card-hover transition-colors ${!selectedIcon ? 'bg-card border-primary ring-1 ring-primary' : 'bg-card/50'}`}

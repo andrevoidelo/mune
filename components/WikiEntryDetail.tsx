@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { WikiEntry, CustomCategory, LogEntry } from '../types';
-import { getCategoryColor, getCategoryIcon, parseLinkedContent, generateSlug } from '../utils';
+import { getCategoryColor, getCategoryIcon, parseLinkedContent, generateSlug, rollDiceNotation, generateUUID } from '../utils';
 import LinkedText from './LinkedText';
 import DynamicIcon from './DynamicIcon';
-import { Trash2, Edit2, X, ScrollText, BookOpen } from 'lucide-react';
+import RollResultModal from './RollResultModal';
+import { Trash2, Edit2, X, ScrollText, BookOpen, ArrowRight } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 
 interface WikiEntryDetailProps {
@@ -16,6 +17,8 @@ interface WikiEntryDetailProps {
   onDelete: () => void;
   onNavigate: (entryId: string) => void;
   onCreate: (title: string) => void;
+  onNavigateToLog?: (logId: string) => void;
+  addLog?: (entry: LogEntry) => void;
 }
 
 const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
@@ -27,11 +30,56 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
   onEdit,
   onDelete,
   onNavigate,
-  onCreate
+  onCreate,
+  onNavigateToLog,
+  addLog
 }) => {
   const { play } = useGameSound();
   const categoryColor = getCategoryColor(entry.category, customCategories);
   const categoryIcon = getCategoryIcon(entry.category, customCategories);
+
+  const [activeRoll, setActiveRoll] = useState<{
+    roll: number;
+    notation: string;
+    detail: string;
+    isRevealing: boolean;
+  } | null>(null);
+
+  const handleDiceClick = (notation: string) => {
+    play('CLICK');
+    const { total, detail } = rollDiceNotation(notation);
+    setActiveRoll({
+      roll: total,
+      notation,
+      detail,
+      isRevealing: true
+    });
+
+    // Logging Logic
+    if (addLog) {
+        // Find the context line
+        const lines = entry.content.split('\n');
+        const searchStr = `[${notation}]`;
+        const contextLine = lines.find(line => line.includes(searchStr)) || searchStr;
+        
+        // Replace [notation] with **total** (removing brackets from output)
+        const resultText = contextLine.replace(searchStr, `**${total}**`);
+        
+        addLog({
+            id: generateUUID(),
+            timestamp: Date.now(),
+            type: 'NOTE',
+            title: 'Nota',
+            result: `@${entry.title.replace(/\s/g, '_')}\n${resultText}`,
+            details: `${detail} = ${total}`
+        });
+    }
+
+    setTimeout(() => {
+        setActiveRoll(prev => prev ? { ...prev, isRevealing: false } : null);
+        play('DICE_RESULT');
+    }, 600);
+  };
 
   const backlinks = useMemo(() => {
     return entries.filter(e => {
@@ -158,6 +206,7 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
                                 onCreate(title);
                             }
                         }}
+                        onDiceClick={handleDiceClick}
                         className="text-lg leading-relaxed text-txt-main"
                     />
                 </div>
@@ -204,7 +253,7 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
                             {relatedLogs.map(log => (
                                 <div 
                                     key={log.id}
-                                    className="p-3 rounded-lg bg-card border border-border"
+                                    className="p-3 rounded-lg bg-card border border-border w-full relative group hover:border-primary/50 transition-colors"
                                 >
                                     <div className="flex justify-between text-[10px] text-txt-muted mb-1 uppercase font-bold tracking-wider">
                                         <span className="flex items-center gap-2">
@@ -212,33 +261,65 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
                                             <span className="opacity-50">•</span>
                                             <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </span>
-                                        <span>{log.type}</span>
                                     </div>
                                     <div className="text-sm text-txt-main">
-                                        <LinkedText 
-                                            content={log.result}
-                                            entries={entries}
-                                            onMentionClick={(slug, id) => {
-                                                play('CLICK');
-                                                if (id) {
-                                                    if (id !== entry.id) onNavigate(id);
-                                                } else {
-                                                    // Format slug to title (e.g. "passagem_secreta" -> "Passagem Secreta")
-                                                    const title = slug.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
-                                                    onCreate(title);
-                                                }
-                                            }}
-                                            onTagClick={(slug, id) => {
-                                                play('CLICK');
-                                                if (id) {
-                                                    if (id !== entry.id) onNavigate(id);
-                                                } else {
-                                                    const title = slug.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
-                                                    onCreate(title);
-                                                }
-                                            }}
-                                        />
+                                        <div className="flex gap-3">
+                                            {log.icon && (
+                                                <div className="flex-none pt-1">
+                                                    <div 
+                                                        className="w-8 h-8 sm:w-10 sm:h-10"
+                                                        style={{
+                                                            backgroundColor: log.iconColor || 'rgb(var(--text-muted))',
+                                                            maskImage: `url("/icons/${log.icon}.svg")`,
+                                                            maskRepeat: 'no-repeat',
+                                                            maskPosition: 'center',
+                                                            maskSize: 'contain',
+                                                            WebkitMaskImage: `url("/icons/${log.icon}.svg")`,
+                                                            WebkitMaskRepeat: 'no-repeat',
+                                                            WebkitMaskPosition: 'center',
+                                                            WebkitMaskSize: 'contain'
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <LinkedText 
+                                                    content={log.result}
+                                                    entries={entries}
+                                                    onMentionClick={(slug, id) => {
+                                                        play('CLICK');
+                                                        if (id) onNavigate(id);
+                                                        else {
+                                                            const title = slug.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+                                                            onCreate(title);
+                                                        }
+                                                    }}
+                                                    onTagClick={(slug, id) => {
+                                                        play('CLICK');
+                                                        if (id) onNavigate(id);
+                                                        else {
+                                                            const title = slug.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+                                                            onCreate(title);
+                                                        }
+                                                    }}
+                                                    onDiceClick={handleDiceClick}
+                                                />
+                                                {log.imageUrl && (
+                                                    <div className="mt-2 rounded-lg overflow-hidden border border-border/50">
+                                                        <img src={log.imageUrl} alt="Log Attachment" className="w-full h-auto object-cover max-h-40" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
+                                    
+                                    <button 
+                                       onClick={() => { play('CLICK'); onNavigateToLog?.(log.id); }}
+                                       className="absolute bottom-2 right-2 p-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-opacity shadow-sm"
+                                       title="Ver no Log"
+                                    >
+                                       <ArrowRight size={14} />
+                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -247,6 +328,17 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
             </div>
         </div>
       </div>
+
+      {activeRoll && (
+        <RollResultModal
+          title="Resultado"
+          roll={activeRoll.roll}
+          diceNotation={activeRoll.notation}
+          detailText={activeRoll.detail}
+          isRevealing={activeRoll.isRevealing}
+          onClose={() => setActiveRoll(null)}
+        />
+      )}
     </div>
   );
 };

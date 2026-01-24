@@ -31,13 +31,13 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = [
 
 // --- COLEÇÕES PADRÃO (Tabelas e Decks) ---
 
-const NPC_ATTITUDES_ITEMS: CollectionItem[] = [
+export const NPC_ATTITUDES_ITEMS: CollectionItem[] = [
   { text: "Hostil" }, { text: "Hostil" },
   { text: "Neutro" }, { text: "Neutro" },
   { text: "Amigável" }, { text: "Amigável" }
 ];
 
-const TWENE_ITEMS: CollectionItem[] = [
+export const TWENE_ITEMS: CollectionItem[] = [
   { text: "Aumentar elemento simples" },
   { text: "Diminuir elemento simples" },
   { text: "Adicionar elemento simples" },
@@ -166,13 +166,6 @@ export const PORTENT_NOUNS = [
   "Volta", "Volume", "Vontade", "Voto", "Voz", "Zelo", "Zona"
 ];
 
-// Função auxiliar para gerar presságio "on the fly" já que ele combina duas listas
-// Para o novo sistema de tabelas, vamos criar uma tabela de "Ideias" que combina as duas listas
-const PORTENT_ITEMS: CollectionItem[] = [];
-for(let i=0; i<50; i++) { // Gerar 50 combinações prévias para a tabela padrão, ou usar lógica customizada
-   // Na verdade, o Presságio é especial. Vamos mantê-lo como tabela especial ou criar uma tabela gigante.
-}
-
 export const DEFAULT_COLLECTIONS: Collection[] = [
   {
     id: 'built-in-portent',
@@ -188,22 +181,6 @@ export const DEFAULT_COLLECTIONS: Collection[] = [
     description: 'Três ícones abstratos para inspirar cenas e detalhes.',
     type: 'TABLE',
     items: [], // Lógica customizada
-    isBuiltIn: true
-  },
-  {
-    id: 'built-in-npc',
-    title: 'Atitude de NPC',
-    description: 'Reação inicial (Hostil, Neutro, Amigável).',
-    type: 'TABLE',
-    items: NPC_ATTITUDES_ITEMS,
-    isBuiltIn: true
-  },
-  {
-    id: 'built-in-twene',
-    title: 'TWENE (Inesperado)',
-    description: 'Elementos inesperados para alterar a cena.',
-    type: 'TABLE',
-    items: TWENE_ITEMS,
     isBuiltIn: true
   },
   {

@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
 import { WikiEntry } from '../types';
 import { parseLinkedContent, generateSlug } from '../utils';
-import { Plus } from 'lucide-react';
+import { Plus, Dices } from 'lucide-react';
 
 interface LinkedTextProps {
   content: string;
   entries: WikiEntry[];
   onMentionClick: (slug: string, existingEntryId?: string) => void;
   onTagClick: (tag: string, existingEntryId?: string) => void;
+  onDiceClick?: (notation: string) => void;
   className?: string;
 }
 
@@ -16,6 +17,7 @@ const LinkedText: React.FC<LinkedTextProps> = ({
   entries, 
   onMentionClick, 
   onTagClick,
+  onDiceClick,
   className = ""
 }) => {
   // Parse @mentions and #tags
@@ -75,6 +77,26 @@ const LinkedText: React.FC<LinkedTextProps> = ({
               #{part.value.replace(/_/g, ' ')}
             </button>
           );
+        }
+
+        if (part.type === 'bold') {
+            return <strong key={i} className="font-bold text-txt-main bg-primary/20 px-1 rounded">{part.value}</strong>;
+        }
+
+        if (part.type === 'dice') {
+            return (
+              <button 
+                key={i}
+                onClick={(e) => {
+                   e.stopPropagation();
+                   onDiceClick?.(part.value);
+                }}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-sm font-medium mx-0.5 transition-colors bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 cursor-pointer align-baseline"
+                title={`Rolar ${part.value}`}
+              >
+                 <Dices size={12} /> {part.value}
+              </button>
+            );
         }
 
         return null;
