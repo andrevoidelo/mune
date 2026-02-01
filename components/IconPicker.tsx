@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, X, Check, PaintBucket } from 'lucide-react';
+import { Search, X } from 'lucide-react';
+import { HexColorPicker } from 'react-colorful';
 import { Capacitor } from '@capacitor/core';
 import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 import { useBackButton } from '../hooks/useBackButton';
@@ -18,37 +19,26 @@ interface IconPickerProps {
 }
 
 export const PRESET_COLORS = [
-  '#f8fafc', // Slate 50
-  '#94a3b8', // Slate 400
-  '#475569', // Slate 600
-  '#ef4444', // Red 500
-  '#f97316', // Orange 500
-  '#f59e0b', // Amber 500
-  '#84cc16', // Lime 500
-  '#22c55e', // Green 500
-  '#10b981', // Emerald 500
-  '#06b6d4', // Cyan 500
-  '#3b82f6', // Blue 500
-  '#6366f1', // Indigo 500
-  '#8b5cf6', // Violet 500
-  '#d946ef', // Fuchsia 500
-  '#f43f5e', // Rose 500
+  '#f8fafc', '#ef4444', '#84cc16', '#3b82f6',
+  '#94a3b8', '#f97316', '#22c55e', '#8b5cf6',
+  '#475569', '#f59e0b', '#06b6d4', '#d946ef'
 ];
 
-const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '#ffffff', onSelect, onClose }) => {
+const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor, onSelect, onClose }) => {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [color, setColor] = useState(selectedColor);
+  // Fix 2: Default to #ffffff if selectedColor is undefined/null/empty
+  const [color, setColor] = useState(selectedColor || '#ffffff');
   const [icons, setIcons] = useState<IconData[]>([]);
   const [loading, setLoading] = useState(true);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Debounce Search: Wait 500ms after user stops typing
+  // Close color picker on click outside logic removed as we use inline layout now
+
+  // Debounce Search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
     }, 500);
-
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -71,20 +61,13 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
   }, []);
 
   useEffect(() => {
-    // Lazy load the icon manifest with cache busting
     fetch(`/icons.json?t=${new Date().getTime()}`)
       .then(res => {
-        if (!res.ok) {
-            throw new Error(`Failed to load icons: ${res.status} ${res.statusText}`);
-        }
+        if (!res.ok) throw new Error(`Failed to load icons: ${res.status}`);
         return res.json();
       })
       .then((filenames: string[]) => {
-        if (!Array.isArray(filenames)) {
-            throw new Error('Invalid icon data: expected an array');
-        }
         const loadedIcons = filenames.map(filename => {
-          // Convert "air-balloon" -> "Air Balloon"
           const name = filename
             .split('-')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -105,11 +88,9 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
       });
   }, []);
   
-  // Filter icons based on debouncedSearch
+  // Filter icons
   const filteredIcons = useMemo(() => {
     if (loading) return [];
-    
-    // If empty, show simplified list
     if (!debouncedSearch.trim()) return icons.slice(0, 99); 
     
     const lowerSearch = debouncedSearch.toLowerCase();
@@ -117,14 +98,10 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
       icon.name.toLowerCase().includes(lowerSearch) || 
       icon.filename.toLowerCase().includes(lowerSearch)
     );
-
-    // PERFORMANCE LIMIT: Only render top 200 matches. 
-    // Rendering 2000+ icons for a query like "a" freezes the UI even with debouncing.
     return results.slice(0, 200);
   }, [debouncedSearch, icons, loading]);
 
   const handleIconSelect = (iconFilename: string) => {
-    // If clicking the already selected icon, deselect it
     if (selectedIcon === iconFilename) {
         onSelect(undefined, undefined);
     } else {
@@ -140,87 +117,86 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
   };
 
   return (
-    <div className="flex flex-col landscape:flex-row h-full max-h-[600px] overflow-hidden">
+    // Fix 1: Add rounded-2xl to prevent corner bleeding
+    <div className="flex flex-col h-full overflow-hidden bg-app rounded-2xl">
       
-      {/* Sidebar (Search + Color) */}
-      <div className="flex-none w-full landscape:w-72 flex flex-col border-b landscape:border-b-0 landscape:border-r border-border landscape:bg-app/50 landscape:backdrop-blur-sm z-10">
-        
-        {/* Search Header */}
-        <div className="flex items-center gap-2 p-4 border-b border-border landscape:border-b-0">
-            <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" size={18} />
+      {/* Header: Search + Close */}
+      <div className="flex items-center gap-2 p-3 border-b border-border bg-card/50">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" size={16} />
             <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Procurar ícones..."
-                className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2 text-txt-main placeholder-txt-dim focus:outline-none focus:border-primary"
+                placeholder="Buscar ícone..."
+                className="w-full bg-card border border-border rounded-full pl-9 pr-4 py-2 text-sm text-txt-main placeholder-txt-dim focus:outline-none focus:border-primary transition-colors"
+                autoFocus
             />
-            </div>
-            {/* Close button - "Fechar" as requested */}
-            <button 
-                onClick={onClose}
-                className="px-4 py-2 bg-primary hover:bg-primary-hover text-on-primary rounded-lg font-bold text-sm transition-colors shadow-sm active:scale-95 whitespace-nowrap"
-            >
-            Fechar
-            </button>
-        </div>
+          </div>
+          <button 
+              onClick={onClose}
+              className="p-2 text-txt-muted hover:text-txt-main bg-card hover:bg-card-hover rounded-full transition-colors active:scale-95"
+          >
+            <X size={20} />
+          </button>
+      </div>
 
-        {/* Color Picker Section */}
-        <div className="p-4 border-b landscape:border-b-0 border-border landscape:overflow-y-auto landscape:flex-1">
-            
-            <div className="flex flex-wrap gap-2 landscape:gap-1.5 items-center landscape:content-start">
-            {PRESET_COLORS.map((c) => (
-                <button
-                key={c}
-                onClick={() => handleColorChange(c)}
-                className={`w-8 h-8 landscape:w-7 landscape:h-7 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-txt-main scale-110' : 'border-transparent shadow-sm'}`}
-                style={{ backgroundColor: c }}
-                title={c}
-                />
-            ))}
-            
-            {/* Custom Color Button - Inline */}
-            <div className="flex items-center gap-2">
-                <div 
-                    className="relative w-8 h-8 landscape:w-7 landscape:h-7 rounded-full border-2 border-primary overflow-hidden flex items-center justify-center transition-all hover:scale-105 active:scale-95 group shadow-lg"
-                    style={{ backgroundColor: color }}
-                >
-                    <PaintBucket 
-                        size={16} 
-                        className="pointer-events-none mix-blend-difference text-white opacity-90" 
+      {/* Color Palette - Side-by-Side Layout */}
+      <div className="flex flex-row gap-4 mb-2 p-3 border-b border-border bg-app/50 flex-none">
+          {/* Left: React Colorful */}
+          <div className="flex-none">
+             <HexColorPicker color={color} onChange={handleColorChange} style={{ width: '160px', height: '160px' }} />
+          </div>
+
+          {/* Right: Preset Grid */}
+          <div className="flex-1 min-w-0">
+             <div className="grid grid-cols-4 gap-2">
+                {PRESET_COLORS.map((c) => (
+                    <button
+                        key={c}
+                        onClick={() => handleColorChange(c)}
+                        className={`aspect-square rounded-lg border transition-all active:scale-95 ${color.toLowerCase() === c.toLowerCase() ? 'border-primary ring-2 ring-primary/20 scale-105' : 'border-transparent hover:scale-105 shadow-sm'}`}
+                        style={{ backgroundColor: c }}
+                        title={c}
                     />
-                    <input
-                        type="color"
-                        value={color}
-                        onChange={(e) => handleColorChange(e.target.value)}
-                        className="absolute inset-0 w-[200%] h-[200%] -top-1/2 -left-1/2 cursor-pointer opacity-0"
-                        title="Cor Personalizada"
-                    />
-                </div>
-                {/* Hex code visible only in landscape to keep portrait compact */}
-                <span className="hidden landscape:block text-[10px] text-txt-dim font-mono uppercase tracking-tighter">{color}</span>
-            </div>
-            </div>
-        </div>
+                ))}
+             </div>
+             
+             {/* Current Color Hex Display */}
+             <div className="mt-2 flex items-center gap-2 bg-card border border-border rounded-lg p-1.5 w-full">
+                 <div className="w-5 h-5 rounded border border-border/50 flex-none" style={{ backgroundColor: color }} />
+                 <span className="text-[10px] text-txt-muted font-bold select-none">#</span>
+                 <input 
+                    type="text" 
+                    value={color.replace('#', '')}
+                    onChange={(e) => {
+                        const val = '#' + e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
+                        handleColorChange(val);
+                    }}
+                    // Fix 3: Select all text on focus
+                    onFocus={(e) => e.target.select()}
+                    className="flex-1 bg-transparent border-none outline-none text-[10px] font-mono font-bold text-txt-main uppercase"
+                    maxLength={6}
+                 />
+             </div>
+          </div>
       </div>
 
       {/* Main Content (Icon Grid) */}
-      <div className="flex-1 overflow-y-auto p-4 bg-app landscape:bg-app/30">
+      <div className="flex-1 overflow-y-auto p-3 bg-app scroll-smooth">
         {loading ? (
-            <div className="h-full flex flex-col items-center justify-center text-txt-dim gap-2">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <p>Carregando biblioteca...</p>
+            <div className="h-full flex flex-col items-center justify-center text-txt-dim gap-3 opacity-60">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-xs font-bold uppercase tracking-wider">Carregando...</p>
             </div>
         ) : (
-            <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 landscape:grid-cols-8 lg:landscape:grid-cols-10 gap-2">
+            <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-3">
                 <button
                     onClick={() => onSelect(undefined, undefined)} 
-                    className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-1 border border-border hover:bg-card-hover transition-colors ${!selectedIcon ? 'bg-card border-primary ring-1 ring-primary' : 'bg-card/50'}`}
+                    className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-1 border border-dashed border-border hover:border-error/50 hover:bg-error/5 transition-colors group ${!selectedIcon ? 'bg-card border-primary border-solid ring-1 ring-primary/50' : 'bg-transparent'}`}
                     title="Remover ícone"
                 >
-                    <X size={24} className="text-txt-muted" />
-                    <span className="text-[10px] text-txt-muted uppercase font-bold">Nenhum</span>
+                    <X size={20} className="text-txt-muted group-hover:text-error transition-colors" />
                 </button>
             
             {filteredIcons.map((icon) => {
@@ -229,14 +205,13 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
                 <button
                     key={icon.filename}
                     onClick={() => handleIconSelect(icon.filename)}
-                    className={`relative aspect-square rounded-lg flex flex-col items-center justify-center p-2 border transition-all group ${isSelected ? 'bg-card border-primary ring-1 ring-primary shadow-md' : 'bg-card/50 border-border hover:border-txt-muted hover:bg-card hover:shadow-sm'}`}
+                    className={`relative aspect-square rounded-xl p-2 border transition-all active:scale-95 group ${isSelected ? 'bg-card border-primary ring-2 ring-primary/20 shadow-lg' : 'bg-card border-border hover:border-primary/50 hover:shadow-md'}`}
                     title={icon.name}
                 >
-                    {/* We use mask to color the icon */}
                     <div 
                         className="w-full h-full transition-transform group-hover:scale-110 duration-200"
                         style={{
-                            backgroundColor: isSelected ? color : 'rgb(var(--text-dim))',
+                            backgroundColor: isSelected ? color : 'rgb(var(--text-muted))',
                             maskImage: `url("${icon.url}")`,
                             maskRepeat: 'no-repeat',
                             maskPosition: 'center',
@@ -254,10 +229,9 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, selectedColor = '
         )}
         
         {!loading && filteredIcons.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-txt-dim opacity-60">
-                <Search size={48} className="mb-4 opacity-50" />
-                <p className="text-lg font-bold">Nenhum ícone encontrado</p>
-                <p className="text-sm">Tente buscar por outro termo</p>
+            <div className="h-full flex flex-col items-center justify-center text-txt-dim opacity-50">
+                <Search size={32} className="mb-2" />
+                <p className="text-sm font-bold">Nenhum ícone</p>
             </div>
         )}
       </div>

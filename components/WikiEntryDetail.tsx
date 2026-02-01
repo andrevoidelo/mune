@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { WikiEntry, CustomCategory, LogEntry } from '../types';
-import { getCategoryColor, getCategoryIcon, parseLinkedContent, generateSlug, rollDiceNotation, generateUUID } from '../utils';
+import { WikiEntry, CustomCategory, LogEntry, Collection } from '../types';
+import { getCategoryColor, getCategoryIcon, parseLinkedContent, generateSlug, rollDiceNotation, generateUUID, processCollectionText, processTextWithMechanics, createAutoEntry } from '../utils';
 import LinkedText from './LinkedText';
 import DynamicIcon from './DynamicIcon';
 import RollResultModal from './RollResultModal';
+import MechanicPreviewModal from './MechanicPreviewModal';
 import { Trash2, Edit2, X, ScrollText, BookOpen, ArrowRight } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 
@@ -11,6 +12,7 @@ interface WikiEntryDetailProps {
   entry: WikiEntry;
   entries: WikiEntry[];
   customCategories: CustomCategory[];
+  collections: Collection[];
   logs?: LogEntry[]; // Optional logs prop
   onBack: () => void;
   onEdit: () => void;
@@ -18,6 +20,8 @@ interface WikiEntryDetailProps {
   onNavigate: (entryId: string) => void;
   onCreate: (title: string) => void;
   onNavigateToLog?: (logId: string) => void;
+  onUpdateEntry?: (updatedEntry: WikiEntry) => void;
+  onCreateEntries?: (newEntries: WikiEntry[]) => void;
   addLog?: (entry: LogEntry) => void;
 }
 
@@ -25,6 +29,7 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
   entry,
   entries,
   customCategories,
+  collections,
   logs,
   onBack,
   onEdit,
@@ -32,6 +37,8 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
   onNavigate,
   onCreate,
   onNavigateToLog,
+  onUpdateEntry,
+  onCreateEntries,
   addLog
 }) => {
   const { play } = useGameSound();
@@ -39,46 +46,141 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
   const categoryIcon = getCategoryIcon(entry.category, customCategories);
 
   const [activeRoll, setActiveRoll] = useState<{
-    roll: number;
+    roll: number | string;
     notation: string;
     detail: string;
     isRevealing: boolean;
   } | null>(null);
 
+  const [pendingResolution, setPendingResolution] = useState<{
+    originalLine: string;
+    newLine: string;
+    processedText: string;
+    details: string;
+  } | null>(null);
+
   const handleDiceClick = (notation: string) => {
     play('CLICK');
-    const { total, detail } = rollDiceNotation(notation);
+    
+    // Find the context line
+    const lines = entry.content.split('\n');
+    const searchStr = `[${notation}]`;
+    const contextLine = lines.find(line => line.includes(searchStr)) || searchStr;
+
+    const { processedText, details, hasRolls } = processTextWithMechanics(contextLine, collections);
+
+    // Show rolling animation
     setActiveRoll({
-      roll: total,
-      notation,
-      detail,
-      isRevealing: true
+        roll: '',
+        notation: 'Rolando...',
+        detail: '',
+        isRevealing: true
     });
 
-    // Logging Logic
-    if (addLog) {
-        // Find the context line
-        const lines = entry.content.split('\n');
-        const searchStr = `[${notation}]`;
-        const contextLine = lines.find(line => line.includes(searchStr)) || searchStr;
-        
-        // Replace [notation] with **total** (removing brackets from output)
-        const resultText = contextLine.replace(searchStr, `**${total}**`);
-        
-        addLog({
-            id: generateUUID(),
-            timestamp: Date.now(),
-            type: 'NOTE',
-            title: 'Nota',
-            result: `@${entry.title.replace(/\s/g, '_')}\n${resultText}`,
-            details: `${detail} = ${total}`
-        });
-    }
-
     setTimeout(() => {
-        setActiveRoll(prev => prev ? { ...prev, isRevealing: false } : null);
-        play('DICE_RESULT');
+        // Logging Logic (Happens regardless of confirmation)
+        if (addLog) {
+            addLog({
+                id: generateUUID(),
+                timestamp: Date.now(),
+                type: 'NOTE',
+                title: 'Nota',
+                result: `@${entry.title.replace(/\s/g, '_')}: [...] ${processedText}`,
+                details: details.join(' | ')
+            });
+        }
+
+        // Auto-create entries from mentions in the result
+        if (onCreateEntries) {
+            const { links } = parseLinkedContent(processedText, entries);
+            const mentions = links.filter(l => l.type === 'mention' && !l.entryId);
+            const uniqueTitles = [...new Set(mentions.map(m => m.value.replace(/_/g, ' ')))];
+            const newWikiEntries = uniqueTitles.map(t => createAutoEntry(t, entries)); // Note: entries might be slightly stale if multiple clicks happen fast, but acceptable for single user flow
+            
+            if (newWikiEntries.length > 0) {
+                onCreateEntries(newWikiEntries);
+            }
+        }
+
+        if (hasRolls) play('DICE_RESULT');
+
+        setActiveRoll(null);
+        setPendingResolution({
+            originalLine: contextLine,
+            newLine: processedText,
+            processedText: processedText,
+            details: details.join(' | ')
+        });
     }, 600);
+  };
+  
+  const handleCollectionClick = (collectionName: string) => {
+      // Find the context line
+      const lines = entry.content.split('\n');
+      const searchStr = `{${collectionName}}`;
+      const contextLine = lines.find(line => line.includes(searchStr)) || searchStr;
+      
+      play('ROLL');
+      
+      const { processedText, details, hasRolls } = processTextWithMechanics(contextLine, collections);
+
+      // Show rolling animation
+      setActiveRoll({
+          roll: '',
+          notation: 'Rolando...',
+          detail: '',
+          isRevealing: true
+      });
+      
+      setTimeout(() => {
+        // Logging Logic (Happens regardless of confirmation)
+        if (addLog) {
+            addLog({
+                id: generateUUID(),
+                timestamp: Date.now(),
+                type: 'NOTE',
+                title: 'Nota',
+                result: `@${entry.title.replace(/\s/g, '_')}: [...] ${processedText}`,
+                details: details.join(' | ')
+            });
+        }
+
+        // Auto-create entries from mentions in the result
+        if (onCreateEntries) {
+            const { links } = parseLinkedContent(processedText, entries);
+            const mentions = links.filter(l => l.type === 'mention' && !l.entryId);
+            const uniqueTitles = [...new Set(mentions.map(m => m.value.replace(/_/g, ' ')))];
+            const newWikiEntries = uniqueTitles.map(t => createAutoEntry(t, entries));
+            
+            if (newWikiEntries.length > 0) {
+                onCreateEntries(newWikiEntries);
+            }
+        }
+
+        setActiveRoll(null);
+        setPendingResolution({
+            originalLine: contextLine,
+            newLine: processedText,
+            processedText: processedText,
+            details: details.join(' | ')
+        });
+      }, 600);
+  };
+
+  const handleConfirmResolution = () => {
+      if (!pendingResolution) return;
+      play('CLICK');
+
+      const { originalLine, newLine } = pendingResolution;
+
+      // Update Entry content by replacing the original line with the result
+      const newContent = entry.content.replace(originalLine, newLine);
+      
+      if (onUpdateEntry && newContent !== entry.content) {
+          onUpdateEntry({ ...entry, content: newContent, updatedAt: Date.now() });
+      }
+
+      setPendingResolution(null);
   };
 
   const backlinks = useMemo(() => {
@@ -207,6 +309,7 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
                             }
                         }}
                         onDiceClick={handleDiceClick}
+                        onCollectionClick={handleCollectionClick}
                         className="text-lg leading-relaxed text-txt-main"
                     />
                 </div>
@@ -303,6 +406,7 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
                                                         }
                                                     }}
                                                     onDiceClick={handleDiceClick}
+                                                    onCollectionClick={handleCollectionClick}
                                                 />
                                                 {log.imageUrl && (
                                                     <div className="mt-2 rounded-lg overflow-hidden border border-border/50">
@@ -328,6 +432,14 @@ const WikiEntryDetail: React.FC<WikiEntryDetailProps> = ({
             </div>
         </div>
       </div>
+
+      {pendingResolution && (
+        <MechanicPreviewModal 
+            newLine={pendingResolution.newLine}
+            onConfirm={handleConfirmResolution}
+            onCancel={() => { play('CLICK'); setPendingResolution(null); }}
+        />
+      )}
 
       {activeRoll && (
         <RollResultModal

@@ -87,7 +87,7 @@ const ThemePreview: React.FC<ThemePreviewProps> = ({ colors }) => {
             </button>
             <button 
                 className="flex-1 py-1.5 rounded-md text-[10px] font-bold shadow-sm ring-2 ring-offset-1 ring-offset-transparent opacity-90"
-                style={{ backgroundColor: colors.primaryActive, color: colors.onPrimary, ringColor: colors.primary }}
+                style={{ backgroundColor: colors.primaryActive, color: colors.onPrimary, '--tw-ring-color': colors.primary } as React.CSSProperties}
             >
                 Ativo
             </button>

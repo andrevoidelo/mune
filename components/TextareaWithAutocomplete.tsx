@@ -2,7 +2,7 @@ import React, { useRef, useState, useMemo } from 'react';
 import { WikiEntry, CustomCategory, Collection } from '../types';
 import AutocompletePopup from './AutocompletePopup';
 import { parseLinkedContent } from '../utils';
-import { AtSign, Hash, Dices, Layers } from 'lucide-react';
+import { AtSign, Hash, Dices, Layers, Library } from 'lucide-react';
 
 interface TextareaWithAutocompleteProps {
   value: string;
@@ -34,6 +34,7 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
     
     return parseLinkedContent(textToParse, entries).parts.map((part, i) => {
         if (part.type === 'dice') return <span key={i} className="text-purple-400">[{part.value}]</span>;
+        if (part.type === 'collection') return <span key={i} className="text-green-500">{"{" + part.value + "}"}</span>;
         if (part.type === 'mention') return <span key={i} className="text-primary">@{part.value}</span>;
         if (part.type === 'tag') return <span key={i} className="text-blue-400">#{part.value}</span>;
         if (part.type === 'bold') return <span key={i} className="text-primary">**{part.value}**</span>;
@@ -97,18 +98,18 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
     }
   }, [value, autoResize]);
 
-  // Detect @ or # or [ triggers
+  // Detect @ or # or { triggers
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
     
     onChange(newValue);
     
-    // Look backwards from cursor to find @ or # or [
+    // Look backwards from cursor to find @ or # or {
     const textBeforeCursor = newValue.slice(0, cursorPos);
     const mentionMatch = textBeforeCursor.match(/@([\p{L}0-9_]*)$/u);
     const tagMatch = textBeforeCursor.match(/#([\p{L}0-9_]*)$/u);
-    const collectionMatch = textBeforeCursor.match(/\[([^\]]*)$/); // Match open bracket without close
+    const collectionMatch = textBeforeCursor.match(/\{([^}]*)$/); // Match open brace without close
     
     if (mentionMatch) {
       const query = mentionMatch[1];
@@ -130,14 +131,12 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
       });
     } else if (collectionMatch && collections) {
       const query = collectionMatch[1];
-      // Only trigger if no dice notation characters are present? 
-      // Or simply trigger and filter. If query is "1d", suggestions will be empty (likely).
       setAutocomplete({
         isOpen: true,
         type: 'collection',
         query,
         position: getCaretPosition(textareaRef.current!, cursorPos),
-        startIndex: cursorPos - query.length - 1, // -1 for [
+        startIndex: cursorPos - query.length - 1, // -1 for {
       });
     } else {
       setAutocomplete(null);
@@ -159,14 +158,10 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
         prefix = '#';
         insertText = `${prefix}${suggestion.slug.replace(/\s/g, '_')}${suffix}`;
     } else if (autocomplete.type === 'collection') {
-        // Replace [query with [CollectionTitle]
-        // We need to keep the opening bracket or re-add it.
-        // The selection replaces from startIndex.
-        // insertText = `[${suggestion.title}]`;
-        // Actually, autocomplete replacement logic replaces the whole trigger + query.
-        // So we replace `[` + `query`.
-        insertText = `[${suggestion.title}]`;
-        suffix = ''; // No space after collection? Maybe not.
+        // Check if the next character is a closing brace
+        const nextChar = textareaRef.current.value.charAt(textareaRef.current.selectionEnd);
+        const suffix = nextChar === '}' ? '' : '}';
+        insertText = `{${suggestion.title}${suffix}`;
     }
     
     const before = value.slice(0, autocomplete.startIndex);
@@ -203,13 +198,7 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
         textareaRef.current.setSelectionRange(newPos, newPos);
         
         // Manually trigger handleInput logic to check for autocomplete
-        // We construct a synthetic event or just call logic if needed.
-        // If we inserted `[`, we want to trigger autocomplete.
-        // But `handleInput` takes an event. We can refactor `handleInput` logic or just let the user type.
-        // The user said "Clicking collections icon brings up autocomplete".
-        // If I insert `[`, I should try to open it.
-        
-        if (textToInsert === '[') {
+        if (textToInsert.includes('{')) {
              // Force check
              const position = getCaretPosition(textareaRef.current, newPos);
              if (collections) {
@@ -261,7 +250,7 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
         {/* Floating Toolbar */}
         <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity bg-app/80 backdrop-blur-sm border border-border rounded-lg p-1 shadow-sm">
             <button 
-            onClick={() => insertAtCursor(' @')}
+            onClick={() => insertAtCursor('@')}
             className="p-1.5 hover:bg-card-hover rounded text-primary font-bold"
             title="Mencionar (@)"
             >
@@ -283,11 +272,11 @@ const TextareaWithAutocomplete: React.FC<TextareaWithAutocompleteProps> = ({ val
             </button>
             {collections && (
                 <button 
-                onClick={() => insertAtCursor('[')} 
-                className="p-1.5 hover:bg-card-hover rounded text-txt-main"
-                title="Coleção ([)"
+                onClick={() => insertAtCursor('{}', -1)} 
+                className="p-1.5 hover:bg-card-hover rounded text-green-500"
+                title="Coleção ({})"
                 >
-                <Layers size={14} />
+                <Library size={14} />
                 </button>
             )}
         </div>

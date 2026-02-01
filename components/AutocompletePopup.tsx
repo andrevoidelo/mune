@@ -44,6 +44,7 @@ const AutocompletePopup: React.FC<AutocompletePopupProps> = ({
     
     if (type === 'collection' && collections) {
         matches = collections
+        .filter(c => c.id !== 'built-in-visual-portent' && c.id !== 'built-in-deck' && c.id !== 'built-in-portent')
         .filter(c => c.title.toLowerCase().includes(normalizedQuery))
         .slice(0, 5)
         .map(c => ({

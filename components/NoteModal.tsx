@@ -4,8 +4,8 @@ import { useGameSound } from '../hooks/useGameSound';
 import IconPicker from './IconPicker';
 import ImageEditorModal from './ImageEditorModal';
 import ImageUploadArea from './ImageUploadArea';
-import { WikiEntry, CustomCategory, WikiCategoryId } from '../types';
-import { parseLinkedContent, createAutoEntry, processTextWithDice } from '../utils';
+import { WikiEntry, CustomCategory, WikiCategoryId, Collection } from '../types';
+import { parseLinkedContent, createAutoEntry, processTextWithMechanics } from '../utils';
 import TextareaWithAutocomplete from './TextareaWithAutocomplete';
 import WikiLinkPreview from './WikiLinkPreview';
 
@@ -21,9 +21,10 @@ interface NoteModalProps {
   ) => void;
   wikiEntries: WikiEntry[];
   customCategories: CustomCategory[];
+  collections: Collection[];
 }
 
-const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, customCategories }) => {
+const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, customCategories, collections }) => {
   const [text, setText] = useState('');
   const [image, setImage] = useState<string | undefined>(undefined);
   const [icon, setIcon] = useState<string | undefined>(undefined);
@@ -62,8 +63,8 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, cus
   const handleSave = () => {
     if (!text.trim() && !image && !icon) return;
 
-    // Process dice rolls in text
-    const { processedText, rollDetails, hasRolls } = processTextWithDice(text);
+    // Process mechanics (dice rolls and collections)
+    const { processedText, details: mechanicDetails, hasRolls } = processTextWithMechanics(text, collections);
 
     if (hasRolls) {
         play('DICE');
@@ -86,7 +87,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, cus
         currentEntries.push(newEntry);
     });
 
-    const details = rollDetails.length > 0 ? rollDetails.join(' | ') : undefined;
+    const details = mechanicDetails.length > 0 ? mechanicDetails.join(' | ') : undefined;
 
     onSave(processedText, image, icon, iconColor, newWikiEntries, details);
     onClose();
@@ -168,7 +169,8 @@ const NoteModal: React.FC<NoteModalProps> = ({ onClose, onSave, wikiEntries, cus
             onChange={setText}
             entries={wikiEntries}
             customCategories={customCategories}
-            placeholder="Escreva sua nota... Use @Nome para criar/mencionar entradas do Acervo e #Tag para adicionar tópicos."
+            collections={collections}
+            placeholder="Escreva algo... Use @nome, #tag, [1d20] ou {tabela}"
             className="w-full bg-app border border-border rounded-xl p-4 text-txt-main placeholder-txt-dim outline-none focus:border-primary min-h-[150px] resize-none font-serif leading-relaxed text-lg"
           />
           

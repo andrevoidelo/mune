@@ -18,6 +18,7 @@ export interface LogEntry {
   imageUrl?: string;
   icon?: string;
   iconColor?: string;
+  color?: string;
   visualIcons?: { name: string; url: string; color: string }[];
 }
 
@@ -208,4 +209,5 @@ export interface Adventure {
   clocks: Clock[];
   conflictState?: ConflictState;
   lastLogViewedAt?: number; // Timestamp of when the log tab was last visited
+  activeOracleSystem?: 'MUNE' | 'OPSE' | 'IRON';
 }

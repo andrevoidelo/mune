@@ -10,7 +10,8 @@ export type SoundType =
   | 'ORACLE' 
   | 'CARD'
   | 'LIST'
-  | 'CLICK';
+  | 'CLICK'
+  | 'DICE';
 
 export const useGameSound = () => {
   const { isSoundEnabled } = useSoundSettings();
@@ -47,6 +48,7 @@ export const useGameSound = () => {
         case 'LIST': playResult(); break;
         case 'CARD': playCard(); break;
         case 'CLICK': playClick(); break;
+        case 'DICE': playRoll(); break;
       }
     } catch (e) {
       console.warn("Erro ao tentar tocar som:", e);

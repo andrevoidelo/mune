@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ConflictParticipant, ConflictState, Character } from '../types';
+import { ConflictParticipant, ConflictState, Character, LogEntry } from '../types';
 import { generateUUID } from '../utils';
 import { useGameSound } from '../hooks/useGameSound';
 import { 

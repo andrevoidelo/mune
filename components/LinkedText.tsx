@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { WikiEntry } from '../types';
 import { parseLinkedContent, generateSlug } from '../utils';
-import { Plus, Dices } from 'lucide-react';
+import { Plus, Dices, Library } from 'lucide-react';
 
 interface LinkedTextProps {
   content: string;
@@ -9,6 +9,7 @@ interface LinkedTextProps {
   onMentionClick: (slug: string, existingEntryId?: string) => void;
   onTagClick: (tag: string, existingEntryId?: string) => void;
   onDiceClick?: (notation: string) => void;
+  onCollectionClick?: (collectionName: string) => void;
   className?: string;
 }
 
@@ -18,6 +19,7 @@ const LinkedText: React.FC<LinkedTextProps> = ({
   onMentionClick, 
   onTagClick,
   onDiceClick,
+  onCollectionClick,
   className = ""
 }) => {
   // Parse @mentions and #tags
@@ -42,7 +44,7 @@ const LinkedText: React.FC<LinkedTextProps> = ({
                 e.stopPropagation();
                 onMentionClick(slug, part.entryId);
               }}
-              className={`inline-flex items-center px-1.5 py-0.5 rounded text-sm font-medium mx-0.5
+              className={`inline-flex items-center px-1.5 py-0.5 rounded mx-0.5
                          transition-colors align-baseline ${
                 exists
                   ? 'bg-primary/20 text-txt-accent hover:bg-primary/30'
@@ -50,7 +52,7 @@ const LinkedText: React.FC<LinkedTextProps> = ({
               }`}
             >
               @{part.value.replace(/_/g, ' ')}
-              {!exists && <Plus size={12} className="ml-1" />}
+              {!exists && <Plus size="1em" className="ml-1" />}
             </button>
           );
         }
@@ -67,7 +69,7 @@ const LinkedText: React.FC<LinkedTextProps> = ({
                 e.stopPropagation();
                 onTagClick(tagSlug, part.entryId);
               }}
-              className={`inline-flex items-center px-1.5 py-0.5 rounded text-sm mx-0.5
+              className={`inline-flex items-center px-1.5 py-0.5 rounded mx-0.5
                          transition-colors align-baseline ${
                 exists
                   ? 'bg-primary/10 text-txt-accent hover:bg-primary/20'
@@ -91,10 +93,26 @@ const LinkedText: React.FC<LinkedTextProps> = ({
                    e.stopPropagation();
                    onDiceClick?.(part.value);
                 }}
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-sm font-medium mx-0.5 transition-colors bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 cursor-pointer align-baseline"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded mx-0.5 transition-colors bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 cursor-pointer align-baseline"
                 title={`Rolar ${part.value}`}
               >
-                 <Dices size={12} /> {part.value}
+                 <Dices size="1em" /> {part.value}
+              </button>
+            );
+        }
+        
+        if (part.type === 'collection') {
+            return (
+              <button 
+                key={i}
+                onClick={(e) => {
+                   e.stopPropagation();
+                   onCollectionClick?.(part.value);
+                }}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded mx-0.5 transition-colors bg-green-500/10 text-green-500 border border-green-500/20 hover:bg-green-500/20 cursor-pointer align-baseline"
+                title={`Rolar Tabela: ${part.value}`}
+              >
+                 <Library size="1em" /> {part.value}
               </button>
             );
         }

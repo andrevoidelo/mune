@@ -21,56 +21,228 @@ export const generatePortent = (): string => {
   return `${PORTENT_ADJECTIVES[adjIndex]} ${PORTENT_NOUNS[nounIndex]}`;
 };
 
+const checkCondition = (roll: number, op: string, target: number): boolean => {
+  switch (op) {
+    case '=': case '==': case '': return roll === target;
+    case '<': return roll < target;
+    case '>': return roll > target;
+    case '<=': return roll <= target;
+    case '>=': return roll >= target;
+    case '!=': case '!': return roll !== target;
+    default: return false;
+  }
+};
+
 export const rollDiceNotation = (notation: string): { total: number, detail: string } => {
   if (!notation || notation.trim() === '') {
     const val = rollD(20);
-    return { total: val, detail: `1d20 (${val})` };
+    return { total: val, detail: `1d20 [${val}]` };
   }
 
   const clean = notation.toLowerCase().replace(/\s/g, '');
-  const expression = clean.startsWith('+') || clean.startsWith('-') ? clean : '+' + clean;
+  const expression = (clean.startsWith('+') || clean.startsWith('-')) ? clean : '+' + clean;
   
-  const regex = /([+-])(?:(\d*)d(\d+)(?:(kh|kl|k|l)(\d+))?|(\d+))/g;
+  // Term Regex: matches +NdS... or -NdS... or +N or -N
+  const termRegex = /([+-])(?:(\d*)d(\d+)(.*?)|(\d+))(?=[+-]|$)/g;
 
   let match;
   let total = 0;
   let detailParts: string[] = [];
 
-  while ((match = regex.exec(expression)) !== null) {
+  while ((match = termRegex.exec(expression)) !== null) {
     const operator = match[1];
     const isSubtraction = operator === '-';
     
-    const diceSidesStr = match[3];
-    const constantStr = match[6];
+    const countStr = match[2];
+    const sidesStr = match[3];
+    const modsStr = match[4];
+    const constantStr = match[5];
 
-    if (diceSidesStr) {
-      const count = match[2] === '' ? 1 : parseInt(match[2]);
-      const sides = parseInt(diceSidesStr);
-      const keeperMode = match[4];
-      const keeperCount = match[5] ? parseInt(match[5]) : 1;
+    if (sidesStr) {
+      const count = countStr === '' ? 1 : parseInt(countStr);
+      const sides = parseInt(sidesStr);
 
-      const rolls = [];
-      for (let i = 0; i < count; i++) {
-        rolls.push(rollD(sides));
-      }
+      // Parse Modifiers
+      let remainingMods = modsStr;
+      const parsedMods: any[] = [];
+      const modRegex = /^(kh|kl|dh|dl|min|max|rr|r|xo|x|!)(?:([<>=]*)(-?\d+))?/;
 
-      let termTotal = 0;
-      let keptRolls: number[] = [];
-      const sortedRolls = [...rolls].sort((a, b) => a - b);
-
-      if (keeperMode) {
-        if (keeperMode === 'kh' || keeperMode === 'k') {
-          keptRolls = sortedRolls.slice(Math.max(0, sortedRolls.length - keeperCount));
-        } else {
-          keptRolls = sortedRolls.slice(0, Math.min(sortedRolls.length, keeperCount));
+      while (remainingMods && remainingMods.length > 0) {
+        const m = remainingMods.match(modRegex);
+        if (!m) {
+             remainingMods = remainingMods.substring(1);
+             continue;
         }
-        termTotal = keptRolls.reduce((a, b) => a + b, 0);
-        detailParts.push(`${operator} ${count}d${sides}${keeperMode}${keeperCount}[${rolls.join(',')}]`);
-      } else {
-        termTotal = rolls.reduce((a, b) => a + b, 0);
-        detailParts.push(`${operator} ${count}d${sides}[${rolls.join(',')}]`);
+        parsedMods.push({ type: m[1], op: m[2] || '', val: m[3] ? parseInt(m[3]) : undefined });
+        remainingMods = remainingMods.substring(m[0].length);
       }
 
+      // Track rolls with history: value is current, history shows transitions (rerolls)
+      // dropped indicates if it's excluded from total
+      type DieLog = { current: number, history: number[], dropped: boolean, exploded: boolean };
+      let dice: DieLog[] = [];
+
+      for (let i = 0; i < count; i++) {
+        const val = rollD(sides);
+        dice.push({ current: val, history: [val], dropped: false, exploded: false });
+      }
+
+      // 1. Rerolls (r, rr)
+      const rerollMods = parsedMods.filter(m => m.type === 'r' || m.type === 'rr');
+      for (const mod of rerollMods) {
+        const recursive = mod.type === 'rr';
+        const target = mod.val !== undefined ? mod.val : 1; 
+        const op = mod.op || '=';
+        
+        for (const die of dice) {
+           // We check the *current* value
+           if (checkCondition(die.current, op, target)) {
+               let newVal = rollD(sides);
+               die.history.push(newVal);
+               die.current = newVal;
+               
+               if (recursive) {
+                   let safety = 0;
+                   while (checkCondition(die.current, op, target) && safety < 100) {
+                       newVal = rollD(sides);
+                       die.history.push(newVal);
+                       die.current = newVal;
+                       safety++;
+                   }
+               }
+           }
+        }
+      }
+
+      // 2. Explode (x, !, xo)
+      const explodeMods = parsedMods.filter(m => m.type === 'x' || m.type === '!' || m.type === 'xo');
+      
+      // We process explode mods sequentially
+      for (const mod of explodeMods) {
+          const isBang = mod.type === '!';
+          const isX = mod.type.startsWith('x');
+          const isOnce = mod.type === 'xo';
+          const isRecursive = !isOnce;
+          
+          const defaultTarget = (isBang || (isX && mod.val === undefined));
+          const target = defaultTarget ? sides : mod.val;
+          const op = (defaultTarget || !mod.op) ? '=' : mod.op;
+
+          const limit = 100;
+          let addedCount = 0;
+          
+          const initialLength = dice.length;
+          let idx = 0;
+          
+          // Iterate through dice (including newly added ones if recursive)
+          while (idx < dice.length) {
+              if (addedCount >= limit) break;
+              if (!isRecursive && idx >= initialLength) break;
+              
+              const die = dice[idx];
+              // Only explode if not already dropped? Usually explode happens before drop.
+              
+              if (checkCondition(die.current, op, target)) {
+                   die.exploded = true; // Mark source die as exploded (visual cue?)
+                   
+                   const newVal = rollD(sides);
+                   const newDie: DieLog = { current: newVal, history: [newVal], dropped: false, exploded: false };
+                   dice.push(newDie);
+                   addedCount++;
+              }
+              idx++;
+          }
+      }
+
+      // 3. Min / Max
+      const minMods = parsedMods.filter(m => m.type === 'min');
+      const maxMods = parsedMods.filter(m => m.type === 'max');
+      
+      dice.forEach(die => {
+          minMods.forEach(m => { 
+              if (m.val !== undefined && die.current < m.val) {
+                  die.current = m.val;
+                  // Should we log this change? 
+                  // Standard notation usually just shows the result.
+                  // Or "1->3". Let's update history to show it.
+                  die.history.push(m.val);
+              } 
+          });
+          maxMods.forEach(m => { 
+              if (m.val !== undefined && die.current > m.val) {
+                  die.current = m.val;
+                  die.history.push(m.val);
+              } 
+          });
+      });
+
+      // 4. Keep / Drop
+      const keepMod = parsedMods.slice().reverse().find(m => ['kh','kl','dh','dl','k','l'].includes(m.type));
+      
+      if (keepMod) {
+          const val = keepMod.val !== undefined ? keepMod.val : 1;
+          
+          // We need to identify WHICH dice to drop.
+          // Sort a copy to find the threshold/indices, but we must mark the ORIGINAL dice objects.
+          // We can attach original index to sort.
+          
+          const indexedDice = dice.map((d, i) => ({ val: d.current, index: i }));
+          const sorted = indexedDice.sort((a,b) => a.val - b.val);
+          
+          let indicesToKeep = new Set<number>();
+          let keepCount = 0;
+          
+          if (keepMod.type === 'kh' || keepMod.type === 'k' || keepMod.type === 'dl') {
+               // Keep Highest N / Drop Lowest N
+               if (keepMod.type === 'dl') keepCount = Math.max(0, dice.length - val);
+               else keepCount = val;
+               
+               // Take the LAST keepCount items from sorted (highest)
+               // However, if we keep 3 highest, we take from end.
+               const keptItems = sorted.slice(Math.max(0, sorted.length - keepCount));
+               keptItems.forEach(item => indicesToKeep.add(item.index));
+          } else {
+               // Keep Lowest N / Drop Highest N
+               if (keepMod.type === 'dh') keepCount = Math.max(0, dice.length - val);
+               else keepCount = val;
+               
+               // Take the FIRST keepCount items
+               const keptItems = sorted.slice(0, Math.min(sorted.length, keepCount));
+               keptItems.forEach(item => indicesToKeep.add(item.index));
+          }
+          
+          dice.forEach((d, i) => {
+              if (!indicesToKeep.has(i)) {
+                  d.dropped = true;
+              }
+          });
+      }
+
+      // Calculate Total
+      const activeDice = dice.filter(d => !d.dropped);
+      const termTotal = activeDice.reduce((acc, d) => acc + d.current, 0);
+      
+      // Format Detail String
+      // Format: [1, 2->5, ~~3~~, 6!]
+      const diceStrings = dice.map(d => {
+          let s = '';
+          if (d.history.length > 1) {
+              // Rerolls: "1->2" or just final "2"?
+              // "1->2" is clearer.
+              // If min/max modified it, it will also show.
+              s = d.history.join('➔');
+          } else {
+              s = d.current.toString();
+          }
+          
+          if (d.exploded) s += '!';
+          
+          if (d.dropped) return `~~${s}~~`;
+          return s;
+      });
+      
+      detailParts.push(`${operator} ${countStr}d${sidesStr}${modsStr}[${diceStrings.join(', ')}]`);
+      
       if (isSubtraction) total -= termTotal;
       else total += termTotal;
 
@@ -191,7 +363,7 @@ export const adjustColorBrightness = (hex: string, percent: number): string => {
 // --- DICE PROCESSING ---
 
 export const processTextWithDice = (text: string): { processedText: string, rollDetails: string[], hasRolls: boolean } => {
-  const diceRegex = /\[([0-9dD+\-khlKHL]+)\]/g;
+  const diceRegex = /\[([0-9dD+\-khlKHL!xXrRminax<>=]+)\]/g;
   const rollDetails: string[] = [];
   let hasRolls = false;
 
@@ -199,7 +371,7 @@ export const processTextWithDice = (text: string): { processedText: string, roll
     try {
       hasRolls = true;
       const { total, detail } = rollDiceNotation(notation);
-      rollDetails.push(`${notation}[${total}]`); 
+      rollDetails.push(`${detail} = ${total}`); 
       return `**${total}**`;
     } catch (e) {
       return match;
@@ -207,6 +379,57 @@ export const processTextWithDice = (text: string): { processedText: string, roll
   });
 
   return { processedText, rollDetails, hasRolls };
+};
+
+export const processTextWithMechanics = (
+  text: string, 
+  collections: Collection[]
+): { processedText: string, details: string[], hasRolls: boolean } => {
+  let currentText = text;
+  let allDetails: string[] = [];
+  let hasRolls = false;
+
+  // 1. Resolve Collections: {CollectionName}
+  const collectionRegex = /\{([^}]+)\}/g;
+  
+  currentText = currentText.replace(collectionRegex, (match, content) => {
+      const collection = collections.find(c => c.title.toLowerCase() === content.toLowerCase());
+      
+      // Filter out special built-ins that shouldn't be rolled via text
+      if (collection && (collection.id === 'built-in-visual-portent' || collection.id === 'built-in-deck' || collection.id === 'built-in-portent')) {
+          return match;
+      }
+      
+      if (collection && collection.items.length > 0) {
+          hasRolls = true; // Trigger sound for collections too
+          const item = collection.items[Math.floor(Math.random() * collection.items.length)];
+          
+          // Recursive processing for the item content (it might have sub-tables or dice)
+          const subResult = processCollectionText(item.text, collections);
+          
+          // Format detail
+          allDetails.push(`{${collection.title}}[${subResult.text}]`);
+          if (subResult.details.length > 0) {
+              allDetails.push(...subResult.details);
+          }
+          
+          // Only bold if no mentions/tags to avoid breaking link parsing
+          const hasLinks = /[@#][\p{L}0-9_]+/u.test(subResult.text);
+          return hasLinks ? subResult.text : `**${subResult.text}**`;
+      }
+      return match;
+  });
+
+  // 2. Resolve Dice: [1d20]
+  const diceResult = processTextWithDice(currentText);
+  if (diceResult.hasRolls) hasRolls = true;
+  allDetails.push(...diceResult.rollDetails);
+  
+  return {
+      processedText: diceResult.processedText,
+      details: allDetails,
+      hasRolls
+  };
 };
 
 export const processCollectionText = (
@@ -219,8 +442,8 @@ export const processCollectionText = (
   let currentText = text;
   let allDetails: string[] = [];
 
-  // 1. Resolve Tables: [TableName]
-  const tableRegex = /\[([^\]]+)\]/g;
+  // 1. Resolve Tables: {TableName}
+  const tableRegex = /\{([^}]+)\}/g;
   
   // Using replace with a function allows us to check each match against collections
   // However, we need to handle the fact that we might match dice notation here too.
@@ -277,7 +500,7 @@ export const generateUniqueSlug = (title: string, existingSlugs: string[]): stri
 };
 
 export interface ParsedLink {
-  type: 'mention' | 'tag' | 'bold' | 'dice';
+  type: 'mention' | 'tag' | 'bold' | 'dice' | 'collection';
   value: string;          // Raw value (e.g., "Eldric_o_Mago")
   displayValue: string;   // Display value (e.g., "Eldric o Mago")
   entryId?: string;       // ID if entry exists
@@ -292,6 +515,7 @@ export interface ParsedContent {
     | { type: 'tag'; value: string; entryId?: string }
     | { type: 'bold'; value: string }
     | { type: 'dice'; value: string }
+    | { type: 'collection'; value: string }
   >;
   links: ParsedLink[];
 }
@@ -303,7 +527,8 @@ export const parseLinkedContent = (
   const mentionRegex = /@([\p{L}0-9_]+)/gu;
   const tagRegex = /#([\p{L}0-9_]+)/gu;
   const boldRegex = /\*\*([^*]+)\*\*/g;
-  const diceRegex = /\[([0-9dD+\-khlKHL]+)\]/g;
+  const diceRegex = /\[([0-9dD+\-khlKHL!xXrRminax<>=]+)\]/g;
+  const collectionRegex = /\{([^}]+)\}/g;
 
   const links: ParsedLink[] = [];
   let match;
@@ -360,6 +585,17 @@ export const parseLinkedContent = (
       endIndex: match.index + match[0].length,
     });
   }
+  
+  // Find {collection}
+  while ((match = collectionRegex.exec(content)) !== null) {
+    links.push({
+      type: 'collection',
+      value: match[1],
+      displayValue: match[1],
+      startIndex: match.index,
+      endIndex: match.index + match[0].length,
+    });
+  }
 
   // Sort by position
   links.sort((a, b) => a.startIndex - b.startIndex);
@@ -377,6 +613,8 @@ export const parseLinkedContent = (
       parts.push({ type: 'bold', value: link.value });
     } else if (link.type === 'dice') {
       parts.push({ type: 'dice', value: link.value });
+    } else if (link.type === 'collection') {
+      parts.push({ type: 'collection', value: link.value });
     } else {
       parts.push({
         type: link.type as 'mention' | 'tag',

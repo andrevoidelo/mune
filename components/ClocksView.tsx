@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Clock, ClockType, LogEntry } from '../types';
 import { generateUUID } from '../utils';
 import { useGameSound } from '../hooks/useGameSound';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { Plus, Minus, Trash2, Edit2, Archive, RotateCcw, X, Save, AlertTriangle, BookOpen, Clock as ClockIcon, Flag, Activity, ChevronDown, ChevronUp, Check, Search } from 'lucide-react';
 
 interface ClocksViewProps {
@@ -135,11 +136,13 @@ const ClockBar: React.FC<{
       {/* Completion Overlay */}
       {clock.isComplete && (
          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex flex-col items-center justify-center text-center p-4 animate-in fade-in duration-300 z-10">
-            <h4 className="text-xl font-black text-white uppercase tracking-widest drop-shadow-md mb-1">Completo!</h4>
-            <p className="text-xs text-white/80 font-bold mb-3">
+            <h4 className="text-lg font-black text-white uppercase tracking-tight drop-shadow-md mb-1 leading-tight">
                 {isTug && clock.filled === 0 
-                    ? (clock.completionTextMin || 'O relógio recuou totalmente.')
-                    : (clock.completionText || 'O relógio foi preenchido.')}
+                    ? (clock.completionTextMin || 'Relógio Recuou!')
+                    : (clock.completionText || 'Relógio Completo!')}
+            </h4>
+            <p className="text-[10px] text-white/70 font-bold mb-4 uppercase tracking-widest">
+                {clock.name}
             </p>
             <div className="flex gap-2">
                <button 
@@ -152,7 +155,7 @@ const ClockBar: React.FC<{
                           onTick(-clock.segments); 
                       }
                   }}
-                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded text-xs font-bold flex items-center gap-1 transition-colors"
+                  className="px-3 py-1.5 bg-card-hover hover:bg-border text-white rounded text-xs font-bold flex items-center gap-1 transition-colors"
                >
                   <RotateCcw size={12} /> Reabrir
                </button>
@@ -231,12 +234,10 @@ const ClocksView: React.FC<ClocksViewProps> = ({ clocks, setClocks, addLog }) =>
              
              logEntry = {
                  type: 'NOTE',
-                 title: 'Relógio Completo!',
-                 result: completionMsg,
+                 title: '',
+                 result: `**${clock.name}**: ${completionMsg}`,
                  details: isTug ? (newFilled === 0 ? 'Resultado Mínimo' : 'Resultado Máximo') : undefined,
-                 highlight: true,
-                 icon: 'check-circle',
-                 iconColor: '#eab308'
+                 highlight: true
              };
          } else {
              // Handle Reopen (Explicitly set false)
@@ -246,10 +247,8 @@ const ClocksView: React.FC<ClocksViewProps> = ({ clocks, setClocks, addLog }) =>
 
              logEntry = {
                  type: 'NOTE',
-                 title: 'Relógio',
-                 result: `"${clock.name}" ${delta > 0 ? 'avançou' : 'recuou'} para ${newFilled}/${clock.segments}`,
-                 icon: 'clock',
-                 iconColor: CLOCK_TYPES.find(t => t.type === clock.type)?.color
+                 title: '',
+                 result: `**${clock.name}** ${delta > 0 ? 'avançou' : 'recuou'} para **${newFilled}/${clock.segments}**`
              };
          }
      } else {
@@ -269,11 +268,9 @@ const ClocksView: React.FC<ClocksViewProps> = ({ clocks, setClocks, addLog }) =>
              
              logEntry = {
                  type: 'NOTE',
-                 title: 'Relógio: Oponente Venceu!',
-                 result: `"${clock.name}" (Oponente) completou o objetivo primeiro!`,
-                 highlight: true,
-                 icon: 'alert-triangle',
-                 iconColor: '#ef4444'
+                 title: '',
+                 result: `**${clock.name} (Oponente)**: Completou o objetivo primeiro!`,
+                 highlight: true
              };
          } else {
              // Handle Reopen (Explicitly set false)
@@ -283,10 +280,8 @@ const ClocksView: React.FC<ClocksViewProps> = ({ clocks, setClocks, addLog }) =>
 
              logEntry = {
                  type: 'NOTE',
-                 title: 'Relógio (Oponente)',
-                 result: `"${clock.name}" (Oponente) ${delta > 0 ? 'avançou' : 'recuou'} para ${newFilled}/${clock.segments}`,
-                 icon: 'flag',
-                 iconColor: '#ef4444'
+                 title: '',
+                 result: `**${clock.name} (Oponente)** ${delta > 0 ? 'avançou' : 'recuou'} para **${newFilled}/${clock.segments}**`
              };
          }
      }
@@ -384,25 +379,45 @@ const ClocksView: React.FC<ClocksViewProps> = ({ clocks, setClocks, addLog }) =>
 
   if (isEditing) {
       return (
-        <div className="h-full p-4 overflow-y-auto bg-app">
-            <div className="max-w-md mx-auto space-y-4">
-               <div className="flex justify-between items-center mb-4">
-                 <h2 className="text-xl font-bold text-txt-main">
-                   {formData.id ? 'Editar Relógio' : 'Novo Relógio'}
-                 </h2>
-                 <button onClick={() => { play('CLICK'); setIsEditing(false); }}><X className="text-txt-muted" /></button>
-               </div>
+        <div className="h-full bg-app relative flex flex-col">
+            {/* Floating Header */}
+            <div className="absolute top-0 left-0 right-0 z-30 p-4 flex justify-between items-center pointer-events-none">
+                <button 
+                  type="button"
+                  onClick={() => { play('CLICK'); setIsEditing(false); }}
+                  className="p-2 bg-black/40 backdrop-blur-md rounded-full text-slate-100 hover:bg-black/60 shadow-lg pointer-events-auto transition-all active:scale-95"
+                >
+                  <X size={24} />
+                </button>
+                
+                <button 
+                  type="button"
+                  onClick={() => { play('CLICK'); handleSave(); }}
+                  disabled={!formData.name?.trim()}
+                  className="p-2 bg-success/20 backdrop-blur-md text-success hover:bg-success/30 rounded-full shadow-lg pointer-events-auto transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Salvar"
+                >
+                  <Save size={24} />
+                </button>
+            </div>
 
-               <div>
-                 <label className="text-xs uppercase font-bold text-txt-muted block mb-1">Nome</label>
-                 <input 
-                   value={formData.name}
-                   onChange={e => setFormData({...formData, name: e.target.value})}
-                   className="w-full bg-card border border-border rounded p-3 text-txt-main outline-none focus:border-primary placeholder-txt-dim"
-                   placeholder="Ex: Alerta dos Guardas"
-                   autoFocus
-                 />
-               </div>
+            <div className="flex-1 overflow-y-auto p-4 pt-20">
+                <div className="max-w-md mx-auto space-y-4">
+                   <div className="flex justify-between items-center mb-2">
+                     <h2 className="text-xl font-bold text-txt-main">
+                       {formData.id ? 'Editar Relógio' : 'Novo Relógio'}
+                     </h2>
+                   </div>
+
+                   <div>
+                     <label className="text-xs uppercase font-bold text-txt-muted block mb-1">Nome</label>
+                     <input 
+                       value={formData.name}
+                       onChange={e => setFormData({...formData, name: e.target.value})}
+                       className="w-full bg-card border border-border rounded p-3 text-txt-main outline-none focus:border-primary placeholder-txt-dim"
+                       placeholder="Ex: Alerta dos Guardas"
+                     />
+                   </div>
 
                <div>
                  <label className="text-xs uppercase font-bold text-txt-muted block mb-1">Tipo</label>
@@ -494,16 +509,9 @@ const ClocksView: React.FC<ClocksViewProps> = ({ clocks, setClocks, addLog }) =>
                    placeholder="Ex: O combate começa!"
                  />
                </div>
-
-               <button 
-                 onClick={() => { play('CLICK'); handleSave(); }}
-                 disabled={!formData.name?.trim()}
-                 className="w-full bg-success hover:bg-green-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-               >
-                 <Save size={18} /> Salvar Relógio
-               </button>
             </div>
         </div>
+      </div>
       );
   }
 
@@ -594,30 +602,19 @@ const ClocksView: React.FC<ClocksViewProps> = ({ clocks, setClocks, addLog }) =>
        </div>
 
        {/* Delete Modal */}
-       {clockToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-             <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
-                <h3 className="text-lg font-bold text-txt-main mb-2">Excluir Relógio?</h3>
-                <p className="text-txt-muted text-sm mb-6">
-                   Tem certeza que deseja excluir <strong>{clockToDelete.name}</strong>?
-                </p>
-                <div className="flex gap-3">
-                   <button 
-                      onClick={() => { play('CLICK'); setClockToDelete(null); }}
-                      className="flex-1 py-2 bg-card-hover text-txt-main rounded font-bold"
-                   >
-                      Cancelar
-                   </button>
-                   <button 
-                      onClick={() => { play('CLICK'); handleDelete(); }}
-                      className="flex-1 py-2 bg-error text-slate-100 rounded font-bold"
-                   >
-                      Excluir
-                   </button>
-                </div>
-             </div>
-          </div>
-       )}
+       <ConfirmDeleteModal 
+        isOpen={!!clockToDelete}
+        title="Excluir Relógio"
+        description={
+          <>
+            Tem certeza que deseja excluir permanentemente <strong>{clockToDelete?.name}</strong>?
+            <br/>
+            <span className="text-xs text-txt-dim mt-1 block">Esta ação não pode ser desfeita.</span>
+          </>
+        }
+        onConfirm={handleDelete}
+        onCancel={() => { play('CLICK'); setClockToDelete(null); }}
+      />
     </div>
   );
 };

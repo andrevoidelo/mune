@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { WikiEntry, CustomCategory, DefaultCategory, WikiCategoryId } from '../types';
+import { WikiEntry, CustomCategory, DefaultCategory, WikiCategoryId, Collection } from '../types';
 import { DEFAULT_CATEGORIES } from '../constants';
 import { parseLinkedContent, getCategoryColor, createAutoEntry, generateSlug } from '../utils';
 import TextareaWithAutocomplete from './TextareaWithAutocomplete';
@@ -14,6 +14,7 @@ interface WikiEntryFormProps {
   initialData?: Partial<WikiEntry>;
   entries: WikiEntry[];
   customCategories: CustomCategory[];
+  collections: Collection[];
   onSave: (data: Partial<WikiEntry>, newEntries?: WikiEntry[]) => void;
   onCancel: () => void;
 }
@@ -22,6 +23,7 @@ const WikiEntryForm: React.FC<WikiEntryFormProps> = ({
   initialData, 
   entries, 
   customCategories, 
+  collections,
   onSave, 
   onCancel 
 }) => {
@@ -104,7 +106,7 @@ const WikiEntryForm: React.FC<WikiEntryFormProps> = ({
     play('CLICK');
 
     // Identify new entries to be created from content
-    const newLinks = detectedLinks.filter(link => !link.exists);
+    const newLinks = detectedLinks.filter(link => !link.exists && (link.type === 'mention' || link.type === 'tag'));
     // Deduplicate titles
     const uniqueNewTitles = Array.from(new Set(newLinks.map(l => l.value.replace(/_/g, ' '))));
     
@@ -233,7 +235,8 @@ const WikiEntryForm: React.FC<WikiEntryFormProps> = ({
               onChange={val => setFormData(prev => ({ ...prev, content: val }))}
               entries={entries}
               customCategories={customCategories}
-              placeholder="Escreva o conteúdo... Use @Nome para mencionar e #tag para categorizar."
+              collections={collections}
+              placeholder="Escreva algo... Use @nome, #tag, [1d20] ou {tabela}"
               className="w-full bg-app border border-border rounded-xl p-4
                         text-txt-main placeholder-txt-dim outline-none focus:border-primary
                         min-h-[200px] font-serif leading-relaxed overflow-hidden"

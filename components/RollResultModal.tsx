@@ -4,7 +4,7 @@ import { X, Dices } from 'lucide-react';
 interface RollResultModalProps {
   title: string;
   icon?: React.ReactNode;
-  roll: number;
+  roll: number | string;
   diceNotation: string;
   detailText: string;
   isRevealing: boolean;
@@ -26,6 +26,11 @@ const RollResultModal: React.FC<RollResultModalProps> = ({
   const containerState = isRevealing 
     ? "bg-card border-2 border-border scale-100" 
     : `bg-app border-2 ${borderClass} scale-105`;
+
+  const isText = typeof roll === 'string';
+  const textSizeClass = isText 
+    ? (roll.length > 20 ? "text-xl" : roll.length > 8 ? "text-3xl" : "text-5xl") 
+    : "text-6xl";
 
   return (
     <div 
@@ -51,7 +56,6 @@ const RollResultModal: React.FC<RollResultModalProps> = ({
         </h3>
         
         <div className="flex flex-col items-center relative mb-4">
-          <span className="text-[10px] uppercase font-bold text-txt-dim mb-2">Resultado</span>
           
           {isRevealing ? (
             <div className="h-16 flex items-center justify-center">
@@ -59,7 +63,7 @@ const RollResultModal: React.FC<RollResultModalProps> = ({
             </div>
           ) : (
             <div className="animate-in zoom-in spin-in-180 duration-500">
-              <span className="text-6xl font-black text-primary drop-shadow-lg">
+              <span className={`${textSizeClass} font-black text-primary drop-shadow-lg break-words w-full`}>
                 {roll}
               </span>
             </div>

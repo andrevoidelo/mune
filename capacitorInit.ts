@@ -53,7 +53,9 @@ export const initCapacitor = async (): Promise<void> => {
     await updateSafeAreaInsets();
 
     // Listen for safe area changes (orientation, etc)
-    SafeArea.addListener('safeAreaChanged', (data) => {
+    // Commented out to prevent TS/Runtime errors if plugin is missing/outdated
+    /*
+    (SafeArea as any).addListener('safeAreaChanged', (data: any) => {
       const { insets } = data;
       document.documentElement.style.setProperty('--safe-area-inset-top', `${insets.top}px`);
       document.documentElement.style.setProperty('--safe-area-inset-bottom', `${insets.bottom}px`);
@@ -61,9 +63,31 @@ export const initCapacitor = async (): Promise<void> => {
       document.documentElement.style.setProperty('--safe-area-inset-right', `${insets.right}px`);
       console.log('[Capacitor] Safe area changed:', insets);
     });
+    */
     
   } catch (error) {
     console.warn('[Capacitor] Error configuring status bar:', error);
+  }
+};
+
+/**
+ * Updates the safe area insets CSS variables.
+ */
+export const updateSafeAreaInsets = async (): Promise<void> => {
+  try {
+    // Attempt to get safe area insets safely
+    if (SafeArea && (SafeArea as any).getSafeAreaInsets) {
+        const { insets } = await (SafeArea as any).getSafeAreaInsets();
+        document.documentElement.style.setProperty('--safe-area-inset-top', `${insets.top}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-bottom', `${insets.bottom}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-left', `${insets.left}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-right', `${insets.right}px`);
+        console.log('[Capacitor] Safe area updated:', insets);
+    } else {
+        console.warn('[Capacitor] SafeArea plugin not available or missing getSafeAreaInsets');
+    }
+  } catch (e) {
+    console.warn('[Capacitor] Failed to get safe area insets:', e);
   }
 };
 

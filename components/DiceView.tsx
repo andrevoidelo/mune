@@ -1,8 +1,7 @@
-
 import React, { useState, useRef } from 'react';
 import { LogEntry } from '../types';
 import { rollDiceNotation, generateUUID } from '../utils';
-import { Dices, Play, Delete } from 'lucide-react';
+import { Dices, Play, Delete, RefreshCw, ArrowDownToLine, ArrowUpToLine } from 'lucide-react';
 import { useGameSound } from '../hooks/useGameSound';
 
 interface DiceViewProps {
@@ -17,7 +16,7 @@ interface RollResult {
 
 const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
   const [expression, setExpression] = useState('');
-  const [lastResult, setLastResult] = useState<RollResult | null>(null);
+  const [lastResult, setLastResult] = useState<RollResult | null>(null); 
   const inputRef = useRef<HTMLInputElement>(null);
   const { play } = useGameSound();
 
@@ -34,10 +33,6 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
       detail,
       expression: formula
     });
-    
-    // Determine sound based on result quality (generic heuristic)
-    // We look at the total or if it's a single d20 roll
-    const isSingleD20 = formula.includes('d20') && !formula.includes('2d20'); // Crude check
 
     addLog({
       id: generateUUID(),
@@ -53,17 +48,17 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
     play('CLICK');
     setExpression('');
     setLastResult(null);
-    // Foco removido para evitar abrir teclado no mobile
   };
 
-  // Smart Handler para KH e KL (Keep Highest / Keep Lowest)
-  const handleKeep = (mode: 'kh' | 'kl') => {
+  // Smart Handler para KH, KL, DH, DL
+  const handleKeep = (mode: 'kh' | 'kl' | 'dh' | 'dl') => {
     play('CLICK');
     setExpression(prev => {
       const trimmed = prev.trim();
       if (!trimmed) return prev;
 
-      const regex = /([+-]?\s*[\d]*)d(\d+)(kh\d+|kl\d+)?$/;
+      // Regex to find the last dice term and its modifiers
+      const regex = /([+-]?\s*)d(\d+)((?:kh|kl|dh|dl)\d+)?$/;
       const match = trimmed.match(regex);
 
       if (!match) return prev;
@@ -85,7 +80,6 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
 
       return trimmed.replace(regex, `${prefix}d${sides}${mode}${newCount}`);
     });
-    // Foco removido para evitar abrir teclado no mobile
   };
 
   // Smart Dice Adder
@@ -95,29 +89,35 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
       const trimmed = prev.trim();
       if (!trimmed) return `1d${sides}`;
 
-      const regex = new RegExp(`([+-]?\\s*)(\\d*)d${sides}(kh\\d+|kl\\d+)?$`);
+      // Check if the last term matches the die we are adding (ignoring modifiers for the match)
+      // We look for: (optional operator)(count)d(sides)(modifiers)$
+      const regex = new RegExp(`([+-]?\\s*)(\\d*)d${sides}([^d]*)$`);
       const match = trimmed.match(regex);
 
       if (match) {
-        const prefix = match[1];
-        const currentCount = match[2] === '' ? 1 : parseInt(match[2]);
-        const modifiers = match[3] || '';
-        
+        const prefix = match[1]; // operator or whitespace
+        const currentCountStr = match[2];
+        const tail = match[3] || ''; // modifiers
+
+        const currentCount = currentCountStr === '' ? 1 : parseInt(currentCountStr);
         const newCount = currentCount + 1;
-        return trimmed.replace(regex, `${prefix}${newCount}d${sides}${modifiers}`);
+        
+        // Use replace with the exact match to ensure we only update the end
+        return trimmed.replace(regex, `${prefix}${newCount}d${sides}${tail}`);
       } else {
-        const needsPlus = /[\w\d\)\]]$/.test(trimmed);
+        // Append new term
+        // Check if we need a + sign (if previous char is alphanumeric or !)
+        const needsPlus = /[0-9a-z!]$/i.test(trimmed);
         return `${trimmed}${needsPlus ? '+' : ''}1d${sides}`;
       }
     });
-    // Foco removido para evitar abrir teclado no mobile
   };
 
   const addModifier = (val: number) => {
     play('CLICK');
     setExpression(prev => {
       const trimmed = prev.trim();
-      
+
       if (!trimmed) return val.toString();
 
       const regex = /([+-])\s*(\d+)$/;
@@ -126,7 +126,7 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
       if (match) {
         const operator = match[1];
         const currentNumber = parseInt(match[2]);
-        
+
         const currentVal = operator === '-' ? -currentNumber : currentNumber;
         const newVal = currentVal + val;
 
@@ -137,19 +137,38 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
         const newOperator = newVal >= 0 ? '+' : '-';
         const newAbsVal = Math.abs(newVal);
 
-        return trimmed.replace(regex, `${newOperator}${newAbsVal}`);
+        return trimmed.replace(regex, `${newOperator}${newAbsVal}`);     
       }
-      
+
       if (/[+-]$/.test(trimmed)) {
           return trimmed + Math.abs(val);
       }
       
-      const newOperator = val >= 0 ? '+' : ''; 
+      const newOperator = val >= 0 ? '+' : '';
       return `${trimmed}${newOperator}${val}`;
     });
   };
+  
+  const addSpecial = (text: string) => {
+    play('CLICK');
+    setExpression(prev => prev + text);
+  };
 
   const diceTypes = [2, 4, 6, 8, 10, 12, 20, 100];
+
+  const formatDetail = (text: string) => {
+    // Split by ~~ to find strikethrough parts
+    const parts = text.split(/~~(.*?)~~/g);
+    return parts.map((part, i) => {
+      // Even indices are normal text, odd are struck through
+      if (i % 2 === 1) {
+        return <span key={i} className="line-through opacity-50">{part}</span>;
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  const modifierBtnClass = "bg-card border border-border rounded-lg py-2 landscape:py-1.5 text-sm font-bold text-txt-muted hover:text-txt-main uppercase tracking-wider flex items-center justify-center active:bg-card-hover font-mono";
 
   return (
     <div className="flex flex-col landscape:flex-row h-full bg-app overflow-hidden">
@@ -164,9 +183,9 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
             <div className="text-7xl sm:text-8xl leading-none font-black text-primary font-mono drop-shadow-[0_0_30px_rgba(var(--primary),0.2)] mb-4 select-all transition-all">
               {lastResult.total}
             </div>
-            <div className="bg-card/80 backdrop-blur-sm rounded-xl p-3 border border-border w-full shadow-lg max-h-[20vh] overflow-y-auto mx-4">
+            <div className="bg-card/80 backdrop-blur-sm rounded-xl p-3 border border-border w-full shadow-lg max-h-[20vh] overflow-y-auto mx-4">  
                <p className="text-xs sm:text-sm text-txt-muted font-mono break-words leading-relaxed">
-                 {lastResult.detail}
+                 {formatDetail(lastResult.detail)}
                </p>
             </div>
           </div>
@@ -184,19 +203,19 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
            
            {/* Input Row */}
            <div className="flex items-center gap-2 w-full">
-              <button 
+              <button
                 onClick={() => addModifier(-1)}
                 className="w-12 h-12 landscape:h-9 flex-none flex items-center justify-center bg-error/20 border border-error/50 rounded-xl text-error font-bold transition-all active:scale-95 shadow-sm text-lg"
               >
                 -1
               </button>
-              
+
               <div className="relative flex-1">
                  <input
                   ref={inputRef}
                   type="text"
                   value={expression}
-                  onChange={(e) => setExpression(e.target.value)}
+                  onChange={(e) => setExpression(e.target.value)}        
                   onKeyDown={(e) => { if(e.key === 'Enter') handleRoll(); }}
                   placeholder="Ex: 2d20kh1+5"
                   className="w-full h-12 landscape:h-9 bg-app border-2 border-border focus:border-primary rounded-xl pl-9 pr-2 text-center text-lg landscape:text-base font-mono text-txt-main outline-none transition-colors placeholder-txt-dim shadow-inner"
@@ -206,40 +225,56 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => addModifier(1)}
-                className="w-12 h-12 landscape:h-9 flex-none flex items-center justify-center bg-success/20 border border-success/50 rounded-xl text-success font-bold transition-all active:scale-95 shadow-sm text-lg"
+                className="w-12 h-12 landscape:h-9 flex-none flex items-center justify-center bg-success/20 border border-success/50 rounded-xl text-success font-bold transition-all active:scale-95 shadow-sm text-lg"   
               >
                 +1
               </button>
            </div>
-
-           {/* Toolbar: KH, KL, Delete, Clear */}
+           
+           {/* Row 0: Comparison & Range (New) */}
            <div className="grid grid-cols-4 gap-2 w-full">
-               <button 
-                 onClick={() => handleKeep('kh')}
-                 className="bg-card border border-border rounded-lg py-2 landscape:py-1.5 text-sm font-bold text-txt-muted hover:text-txt-main uppercase tracking-wider flex items-center justify-center active:bg-card-hover font-mono"
-                 title="Manter Maior (Keep Highest)"
-               >
-                 KH
-               </button>
-               <button 
-                 onClick={() => handleKeep('kl')}
-                 className="bg-card border border-border rounded-lg py-2 landscape:py-1.5 text-sm font-bold text-txt-muted hover:text-txt-main uppercase tracking-wider flex items-center justify-center active:bg-card-hover font-mono"
-                 title="Manter Menor (Keep Lowest)"
-               >
-                 KL
-               </button>
-               
-              <button 
-                onClick={() => { play('CLICK'); setExpression(prev => prev.slice(0, -1)); }}
-                className="bg-card hover:bg-card-hover border border-border rounded-lg py-2 landscape:py-1.5 flex items-center justify-center text-txt-muted hover:text-txt-main active:scale-95 transition-colors"
+               <button onClick={() => addSpecial('<')} className={modifierBtnClass}>&lt;</button>
+               <button onClick={() => addSpecial('>')} className={modifierBtnClass}>&gt;</button>
+               <button onClick={() => addSpecial('min')} className={modifierBtnClass}>min</button>
+               <button onClick={() => addSpecial('max')} className={modifierBtnClass}>max</button>
+           </div>
+
+           {/* Row 1: Keep/Drop */}
+           <div className="grid grid-cols-4 gap-2 w-full">
+               <button onClick={() => handleKeep('kh')} className={modifierBtnClass} title="Manter Maior (Keep Highest)">KH</button>
+               <button onClick={() => handleKeep('kl')} className={modifierBtnClass} title="Manter Menor (Keep Lowest)">KL</button>
+               <button onClick={() => handleKeep('dh')} className={modifierBtnClass} title="Descartar Maior (Drop Highest)">DH</button>
+               <button onClick={() => handleKeep('dl')} className={modifierBtnClass} title="Descartar Menor (Drop Lowest)">DL</button>
+           </div>
+
+           {/* Row 2: Advanced & Clear */}
+           <div className="grid grid-cols-4 gap-2 w-full">
+              <button
+                 onClick={() => addSpecial('x')}
+                 className={modifierBtnClass}
+                 title="Explodir (x)"
               >
-                <Delete size={18} />
+                 ! x
               </button>
-              <button 
+              <button
+                 onClick={() => addSpecial('r')}
+                 className={modifierBtnClass}
+                 title="Rolar Novamente (r)"
+              >
+                 R
+              </button>
+              <button
+                 onClick={() => addSpecial('rr')}
+                 className={modifierBtnClass}
+                 title="Rolar Novamente Recursivo (rr)"
+              >
+                 RR
+              </button>
+              <button
                 onClick={handleClear}
-                className="bg-error/20 hover:bg-error/40 border border-error/50 rounded-lg py-2 landscape:py-1.5 text-[10px] sm:text-xs font-bold text-error hover:text-error uppercase tracking-wider active:scale-95 transition-colors"
+                className="bg-error/20 hover:bg-error/40 border border-error/50 rounded-lg py-2 landscape:py-1.5 text-[10px] sm:text-xs font-bold text-error hover:text-error uppercase tracking-wider active:scale-95 transition-colors flex items-center justify-center"
               >
                 Limpar
               </button>
@@ -247,24 +282,45 @@ const DiceView: React.FC<DiceViewProps> = ({ addLog }) => {
 
            {/* Dice Grid */}
            <div className="grid grid-cols-4 gap-2 w-full">
-             {diceTypes.map((sides) => (
-               <button
-                 key={sides}
-                 onClick={() => addDie(sides)}
-                 className="aspect-square bg-card hover:bg-card-hover active:bg-border border border-border active:border-primary rounded-xl flex items-center justify-center transition-all active:scale-95 group shadow-sm"
-               >
-                 <span className="text-sm sm:text-base font-bold font-mono text-txt-muted group-hover:text-txt-main">
-                   d{sides}
-                 </span>
-               </button>
-             ))}
+             {diceTypes.map((sides) => {
+               // Determine SVG shape
+               const shape = `d${sides}`;
+
+               return (
+                 <button
+                   key={sides}
+                   onClick={() => addDie(sides)}
+                   className="aspect-square relative flex items-center justify-center transition-all active:scale-95 group"
+                 >
+                   {/* Die Shape (Masked) */}
+                   <div 
+                      className="absolute inset-0 bg-txt-muted group-hover:bg-txt-main transition-colors opacity-50 group-hover:opacity-100"
+                      style={{
+                          maskImage: `url("/dice/${shape}.svg")`,
+                          maskRepeat: 'no-repeat',
+                          maskPosition: 'center',
+                          maskSize: 'contain',
+                          WebkitMaskImage: `url("/dice/${shape}.svg")`,
+                          WebkitMaskRepeat: 'no-repeat',
+                          WebkitMaskPosition: 'center',
+                          WebkitMaskSize: 'contain'
+                      }}
+                   />
+                   
+                   {/* Number */}
+                   <span className="relative z-10 text-lg sm:text-xl font-black text-txt-main drop-shadow-md">
+                     d{sides}
+                   </span>
+                 </button>
+               );
+             })}
            </div>
 
            {/* Roll Button */}
            <button
              onClick={() => handleRoll()}
              disabled={!expression.trim()}
-             className="w-full mt-1 bg-primary hover:bg-primary-hover disabled:bg-card disabled:text-txt-dim disabled:cursor-not-allowed text-on-primary font-black text-xl landscape:text-lg uppercase tracking-wider py-3.5 landscape:py-2.5 rounded-xl enabled:shadow-lg enabled:shadow-primary/20 active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2"
+             className="w-full mt-1 bg-primary hover:bg-primary-hover active:bg-primary-active border-b-4 enabled:border-primary-active disabled:border-border active:border-b-0 active:translate-y-1 disabled:bg-card disabled:text-txt-dim disabled:cursor-not-allowed text-on-primary font-black text-xl landscape:text-lg uppercase tracking-wider py-3.5 landscape:py-2.5 rounded-xl enabled:shadow-lg transition-all flex items-center justify-center gap-2"
            >
              <Dices size={22} /> Rolar
            </button>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Howler } from 'howler';
-import { Tab, LogEntry, Character, Adventure, Collection, Thread, NpcEntry, AppTheme, WikiEntry, CustomCategory } from './types';
+import { Tab, LogEntry, Character, Adventure, Collection, AppTheme, WikiEntry, CustomCategory } from './types';
 import OracleView from './components/OracleView';
 import ToolsView from './components/ToolsView';
 import WikiView from './components/WikiView';
@@ -109,6 +109,7 @@ const AppContent: React.FC = () => {
   const [adventures, setAdventures] = useState<Adventure[]>([]);
   const [currentAdventureId, setCurrentAdventureId] = useState<string | null>(null);
   const [collections, setCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
+  const [isLoaded, setIsLoaded] = useState(false);
   
   // App View State
   const [activeTab, setActiveTab] = useState<Tab>(Tab.ORACLE);
@@ -277,8 +278,6 @@ const AppContent: React.FC = () => {
 
           return {
             ...adv,
-            threads: adv.threads || [],
-            npcs: adv.npcs || [],
             wiki: wiki,
             customCategories: customCategories,
             clocks: adv.clocks || [],
@@ -308,8 +307,6 @@ const AppContent: React.FC = () => {
           lastPlayedAt: Date.now(),
           logs: legacyLogs ? JSON.parse(legacyLogs) : [],
           characters: legacyChars ? JSON.parse(legacyChars) : [],
-          threads: [],
-          npcs: [],
           wiki: [],
           customCategories: [],
           clocks: [],
@@ -326,16 +323,22 @@ const AppContent: React.FC = () => {
         localStorage.removeItem('mune_personas');
       }
     }
+    
+    setIsLoaded(true);
   }, []);
 
   // Persist State
   useEffect(() => {
-    localStorage.setItem('mune_adventures', JSON.stringify(adventures));
-  }, [adventures]);
+    if (isLoaded) {
+      localStorage.setItem('mune_adventures', JSON.stringify(adventures));
+    }
+  }, [adventures, isLoaded]);
 
   useEffect(() => {
-    localStorage.setItem('mune_collections', JSON.stringify(collections));
-  }, [collections]);
+    if (isLoaded) {
+      localStorage.setItem('mune_collections', JSON.stringify(collections));
+    }
+  }, [collections, isLoaded]);
 
   // Derived State: Sorted Adventures
   const sortedAdventures = React.useMemo(() => {
@@ -403,10 +406,9 @@ const AppContent: React.FC = () => {
               lastPlayedAt: Date.now(),
               logs: Array.isArray(data.logs) ? data.logs : [],
               characters: Array.isArray(data.characters) ? data.characters : [],
-              threads: Array.isArray(data.threads) ? data.threads : [],
-              npcs: Array.isArray(data.npcs) ? data.npcs : [],
               wiki: [],
-              customCategories: []
+              customCategories: [],
+              clocks: []
            };
            validAdventures = [legacyAdv];
         }
@@ -504,8 +506,6 @@ const AppContent: React.FC = () => {
         lastPlayedAt: Date.now(),
         logs: [],
         characters: [],
-        threads: [],
-        npcs: [],
         wiki: [],
         customCategories: [],
         clocks: [],
@@ -570,14 +570,6 @@ const AppContent: React.FC = () => {
       ? (value as (prev: Character[]) => Character[])(activeAdventure.characters)
       : value;
     updateActiveAdventureData({ characters: newChars });
-  };
-
-  const updateThreads = (threads: Thread[]) => {
-    updateActiveAdventureData({ threads });
-  };
-
-  const updateNpcs = (npcs: NpcEntry[]) => {
-    updateActiveAdventureData({ npcs });
   };
 
   const setWikiWrapper = (wiki: WikiEntry[]) => {
@@ -943,58 +935,9 @@ const AppContent: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content Area + SideNav Wrapper */}
-      <div className="flex-1 flex overflow-hidden flex-col landscape:flex-row min-h-0">
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden flex-col min-h-0">
         
-        {/* Side Navigation (Landscape Only) */}
-        {currentAdventureId && !showSettings && (
-          <nav className="hidden landscape:flex flex-col w-16 bg-card border-r border-border h-full py-4 items-center gap-4 z-30">
-            <NavButton 
-              active={activeTab === Tab.ORACLE} 
-              onClick={() => setActiveTab(Tab.ORACLE)}
-              icon={<MessageSquare size={24} />}
-              label="Oráculo"
-              vertical
-            />
-            <NavButton 
-              active={activeTab === Tab.TOOLS} 
-              onClick={() => setActiveTab(Tab.TOOLS)}
-              icon={<Wrench size={24} />}
-              label="Coleções"
-              vertical
-            />
-            <NavButton 
-              active={activeTab === Tab.DICE} 
-              onClick={() => setActiveTab(Tab.DICE)}
-              icon={<Dices size={24} />}
-              label="Dados"
-              vertical
-            />
-            <NavButton 
-              active={activeTab === Tab.PERSONA} 
-              onClick={() => setActiveTab(Tab.PERSONA)}
-              icon={<User size={24} />}
-              label="Persona"
-              vertical
-            />
-            <NavButton 
-              active={activeTab === Tab.WIKI} 
-              onClick={() => setActiveTab(Tab.WIKI)}
-              icon={<BookOpen size={24} />}
-              label="Acervo"
-              vertical
-            />
-            <NavButton 
-              active={activeTab === Tab.LOG} 
-              onClick={() => setActiveTab(Tab.LOG)}
-              icon={<ScrollText size={24} />}
-              label="Log"
-              badge={unreadLogsCount}
-              vertical
-            />
-          </nav>
-        )}
-
         <main className="flex-1 overflow-hidden relative w-full h-full min-h-0">
           {showSettings ? (
             <SettingsView 
@@ -1013,10 +956,8 @@ const AppContent: React.FC = () => {
               <div className={activeTab === Tab.ORACLE ? 'h-full w-full' : 'hidden'}>
                 <OracleView 
                   addLog={addLog} 
-                  threads={activeAdventure.threads || []}
-                  npcs={activeAdventure.npcs || []}
-                  updateThreads={updateThreads}
-                  updateNpcs={updateNpcs}
+                  activeSystem={activeAdventure.activeOracleSystem || 'MUNE'}
+                  onSystemChange={(sys) => updateActiveAdventureData({ activeOracleSystem: sys })}
                 />
               </div>
 
@@ -1027,6 +968,12 @@ const AppContent: React.FC = () => {
                   setCollections={setCollections}
                   clocks={activeAdventure.clocks || []}
                   setClocks={setClocksWrapper}
+                  entries={activeAdventure.wiki || []}
+                  onCreateEntries={(newEntries) => {
+                      const currentWiki = activeAdventure.wiki || [];
+                      updateActiveAdventureData({ wiki: [...newEntries, ...currentWiki] });
+                  }}
+                  onNavigateToWiki={handleNavigateToWiki}
                 />
               </div>
 
@@ -1050,6 +997,7 @@ const AppContent: React.FC = () => {
                   setEntries={setWikiWrapper}
                   customCategories={activeAdventure.customCategories || []}
                   setCustomCategories={setCustomCategoriesWrapper}
+                  collections={collections}
                   addLog={addLog}
                   targetEntryId={wikiTargetId}
                   onClearTarget={() => setWikiTargetId(null)}
@@ -1093,6 +1041,7 @@ const AppContent: React.FC = () => {
           onSave={handleAddNote}
           wikiEntries={activeAdventure?.wiki || []}
           customCategories={activeAdventure?.customCategories || []}
+          collections={collections}
         />
       )}
 
@@ -1103,7 +1052,7 @@ const AppContent: React.FC = () => {
 
       {/* Bottom Navigation (Portrait Only) */}
       {currentAdventureId && !showSettings && (
-        <nav className="flex-none bg-card border-t border-border z-30 animate-in slide-in-from-bottom duration-300 landscape:hidden pb-safe-area">
+        <nav className="flex-none bg-card border-t border-border z-30 animate-in slide-in-from-bottom duration-300 pb-safe-area">
           <div className="grid grid-cols-6 h-16">
             <NavButton 
               active={activeTab === Tab.ORACLE} 
@@ -1115,7 +1064,7 @@ const AppContent: React.FC = () => {
               active={activeTab === Tab.TOOLS} 
               onClick={() => setActiveTab(Tab.TOOLS)}
               icon={<Wrench size={20} />}
-              label="Coleções"
+              label="Ferramentas"
             />
             <NavButton 
               active={activeTab === Tab.DICE} 
@@ -1161,11 +1110,6 @@ const AppContent: React.FC = () => {
                </p>
                <ul className="text-xs text-txt-muted list-disc list-inside space-y-1">
                  <li><strong className="text-txt-main">{pendingImportData.adventures.length}</strong> Aventuras</li>
-                 <li>
-                   <strong className="text-txt-main">
-                      {pendingImportData.adventures.reduce((acc, a) => acc + (a?.threads?.length || 0) + (a?.npcs?.length || 0), 0)}
-                   </strong> Tramas e NPCs
-                 </li>
                  <li>
                    <strong className="text-txt-main">
                      {(pendingImportData.collections || []).filter(c => !c.isBuiltIn).length}

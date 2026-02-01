@@ -208,6 +208,26 @@ const LogView: React.FC<LogViewProps> = ({
   };
 
   const getEntryStyle = (entry: LogEntry) => {
+    // Priority 1: Explicit color property
+    if (entry.color) {
+      const c = entry.color.toLowerCase();
+      if (c === 'fuchsia') return 'border-fuchsia-500 bg-fuchsia-900/20 print:bg-transparent print:border-fuchsia-600';
+      if (c === 'emerald') return 'border-emerald-500 bg-emerald-900/20 print:bg-transparent print:border-emerald-600';
+      if (c === 'pink') return 'border-pink-500 bg-pink-900/20 print:bg-transparent print:border-pink-600';
+      if (c === 'purple') return 'border-purple-500 bg-purple-900/20 print:bg-transparent print:border-purple-600';
+      if (c === 'lime') return 'border-lime-500 bg-lime-900/20 print:bg-transparent print:border-lime-600';
+      if (c === 'slate') return 'border-slate-500 bg-slate-900/20 print:bg-transparent print:border-slate-600';
+      if (c === 'sky') return 'border-sky-500 bg-sky-900/20 print:bg-transparent print:border-sky-600';
+      if (c === 'orange') return 'border-orange-500 bg-orange-900/20 print:bg-transparent print:border-orange-600';
+      if (c === 'cyan') return 'border-cyan-500 bg-cyan-900/20 print:bg-transparent print:border-cyan-600';
+      if (c === 'red') return 'border-red-500 bg-red-900/20 print:bg-transparent print:border-red-600';
+      if (c === 'violet') return 'border-violet-500 bg-violet-900/20 print:bg-transparent print:border-violet-600';
+      if (c === 'indigo') return 'border-indigo-500 bg-indigo-900/20 print:bg-transparent print:border-indigo-600';
+      if (c === 'primary') return 'border-primary bg-primary/10 print:bg-transparent print:border-amber-400';
+      if (c === 'success') return 'border-success bg-success/20 print:bg-transparent print:border-green-600';
+      if (c === 'error' || c === 'fail') return 'border-error bg-error/20 print:bg-transparent print:border-red-600';
+    }
+
     if (entry.type === 'NOTE') return 'border-primary/50 bg-card/80 print:bg-transparent print:border-gray-300';
     if (entry.type === 'INTERVENTION') return 'border-error bg-error/20 print:bg-red-50 print:border-red-600 print:text-red-900';
     
@@ -224,7 +244,23 @@ const LogView: React.FC<LogViewProps> = ({
     }
 
     if (entry.type === 'ITEM') return 'border-indigo-500 bg-indigo-900/20 print:bg-transparent print:border-indigo-400';
-    if (entry.type === 'ORACLE') return 'border-blue-500 bg-card print:bg-transparent print:border-blue-400';
+    
+    if (entry.type === 'ORACLE') {
+        // Special case for M.U.N.E. Interventions which are now type ORACLE
+        if (entry.title === 'M.U.N.E.' && entry.result.includes('Intervenção')) {
+            return 'border-error bg-error/20 print:bg-red-50 print:border-red-600 print:text-red-900';
+        }
+        // Special case for NPC Attitude (Yellow)
+        if (entry.title.includes('Atitude de NPC')) {
+            return 'border-yellow-500 bg-yellow-900/20 print:bg-transparent print:border-yellow-600';
+        }
+        // Special case for TWENE (Orange)
+        if (entry.title.includes('TWENE')) {
+            return 'border-orange-500 bg-orange-900/20 print:bg-transparent print:border-orange-400';
+        }
+        return 'border-blue-500 bg-card print:bg-transparent print:border-blue-400';
+    }
+
     if (entry.type === 'DRAW') return 'border-purple-500 bg-card print:bg-transparent print:border-purple-400';
     if (entry.highlight) return 'border-primary bg-primary/10 print:bg-transparent print:border-amber-400';
     
@@ -233,10 +269,15 @@ const LogView: React.FC<LogViewProps> = ({
 
   const renderFormattedText = (text: string) => {
     if (!text) return null;
-    const parts = text.split(/(\*\*.*?\*\*)/g);
+    // Split by **bold** OR ~~strikethrough~~
+    const parts = text.split(/(\*\*.*?\*\*|~~.*?~~)/g);
+    
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return <strong key={index} className="text-txt-main print:text-black font-bold">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('~~') && part.endsWith('~~')) {
+        return <span key={index} className="line-through opacity-50">{part.slice(2, -2)}</span>;
       }
       return <span key={index}>{part}</span>;
     });
@@ -367,10 +408,11 @@ const LogView: React.FC<LogViewProps> = ({
                     )}
 
                     <div className="flex-1 min-w-0">
-                        {entry.type === 'NOTE' ? (
-                          <div className="mt-1">
+                        <div className="mt-1">
                             {entry.title && entry.title !== 'Nota' && (
-                              <h3 className="font-bold text-primary/80 print:text-black text-sm mb-1">{entry.title}</h3>
+                              <h3 className={`font-bold text-sm mb-1 print:text-black ${entry.type === 'NOTE' ? 'text-primary/80' : 'text-txt-main'}`}>
+                                {entry.title}
+                              </h3>
                             )}
                             <LinkedText 
                                 content={entry.result}
@@ -379,13 +421,7 @@ const LogView: React.FC<LogViewProps> = ({
                                 onTagClick={(slug, id) => onNavigateToWiki?.(id || null, !id ? slug : undefined)}
                                 className="text-base text-txt-main print:text-black font-serif print-serif leading-relaxed whitespace-pre-wrap"
                             />
-                          </div>
-                        ) : (
-                          <div className="mt-1">
-                            <h3 className="font-bold text-txt-main print:text-black text-sm">{entry.title}</h3>
-                            <p className="text-lg text-txt-main print:text-black font-medium mt-0.5 leading-snug">{entry.result}</p>
-                          </div>
-                        )}
+                        </div>
 
                         {entry.details && (
                           <p className="text-xs text-txt-muted print:text-gray-600 mt-2 border-t border-border/50 print:border-gray-300 pt-2 font-mono break-words">

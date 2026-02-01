@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { WikiEntry, WikiCategoryId, CustomCategory, LogEntry } from '../types';
+import { WikiEntry, WikiCategoryId, CustomCategory, LogEntry, Collection } from '../types';
 import { DEFAULT_CATEGORIES } from '../constants';
 import { 
     generateUUID, 
@@ -25,6 +25,7 @@ interface WikiViewProps {
   setEntries: (entries: WikiEntry[]) => void;
   customCategories: CustomCategory[];
   setCustomCategories: (categories: CustomCategory[]) => void;
+  collections: Collection[];
   addLog: (entry: LogEntry) => void;
   targetEntryId?: string | null;
   onClearTarget?: () => void;
@@ -40,6 +41,7 @@ const WikiView: React.FC<WikiViewProps> = ({
     setEntries, 
     customCategories, 
     setCustomCategories, 
+    collections,
     addLog,
     targetEntryId,
     onClearTarget,
@@ -279,6 +281,14 @@ const WikiView: React.FC<WikiViewProps> = ({
       setEditingCategory(null);
   };
   
+  const handleDirectUpdate = (updatedEntry: WikiEntry) => {
+      setEntries(entries.map(e => e.id === updatedEntry.id ? updatedEntry : e));
+  };
+
+  const handleCreateEntries = (newEntries: WikiEntry[]) => {
+      setEntries([...newEntries, ...entries]);
+  };
+  
   // Render logic to support persistent modals
   let content = null;
 
@@ -294,6 +304,7 @@ const WikiView: React.FC<WikiViewProps> = ({
                 entry={entry}
                 entries={entries}
                 customCategories={customCategories}
+                collections={collections}
                 logs={logs}
                 onBack={() => { play('CLICK'); setMode('LIBRARY'); setSelectedEntryId(null); }}
                 onEdit={() => handleEditEntry(entry)}
@@ -301,6 +312,8 @@ const WikiView: React.FC<WikiViewProps> = ({
                 onNavigate={(id) => { play('CLICK'); setSelectedEntryId(id); }}
                 onCreate={(title) => handleCreateEntry(title)}
                 onNavigateToLog={onNavigateToLog}
+                onUpdateEntry={handleDirectUpdate}
+                onCreateEntries={handleCreateEntries}
                 addLog={addLog}
             />
           );
@@ -311,6 +324,7 @@ const WikiView: React.FC<WikiViewProps> = ({
               initialData={formData}
               entries={entries}
               customCategories={customCategories}
+              collections={collections}
               onSave={handleSaveEntry}
               onCancel={() => {
                   play('CLICK');
